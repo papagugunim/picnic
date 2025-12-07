@@ -1,26 +1,292 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer theme {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Picnic Colors - Light Mode (당근마켓 스타일) */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 5%;
+    --card: 0 0% 98%;
+    --card-foreground: 0 0% 5%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 5%;
+
+    /* Primary - Orange (당근마켓 #ff8039) */
+    --primary: 16 100% 62%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Light Pink (#ffc3a1) */
+    --secondary: 22 100% 82%;
+    --secondary-foreground: 0 0% 5%;
+
+    /* Muted - Grey (#afb0b1) */
+    --muted: 200 2% 69%;
+    --muted-foreground: 0 0% 45%;
+
+    /* Accent - Orange Lighter */
+    --accent: 22 100% 75%;
+    --accent-foreground: 0 0% 5%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 16 100% 62%;
+    --radius: 12px;
+  }
+
+  .dark {
+    /* Picnic Colors - Dark Mode (당근마켓 다크 스타일) */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 16%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Primary - Orange (당근마켓 #ff8039) */
+    --primary: 16 100% 62%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Dark Card */
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 98%;
+
+    /* Muted - Grey (#afb0b1) */
+    --muted: 0 0% 16%;
+    --muted-foreground: 200 2% 69%;
+
+    /* Accent - Orange Lighter */
+    --accent: 22 100% 75%;
+    --accent-foreground: 0 0% 5%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 16%;
+    --ring: 16 100% 62%;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* CSS variable utilities - defined outside @layer to avoid Tailwind v4 conflicts */
+.bg-background {
+  background-color: hsl(var(--background));
+}
+
+.bg-foreground {
+  background-color: hsl(var(--foreground));
+}
+
+.bg-card {
+  background-color: hsl(var(--card));
+}
+
+.bg-popover {
+  background-color: hsl(var(--popover));
+}
+
+.bg-primary {
+  background-color: hsl(var(--primary));
+}
+
+.bg-secondary {
+  background-color: hsl(var(--secondary));
+}
+
+.bg-muted {
+  background-color: hsl(var(--muted));
+}
+
+.bg-accent {
+  background-color: hsl(var(--accent));
+}
+
+.bg-destructive {
+  background-color: hsl(var(--destructive));
+}
+
+.text-background {
+  color: hsl(var(--background));
+}
+
+.text-foreground {
+  color: hsl(var(--foreground));
+}
+
+.text-card-foreground {
+  color: hsl(var(--card-foreground));
+}
+
+.text-popover-foreground {
+  color: hsl(var(--popover-foreground));
+}
+
+.text-primary {
+  color: hsl(var(--primary));
+}
+
+.text-primary-foreground {
+  color: hsl(var(--primary-foreground));
+}
+
+.text-secondary {
+  color: hsl(var(--secondary));
+}
+
+.text-secondary-foreground {
+  color: hsl(var(--secondary-foreground));
+}
+
+.text-muted {
+  color: hsl(var(--muted));
+}
+
+.text-muted-foreground {
+  color: hsl(var(--muted-foreground));
+}
+
+.text-accent {
+  color: hsl(var(--accent));
+}
+
+.text-accent-foreground {
+  color: hsl(var(--accent-foreground));
+}
+
+.text-destructive {
+  color: hsl(var(--destructive));
+}
+
+.text-destructive-foreground {
+  color: hsl(var(--destructive-foreground));
+}
+
+.border-border {
+  border-color: hsl(var(--border));
+}
+
+.border-input {
+  border-color: hsl(var(--input));
+}
+
+.ring-ring {
+  --tw-ring-color: hsl(var(--ring));
+}
+
+/* 당근마켓 스타일 Card Effects */
+@layer utilities {
+  .glass {
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+  }
+
+  .dark .glass {
+    background-color: rgb(26 26 26 / 1);
+    border-color: rgb(255 255 255 / 0.05);
+  }
+
+  .glass-strong {
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+  }
+
+  .dark .glass-strong {
+    background-color: rgb(43 43 43 / 1);
+    border-color: rgb(255 255 255 / 0.08);
+  }
+
+  .gradient-text {
+    background-image: linear-gradient(135deg, #ff8039 0%, #ffc3a1 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  .animate-in {
+    animation: animateIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-out {
+    animation: animateOut 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* 당근마켓 스타일 FAB 버튼 */
+  .fab {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    z-index: 50;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 4px 12px rgba(255, 128, 57, 0.3);
+    transition: all 0.2s ease;
+  }
+
+  .fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(255, 128, 57, 0.4);
+  }
+
+  .fab:active {
+    transform: scale(0.95);
+  }
+}
+
+@keyframes animateIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes animateOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted) / 0.5);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted));
 }

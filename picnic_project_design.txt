@@ -1,0 +1,976 @@
+================================================================================
+                    picnic (피크닉) 프로젝트 전체 설계 문서
+                    해외 한인 전용 당근마켓 스타일 웹 서비스
+                              2025년 MVP 버전
+================================================================================
+
+[목차]
+1. 프로젝트 개요
+2. Next.js 15 프로젝트 폴더 구조
+3. 최종 기술 스택 및 선택 이유
+4. Liquid Glass 스타일 화면 와이어프레임
+5. Supabase PostgreSQL 데이터베이스 스키마
+6. Phase 1 MVP 주간 로드맵 (4~6주)
+
+
+================================================================================
+1. 프로젝트 개요
+================================================================================
+
+서비스명: picnic (피크닉)
+
+초기 론칭 지역: 러시아 모스크바(Moscow) + 상트페테르부르크(Saint Petersburg) 2개 도시만
+
+타겟 유저: 러시아 거주 한인 및 한국어 가능자
+
+위치 인증 방식:
+- GPS 50km 반경 → 폐기
+- 사용자가 직접 도시 선택 (Moscow 또는 Saint Petersburg)
+- 그 도시 안에서 "가장 가까운 지하철역"을 동네로 선택
+- 같은 도시 내 게시물만 볼 수 있고, 선택한 지하철역 기준으로 정렬/필터링
+
+MVP 핵심 기능:
+1. 회원가입·로그인 (이메일 + Google + Apple + Kakao)
+2. 도시 및 지하철역 선택 (동네 설정)
+3. 중고거래 게시판 (사진 최대 10장, 가격 제안, 꿀어올리기, 관심, 신고)
+4. 1:1 실시간 채팅
+5. 자유 게시판 (정보 공유, 맛집, 구인구직 등)
+6. 한인 앱소록 (사용자 등록 + 리뷰)
+7. 알림 시스템
+
+디자인 (가장 중요!):
+- 100% Apple "Liquid Glass" 스타일 (iOS 18 / macOS Sequoia)
+- 깊은 블러 + 투명도 + Vibrancy
+- 얇은 선, 큰 타이포그래피, 넉넉한 여백
+- 완벽한 다크모드 (시스템 설정 따라감)
+- 모든 애니메이션 60fps + 부드러운 spring easing
+- 모바일 퍼스트 + 데스크톱 완벽 반응형
+
+
+================================================================================
+2. Next.js 15 프로젝트 폴더 구조
+================================================================================
+
+picnic/
+├── .env.local                      # Supabase keys, API keys
+├── .gitignore
+├── next.config.js
+├── package.json
+├── tsconfig.json
+├── tailwind.config.ts
+├── postcss.config.js
+├── components.json                 # shadcn/ui config
+│
+├── public/
+│   ├── icons/                      # App icons
+│   └── images/                     # Static images
+│
+├── src/
+│   ├── app/                        # App Router (Next.js 15)
+│   │   ├── layout.tsx              # Root layout (다크모드, 폰트)
+│   │   ├── page.tsx                # 홈 (로그인 전 랜딩 or 게시물 목록)
+│   │   ├── globals.css             # Tailwind + custom CSS
+│   │   │
+│   │   ├── (auth)/                 # Auth group
+│   │   │   ├── login/
+│   │   │   │   └── page.tsx        # 로그인 페이지
+│   │   │   └── signup/
+│   │   │       └── page.tsx        # 회원가입 (도시/동네 선택 포함)
+│   │   │
+│   │   ├── (main)/                 # Main app group (로그인 후)
+│   │   │   ├── layout.tsx          # Main layout (네비게이션)
+│   │   │   ├── feed/
+│   │   │   │   └── page.tsx        # 중고거래 게시물 피드
+│   │   │   ├── post/
+│   │   │   │   ├── [id]/
+│   │   │   │   │   └── page.tsx    # 게시물 상세 + 채팅
+│   │   │   │   └── new/
+│   │   │   │       └── page.tsx    # 새 게시물 작성
+│   │   │   ├── community/
+│   │   │   │   └── page.tsx        # 자유 게시판
+│   │   │   ├── profile/
+│   │   │   │   └── [userId]/
+│   │   │   │       └── page.tsx    # 사용자 프로필
+│   │   │   └── settings/
+│   │   │       └── page.tsx        # 설정 (동네 변경, 알림)
+│   │   │
+│   │   └── api/                    # API routes (필요시)
+│   │       └── webhooks/
+│   │           └── route.ts        # Supabase webhooks
+│   │
+│   ├── components/
+│   │   ├── ui/                     # shadcn/ui components
+│   │   │   ├── button.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── dialog.tsx
+│   │   │   ├── input.tsx
+│   │   │   ├── avatar.tsx
+│   │   │   └── ...
+│   │   │
+│   │   ├── layout/
+│   │   │   ├── Navbar.tsx          # 글로벌 네비게이션
+│   │   │   ├── Sidebar.tsx         # 사이드바 (모바일 메뉴)
+│   │   │   └── Footer.tsx
+│   │   │
+│   │   ├── post/
+│   │   │   ├── PostCard.tsx        # 게시물 카드
+│   │   │   ├── PostDetail.tsx      # 게시물 상세
+│   │   │   ├── PostForm.tsx        # 게시물 작성 폼
+│   │   │   └── ImageUpload.tsx     # 이미지 업로드 (최대 10장)
+│   │   │
+│   │   ├── chat/
+│   │   │   ├── ChatRoom.tsx        # 1:1 채팅방
+│   │   │   ├── ChatList.tsx        # 채팅 목록
+│   │   │   └── Message.tsx         # 메시지 컴포넌트
+│   │   │
+│   │   ├── location/
+│   │   │   ├── CitySelector.tsx    # 도시 선택 (Moscow/SPb)
+│   │   │   ├── NeighborhoodSelector.tsx  # 동네 선택
+│   │   │   └── DistanceFilter.tsx  # 거리 필터
+│   │   │
+│   │   └── auth/
+│   │       ├── LoginForm.tsx       # 로그인 폼
+│   │       └── SocialLogin.tsx     # 소셜 로그인 버튼
+│   │
+│   ├── lib/
+│   │   ├── supabase/
+│   │   │   ├── client.ts           # Supabase 클라이언트 (browser)
+│   │   │   ├── server.ts           # Supabase 서버 (RSC)
+│   │   │   └── middleware.ts       # Auth middleware
+│   │   │
+│   │   ├── utils.ts                # Utility functions (cn, formatDate...)
+│   │   ├── constants.ts            # 상수 (도시, 동네 목록)
+│   │   └── hooks/
+│   │       ├── useAuth.ts          # 인증 훅
+│   │       ├── usePosts.ts         # 게시물 훅
+│   │       ├── useChat.ts          # 채팅 훅
+│   │       └── useLocation.ts      # 위치 훅
+│   │
+│   ├── types/
+│   │   ├── database.types.ts       # Supabase 생성 타입
+│   │   ├── post.ts
+│   │   ├── user.ts
+│   │   ├── chat.ts
+│   │   └── index.ts
+│   │
+│   └── styles/
+│       └── animations.css          # Framer Motion + 커스텀 애니메이션
+│
+└── supabase/                       # Supabase 로컬 설정 (선택사항)
+    └── migrations/
+        └── 20250101000000_initial_schema.sql
+
+
+================================================================================
+3. 최종 기술 스택 및 선택 이유
+================================================================================
+
+[Frontend Framework]
+- Next.js 15 (App Router) + TypeScript
+  이유: RSC(React Server Components)로 SEO 최적화, 빠른 초기 로딩
+  이유: App Router의 레이아웃 중첩으로 깔끔한 구조
+  이유: 이미지 최적화(next/image), 폰트 최적화(next/font)
+  이유: TypeScript로 타입 안정성 확보
+
+[Styling]
+- Tailwind CSS + shadcn/ui
+  이유: Utility-first로 빠른 개발, Apple Liquid Glass 스타일 구현 용이
+  이유: shadcn/ui는 Radix UI 기반으로 접근성 보장, 커스터마이징 자유도 높음
+  이유: Tailwind의 dark: 변형으로 완벽한 다크모드 지원
+
+[Animation]
+- Framer Motion
+  이유: 선언적 애니메이션, spring easing 기본 제공
+  이유: 60fps 보장, layoutId 공유 레이아웃 애니메이션
+  이유: Gesture 지원 (드래그, 스와이프)
+
+[Backend & Database]
+- Supabase (PostgreSQL + Auth + Storage + Realtime)
+  이유: PostgreSQL로 관계형 데이터 관리 (게시물, 사용자, 채팅)
+  이유: Row Level Security(RLS)로 보안 강화
+  이유: Built-in Auth (이메일, Google, Apple, Kakao 지원)
+  이유: Realtime Subscriptions로 1:1 채팅 구현
+  이유: Storage로 이미지 업로드 (최대 10장)
+  이유: 빠른 개발, 서버리스, 무료 티어 넉넉함
+
+[지도 & 위치]
+- Yandex Maps API (primary) + KakaoMap (fallback)
+  이유: 러시아 지역 최적화 (Moscow, SPb 동네 데이터)
+  이유: GPS 50km 반경 필터링
+  이유: Kakao는 한인 사용자 친화적 fallback
+
+[배포]
+- Vercel
+  이유: Next.js 최적화, 자동 HTTPS, Edge Network
+  이유: Preview 배포로 빠른 피드백
+  이유: GitHub 연동 자동 배포
+
+[기타 라이브러리]
+- React Hook Form + Zod: 폼 관리 및 검증
+- date-fns: 날짜 포맷팅 (한국어 지원)
+- react-dropzone: 이미지 드래그앤드롭
+- clsx + tailwind-merge: className 유틸리티
+
+
+================================================================================
+4. Liquid Glass 스타일 화면 와이어프레임
+================================================================================
+
+[디자인 원칙]
+- Frosted Glass Blur: backdrop-blur-xl + bg-white/10 (라이트), bg-black/20 (다크)
+- 얇은 선: border border-white/20 (1px)
+- 큰 타이포: SF Pro Display, 48px+ 헤드라인
+- 넉넉한 여백: padding 24px~48px
+- 부드러운 애니메이션: transition-all duration-300 + spring easing
+- Vibrancy: iOS 스타일 색상 오버레이
+
+────────────────────────────────────────────────────────────────────────────
+
+[1. 로그인 페이지] (/login)
+
+┌─────────────────────────────────────────────┐
+│                                             │
+│                   [Logo]                    │
+│                   picnic                    │
+│                  피크닉에 오신 걸 환영해요   │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │  🌐  Moscow에서 시작하기            │   │  ← Frosted glass button
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │  🏛️  Saint Petersburg에서 시작하기  │   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  ─────────────── 또는 ───────────────      │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │  📧  이메일로 계속하기               │   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │  🍎  Apple로 계속하기                │   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │  🟡  Kakao로 계속하기                │   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│          이미 계정이 있으신가요? 로그인      │
+│                                             │
+└─────────────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────
+
+[2. 도시/동네 선택 페이지] (/signup)
+
+┌─────────────────────────────────────────────┐
+│  ← 뒤로                      [1/2]           │
+│                                             │
+│  어디에 계신가요?                            │
+│  가까운 이웃들과 거래해보세요                │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │  🔍  동네 검색...                    │   │  ← Frosted input
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  🌐 Moscow                                  │
+│  ┌─────────────────────────────────────┐   │
+│  │  ✓  Arbat (Арбат)                   │   │  ← Selected (blue accent)
+│  └─────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────┐   │
+│  │     Tverskoy (Тверской)              │   │
+│  └─────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────┐   │
+│  │     Presnensky (Пресненский)         │   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  🏛️ Saint Petersburg                        │
+│  ┌─────────────────────────────────────┐   │
+│  │     Nevsky District                  │   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  ┌───────────────────────────────────────┐ │
+│  │          다음 (계속하기)               │ │  ← Primary CTA
+│  └───────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────
+
+[3. 메인 피드] (/feed)
+
+┌─────────────────────────────────────────────┐
+│  [☰]  picnic              [🔔] [👤]         │  ← Sticky nav
+├─────────────────────────────────────────────┤
+│                                             │
+│  📍 Arbat, Moscow          [📏 50km]        │  ← Location filter
+│                                             │
+│  ┌───────────────────────────────────────┐ │
+│  │  🔍  무엇을 찾고 계신가요?            │ │  ← Frosted search
+│  └───────────────────────────────────────┘ │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │  [📷 Image]         MacBook Pro M3  │   │  ← Post card
+│  │                     850,000₽        │   │
+│  │                     Arbat • 2분 전   │   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │  [📷 Image]         IKEA 책상       │   │
+│  │                     무료나눔          │   │
+│  │                     Tverskoy • 5분 전│   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │  [📷 Image]         러시아어 과외   │   │
+│  │                     협의가능          │   │
+│  │                     Arbat • 1시간 전 │   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  [➕]  ← Floating action button (bottom-right)
+└─────────────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────
+
+[4. 게시물 상세 + 채팅] (/post/[id])
+
+┌─────────────────────────────────────────────┐
+│  ← 뒤로                     [⋯]  더보기      │
+├─────────────────────────────────────────────┤
+│                                             │
+│  [🖼️  Image Gallery - Swipeable]           │
+│   ● ○ ○                                     │  ← Image indicators
+│                                             │
+│  MacBook Pro M3 14" 16GB/512GB              │  ← Title (large)
+│  850,000₽                                   │
+│                                             │
+│  ────────────────────────────────────       │
+│                                             │
+│  📍 Arbat, Moscow (2.3km)                   │
+│  ⏰ 2분 전                                   │
+│                                             │
+│  상태: 중고 (거의 새것)                      │
+│  거래 방법: 직거래 선호                      │
+│                                             │
+│  본문 내용 표시...                           │
+│  2023년 구입, 거의 사용하지 않았습니다.      │
+│  원박스, 충전기 모두 포함.                   │
+│                                             │
+│  관심 25 • 조회 142                          │
+│                                             │
+│  ────────────────────────────────────       │
+│                                             │
+│  판매자: 김철수                              │
+│  ⭐⭐⭐⭐⭐ (리뷰 12개)                        │
+│                                             │
+│  ┌───────────────────────────────────────┐ │
+│  │      💬  채팅하기                      │ │  ← Primary CTA
+│  └───────────────────────────────────────┘ │
+│                                             │
+└─────────────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────
+
+[5. 채팅방] (/post/[id] - 채팅 활성화 시)
+
+┌─────────────────────────────────────────────┐
+│  ← 김철수                   [⋯]              │
+├─────────────────────────────────────────────┤
+│                                             │
+│  [상품 미니카드]                             │
+│  MacBook Pro M3 • 850,000₽                  │
+│  ────────────────────────────────────       │
+│                                             │
+│          안녕하세요! 거래 가능한가요?         │  ← My message (right)
+│                                    15:23    │
+│                                             │
+│  네, 가능합니다!                             │  ← Their message (left)
+│  언제 보실 수 있으세요?                       │
+│  15:24                                      │
+│                                             │
+│          오늘 저녁 7시 어떠세요?             │
+│                                    15:25    │
+│                                             │
+│  좋아요! Arbat 지하철역 2번 출구에서 만나요   │
+│  15:26                                      │
+│                                             │
+│                                             │
+│  ────────────────────────────────────       │
+│  ┌───────────────────────────────────────┐ │
+│  │  💬  메시지를 입력하세요...       [➤]  │ │  ← Input bar
+│  └───────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────
+
+[6. 게시물 작성] (/post/new)
+
+┌─────────────────────────────────────────────┐
+│  ← 취소                          [게시]      │
+├─────────────────────────────────────────────┤
+│                                             │
+│  [➕ 사진 추가]  [📷][📷][📷]  (3/10)       │  ← Image upload
+│                                             │
+│  ┌───────────────────────────────────────┐ │
+│  │  제목                                  │ │  ← Frosted input
+│  │  MacBook Pro M3 14"                    │ │
+│  └───────────────────────────────────────┘ │
+│                                             │
+│  ┌───────────────────────────────────────┐ │
+│  │  가격 (₽)                              │ │
+│  │  850,000                               │ │
+│  └───────────────────────────────────────┘ │
+│                                             │
+│  ┌───────────────────────────────────────┐ │
+│  │  자세한 설명을 입력해주세요...          │ │  ← Textarea
+│  │                                        │ │
+│  │                                        │ │
+│  └───────────────────────────────────────┘ │
+│                                             │
+│  카테고리:  [전자제품 ▼]                     │
+│  상태:      [중고 - 거의 새것 ▼]             │
+│  거래 방법: [✓ 직거래] [✓ 택배]             │
+│                                             │
+│  📍 거래 위치: Arbat, Moscow                │
+│                                             │
+│  ┌───────────────────────────────────────┐ │
+│  │          게시하기                      │ │  ← Primary CTA
+│  └───────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────
+
+[7. 프로필] (/profile/[userId])
+
+┌─────────────────────────────────────────────┐
+│  ← 뒤로                     [⋯]              │
+├─────────────────────────────────────────────┤
+│                                             │
+│              [Avatar]                       │
+│              김철수                          │
+│         ⭐⭐⭐⭐⭐ (4.8)                      │
+│         리뷰 12개                            │
+│                                             │
+│         📍 Arbat, Moscow                    │
+│         🕐 가입: 2024년 3월                  │
+│                                             │
+│  ┌─────────────┬─────────────┬───────────┐ │
+│  │  판매 23     │  구매 8      │  찜 15    │ │
+│  └─────────────┴─────────────┴───────────┘ │
+│                                             │
+│  ────────────────────────────────────       │
+│                                             │
+│  판매 중인 상품 (5)                          │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │  [📷]  MacBook Pro  850,000₽        │   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │  [📷]  iPhone 15    650,000₽        │   │
+│  └─────────────────────────────────────┘   │
+│                                             │
+│  ────────────────────────────────────       │
+│                                             │
+│  리뷰 (12)                                   │
+│                                             │
+│  ⭐⭐⭐⭐⭐  친절하고 빠른 거래! - 박영희      │
+│  ⭐⭐⭐⭐⭐  믿을 수 있는 분입니다 - 이민수   │
+│                                             │
+└─────────────────────────────────────────────┘
+
+
+================================================================================
+5. Supabase PostgreSQL 데이터베이스 스키마
+================================================================================
+
+-- ============================================
+-- Users (프로필 정보 확장)
+-- ============================================
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT UNIQUE NOT NULL,
+  full_name TEXT,
+  avatar_url TEXT,
+  city TEXT NOT NULL CHECK (city IN ('Moscow', 'Saint Petersburg')),
+  neighborhood TEXT NOT NULL,
+
+  -- 위치 정보
+  latitude DECIMAL(10, 8),
+  longitude DECIMAL(11, 8),
+
+  -- 통계
+  rating DECIMAL(3, 2) DEFAULT 0.0,
+  review_count INT DEFAULT 0,
+  post_count INT DEFAULT 0,
+
+  -- 메타데이터
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- RLS 정책
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public profiles are viewable by everyone"
+  ON profiles FOR SELECT
+  USING (true);
+
+CREATE POLICY "Users can update own profile"
+  ON profiles FOR UPDATE
+  USING (auth.uid() = id);
+
+
+-- ============================================
+-- Posts (중고거래 게시물)
+-- ============================================
+CREATE TABLE posts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  author_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+
+  -- 게시물 정보
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  price BIGINT, -- 루블 (NULL = 무료나눔/협의가능)
+  category TEXT NOT NULL,
+  condition TEXT CHECK (condition IN ('new', 'like_new', 'good', 'fair')),
+
+  -- 이미지 (Supabase Storage URLs)
+  images TEXT[] DEFAULT '{}', -- 최대 10장
+
+  -- 위치
+  city TEXT NOT NULL,
+  neighborhood TEXT NOT NULL,
+  latitude DECIMAL(10, 8),
+  longitude DECIMAL(11, 8),
+
+  -- 거래 방법
+  trade_method TEXT[] DEFAULT '{}', -- ['direct', 'delivery']
+
+  -- 상태
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'reserved', 'sold', 'hidden')),
+
+  -- 통계
+  view_count INT DEFAULT 0,
+  like_count INT DEFAULT 0,
+  chat_count INT DEFAULT 0,
+
+  -- 메타데이터
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 인덱스
+CREATE INDEX idx_posts_city_neighborhood ON posts(city, neighborhood);
+CREATE INDEX idx_posts_author ON posts(author_id);
+CREATE INDEX idx_posts_status ON posts(status);
+CREATE INDEX idx_posts_created_at ON posts(created_at DESC);
+
+-- RLS 정책
+ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Posts are viewable by everyone"
+  ON posts FOR SELECT
+  USING (status = 'active');
+
+CREATE POLICY "Users can create posts"
+  ON posts FOR INSERT
+  WITH CHECK (auth.uid() = author_id);
+
+CREATE POLICY "Users can update own posts"
+  ON posts FOR UPDATE
+  USING (auth.uid() = author_id);
+
+CREATE POLICY "Users can delete own posts"
+  ON posts FOR DELETE
+  USING (auth.uid() = author_id);
+
+
+-- ============================================
+-- Chats (1:1 채팅방)
+-- ============================================
+CREATE TABLE chats (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  buyer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  seller_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+
+  -- 마지막 메시지 정보 (목록 표시용)
+  last_message TEXT,
+  last_message_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  -- 읽지 않은 메시지 수
+  unread_count_buyer INT DEFAULT 0,
+  unread_count_seller INT DEFAULT 0,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  -- 한 게시물에 대해 buyer-seller 쌍은 하나만 존재
+  UNIQUE(post_id, buyer_id, seller_id)
+);
+
+-- 인덱스
+CREATE INDEX idx_chats_buyer ON chats(buyer_id);
+CREATE INDEX idx_chats_seller ON chats(seller_id);
+CREATE INDEX idx_chats_post ON chats(post_id);
+
+-- RLS 정책
+ALTER TABLE chats ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own chats"
+  ON chats FOR SELECT
+  USING (auth.uid() = buyer_id OR auth.uid() = seller_id);
+
+CREATE POLICY "Users can create chats"
+  ON chats FOR INSERT
+  WITH CHECK (auth.uid() = buyer_id);
+
+CREATE POLICY "Users can update own chats"
+  ON chats FOR UPDATE
+  USING (auth.uid() = buyer_id OR auth.uid() = seller_id);
+
+
+-- ============================================
+-- Messages (채팅 메시지)
+-- ============================================
+CREATE TABLE messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  chat_id UUID NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+  sender_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+
+  content TEXT NOT NULL,
+  is_read BOOLEAN DEFAULT FALSE,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 인덱스
+CREATE INDEX idx_messages_chat ON messages(chat_id, created_at DESC);
+CREATE INDEX idx_messages_sender ON messages(sender_id);
+
+-- RLS 정책
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view messages in own chats"
+  ON messages FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM chats
+      WHERE chats.id = messages.chat_id
+      AND (chats.buyer_id = auth.uid() OR chats.seller_id = auth.uid())
+    )
+  );
+
+CREATE POLICY "Users can insert messages in own chats"
+  ON messages FOR INSERT
+  WITH CHECK (
+    auth.uid() = sender_id
+    AND EXISTS (
+      SELECT 1 FROM chats
+      WHERE chats.id = messages.chat_id
+      AND (chats.buyer_id = auth.uid() OR chats.seller_id = auth.uid())
+    )
+  );
+
+
+-- ============================================
+-- Reviews (거래 후 리뷰)
+-- ============================================
+CREATE TABLE reviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  reviewer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  reviewee_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+
+  rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment TEXT,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  -- 한 게시물에 대해 한 번만 리뷰 가능
+  UNIQUE(post_id, reviewer_id, reviewee_id)
+);
+
+-- 인덱스
+CREATE INDEX idx_reviews_reviewee ON reviews(reviewee_id);
+
+-- RLS 정책
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Reviews are viewable by everyone"
+  ON reviews FOR SELECT
+  USING (true);
+
+CREATE POLICY "Users can create reviews"
+  ON reviews FOR INSERT
+  WITH CHECK (auth.uid() = reviewer_id);
+
+
+-- ============================================
+-- Likes (찜하기)
+-- ============================================
+CREATE TABLE likes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  UNIQUE(user_id, post_id)
+);
+
+-- 인덱스
+CREATE INDEX idx_likes_user ON likes(user_id);
+CREATE INDEX idx_likes_post ON likes(post_id);
+
+-- RLS 정책
+ALTER TABLE likes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own likes"
+  ON likes FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create likes"
+  ON likes FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own likes"
+  ON likes FOR DELETE
+  USING (auth.uid() = user_id);
+
+
+-- ============================================
+-- Notifications (알림)
+-- ============================================
+CREATE TABLE notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+
+  type TEXT NOT NULL CHECK (type IN ('chat', 'like', 'review', 'system')),
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  link TEXT, -- 클릭 시 이동할 URL
+
+  is_read BOOLEAN DEFAULT FALSE,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 인덱스
+CREATE INDEX idx_notifications_user ON notifications(user_id, created_at DESC);
+
+-- RLS 정책
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own notifications"
+  ON notifications FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own notifications"
+  ON notifications FOR UPDATE
+  USING (auth.uid() = user_id);
+
+
+-- ============================================
+-- Functions & Triggers
+-- ============================================
+
+-- updated_at 자동 갱신
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_posts_updated_at BEFORE UPDATE ON posts
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+
+================================================================================
+6. Phase 1 MVP 주간 로드맵 (4~6주)
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────
+Week 1: 프로젝트 셋업 & 인증
+────────────────────────────────────────────────────────────────────────────
+목표: 프로젝트 기반 구축 + 로그인 완성
+
+Day 1-2: Next.js 15 프로젝트 생성, 기술 스택 설치
+  - create-next-app@latest + TypeScript
+  - Tailwind CSS, shadcn/ui, Framer Motion 설치
+  - Supabase 프로젝트 생성, 환경 변수 설정
+
+Day 3-4: 인증 구현
+  - Supabase Auth 설정 (이메일, Google, Apple, Kakao)
+  - 로그인/회원가입 페이지 (/login, /signup)
+  - Auth middleware 및 protected routes
+
+Day 5-7: Liquid Glass 디자인 시스템
+  - Tailwind config (frosted glass, vibrancy)
+  - 공통 컴포넌트 (Button, Card, Input)
+  - 다크모드 구현 (next-themes)
+  - 도시/동네 선택 페이지 완성
+
+결과물: 로그인 → 도시 선택 → 메인 화면 진입 가능
+
+────────────────────────────────────────────────────────────────────────────
+Week 2: 게시물 CRUD & 피드
+────────────────────────────────────────────────────────────────────────────
+목표: 중고거래 게시물 작성 및 목록 표시
+
+Day 1-2: Supabase 스키마 구현
+  - profiles, posts, likes 테이블 생성
+  - RLS 정책 설정
+  - Supabase Storage 버킷 생성 (images)
+
+Day 3-4: 게시물 작성 페이지 (/post/new)
+  - 이미지 업로드 (react-dropzone, 최대 10장)
+  - Supabase Storage에 업로드
+  - 폼 검증 (React Hook Form + Zod)
+  - 게시물 등록 API
+
+Day 5-7: 피드 페이지 (/feed)
+  - 게시물 목록 조회 (Supabase query)
+  - 위치 기반 필터링 (50km 반경)
+  - 검색 기능
+  - 무한 스크롤 (Intersection Observer)
+
+결과물: 게시물 작성 → 피드에서 확인 가능
+
+────────────────────────────────────────────────────────────────────────────
+Week 3: 게시물 상세 & 1:1 채팅
+────────────────────────────────────────────────────────────────────────────
+목표: 게시물 상세 페이지 + 실시간 채팅 구현
+
+Day 1-2: 게시물 상세 페이지 (/post/[id])
+  - 이미지 갤러리 (Swipeable)
+  - 게시물 정보 표시
+  - 찜하기 기능
+  - 조회수 증가
+
+Day 3-5: 1:1 채팅 구현
+  - chats, messages 테이블 생성
+  - Supabase Realtime Subscriptions 설정
+  - 채팅방 UI (ChatRoom.tsx)
+  - 실시간 메시지 송수신
+  - 읽지 않은 메시지 카운트
+
+Day 6-7: 채팅 목록 페이지
+  - 내 채팅 목록 표시
+  - 마지막 메시지 미리보기
+  - 알림 뱃지
+
+결과물: 게시물 → "채팅하기" → 실시간 대화 가능
+
+────────────────────────────────────────────────────────────────────────────
+Week 4: 프로필 & 리뷰 시스템
+────────────────────────────────────────────────────────────────────────────
+목표: 사용자 신뢰도 구축
+
+Day 1-2: 프로필 페이지 (/profile/[userId])
+  - 사용자 정보 표시
+  - 판매 중인 게시물 목록
+  - 프로필 수정 기능
+
+Day 3-4: 리뷰 시스템
+  - reviews 테이블 생성
+  - 거래 완료 후 리뷰 작성
+  - 평점 계산 및 표시
+  - 리뷰 목록 표시
+
+Day 5-7: 알림 시스템
+  - notifications 테이블 생성
+  - 채팅 도착 알림
+  - 찜하기 알림
+  - 알림 목록 페이지
+  - 푸시 알림 (선택사항)
+
+결과물: 프로필 → 리뷰 확인 → 신뢰도 판단 가능
+
+────────────────────────────────────────────────────────────────────────────
+Week 5: 커뮤니티 & 지도 통합
+────────────────────────────────────────────────────────────────────────────
+목표: 자유 게시판 + 위치 기반 기능 강화
+
+Day 1-2: 자유 게시판 (/community)
+  - 커뮤니티 게시물 타입 추가 (posts 테이블 확장)
+  - 게시판 목록 및 상세 페이지
+  - 댓글 기능 (선택사항)
+
+Day 3-5: 지도 통합
+  - Yandex Maps API 연동
+  - 게시물 위치 표시
+  - 거리 필터 (50km 반경)
+  - 동네 경계 표시
+
+Day 6-7: UX 개선
+  - 로딩 스켈레톤
+  - 에러 핸들링
+  - 토스트 알림 (sonner)
+  - 애니메이션 polish (Framer Motion)
+
+결과물: 커뮤니티 탭 추가, 지도에서 게시물 확인 가능
+
+────────────────────────────────────────────────────────────────────────────
+Week 6: 테스트 & 배포 & 버그 수정
+────────────────────────────────────────────────────────────────────────────
+목표: 프로덕션 준비
+
+Day 1-2: 테스트
+  - 주요 플로우 테스트 (로그인 → 게시물 작성 → 채팅)
+  - 모바일 반응형 테스트
+  - 다크모드 테스트
+  - 성능 최적화 (Lighthouse)
+
+Day 3-4: 버그 수정 및 polish
+  - 사용자 피드백 반영
+  - UI/UX 개선
+  - 로딩 속도 최적화
+
+Day 5: Vercel 배포
+  - Vercel 프로젝트 생성
+  - 환경 변수 설정
+  - 커스텀 도메인 연결 (선택사항)
+  - Supabase 프로덕션 설정
+
+Day 6-7: 문서화 및 런칭
+  - README 작성
+  - 사용자 가이드
+  - 런칭 준비 (베타 테스터 모집)
+
+결과물: 프로덕션 배포 완료, 베타 테스트 시작
+
+
+================================================================================
+Phase 1 MVP 마일스톤 체크리스트
+================================================================================
+
+✅ 회원가입/로그인 (이메일, Google, Apple, Kakao)
+✅ 도시/동네 선택
+✅ 중고거래 게시물 작성 (사진 10장, 가격, 설명)
+✅ 게시물 피드 (위치 기반 필터링)
+✅ 게시물 상세 (이미지 갤러리)
+✅ 1:1 실시간 채팅
+✅ 사용자 프로필 (판매 내역, 리뷰)
+✅ 리뷰 시스템 (평점 + 댓글)
+✅ 알림 시스템
+✅ 자유 게시판
+✅ 지도 통합 (Yandex Maps)
+✅ Liquid Glass 디자인
+✅ 다크모드
+✅ 모바일 반응형
+✅ Vercel 배포
+
+
+================================================================================
+                              문서 끝
+================================================================================
+
+파일명: picnic_project_design.txt
+작성일: 2025-12-04
+버전: MVP v1.0
