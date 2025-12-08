@@ -27,7 +27,7 @@ const navItems = [
     icon: MessageCircle,
   },
   {
-    name: '나의 당근',
+    name: '나의 피크닉',
     href: '/profile',
     icon: User,
   },

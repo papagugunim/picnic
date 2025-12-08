@@ -4,35 +4,22 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { MapPin, Building2, ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import ProgressBar from '@/components/onboarding/ProgressBar'
 import { createClient } from '@/lib/supabase/client'
-import { MOSCOW_NEIGHBORHOODS, SPB_NEIGHBORHOODS } from '@/lib/constants'
 
 export default function OnboardingStep2() {
   const router = useRouter()
   const [selectedCity, setSelectedCity] = useState<string>('')
-  const [selectedNeighborhood, setSelectedNeighborhood] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const neighborhoods =
-    selectedCity === 'Moscow' ? MOSCOW_NEIGHBORHOODS : SPB_NEIGHBORHOODS
-
   const handleCitySelect = (city: string) => {
     setSelectedCity(city)
-    setSelectedNeighborhood('') // 도시 변경 시 지역 초기화
   }
 
   const handleNext = async () => {
-    if (!selectedCity || !selectedNeighborhood) {
-      setError('도시와 지역을 모두 선택해주세요')
+    if (!selectedCity) {
+      setError('도시를 선택해주세요')
       return
     }
 
@@ -52,12 +39,14 @@ export default function OnboardingStep2() {
         return
       }
 
+      // 데이터베이스 형식에 맞게 도시 값 변환 (moscow, spb)
+      const cityValue = selectedCity === 'Moscow' ? 'moscow' : 'spb'
+
       // 프로필 업데이트
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
-          city: selectedCity,
-          neighborhood: selectedNeighborhood,
+          city: cityValue,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id)
@@ -78,7 +67,7 @@ export default function OnboardingStep2() {
     }
   }
 
-  const canProceed = selectedCity && selectedNeighborhood
+  const canProceed = selectedCity
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8">
@@ -101,9 +90,9 @@ export default function OnboardingStep2() {
           </h1>
 
           <p className="text-lg text-muted-foreground mb-8">
-            거주 지역을 알려주시면
+            거주 도시를 알려주시면
             <br />
-            근처의 거래와 소식을 먼저 보여드릴게요
+            해당 지역의 거래와 소식을 보여드릴게요
           </p>
         </div>
 
@@ -157,30 +146,6 @@ export default function OnboardingStep2() {
           </div>
         </div>
 
-        {/* 지역 선택 */}
-        {selectedCity && (
-          <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
-            <label className="block text-lg font-semibold mb-4">
-              어느 지역에 사시나요?
-            </label>
-            <Select
-              value={selectedNeighborhood}
-              onValueChange={setSelectedNeighborhood}
-            >
-              <SelectTrigger className="glass-strong h-14 text-base">
-                <SelectValue placeholder="지역을 선택해주세요" />
-              </SelectTrigger>
-              <SelectContent>
-                {neighborhoods.map((neighborhood) => (
-                  <SelectItem key={neighborhood.value} value={neighborhood.value}>
-                    {neighborhood.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
         {/* 에러 메시지 */}
         {error && (
           <div className="mb-8 glass-strong rounded-lg p-4 text-center text-sm text-destructive">
@@ -193,9 +158,7 @@ export default function OnboardingStep2() {
           <div className="glass-strong rounded-2xl p-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <p className="text-center text-sm text-muted-foreground">
               <Building2 className="inline w-4 h-4 mr-1" />
-              {selectedCity === 'Moscow' ? '모스크바' : '상트페테르부르크'},{' '}
-              {neighborhoods.find((n) => n.value === selectedNeighborhood)?.labelRu}
-              에서의 거래를 확인하실 수 있어요!
+              {selectedCity === 'Moscow' ? '모스크바' : '상트페테르부르크'}에서의 거래를 확인하실 수 있어요!
             </p>
           </div>
         )}

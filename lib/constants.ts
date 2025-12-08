@@ -31,6 +31,9 @@ export const CATEGORIES = [
   { value: 'beauty', label: '뷰티/미용' },
   { value: 'baby', label: '유아동' },
   { value: 'food', label: '식품' },
+  { value: 'vehicles', label: '자동차' },
+  { value: 'realestate', label: '부동산' },
+  { value: 'jobs', label: '구직/구인' },
   { value: 'other', label: '기타' },
 ] as const
 

@@ -12,6 +12,9 @@ import {
   Sparkles as SparklesIcon,
   Baby,
   Apple,
+  Car,
+  Home,
+  Briefcase,
   Package,
   ChevronLeft,
 } from 'lucide-react'
@@ -30,6 +33,9 @@ const categoryIcons = {
   beauty: SparklesIcon,
   baby: Baby,
   food: Apple,
+  vehicles: Car,
+  realestate: Home,
+  jobs: Briefcase,
   other: Package,
 }
 
@@ -68,11 +74,18 @@ export default function OnboardingStep4() {
 
   const handleCategoryToggle = (categoryValue: string) => {
     if (selectedCategories.includes(categoryValue)) {
+      // 이미 선택된 카테고리 제거
       setSelectedCategories(
         selectedCategories.filter((c) => c !== categoryValue)
       )
     } else {
-      setSelectedCategories([...selectedCategories, categoryValue])
+      // 새 카테고리 추가 (최대 5개)
+      if (selectedCategories.length < 5) {
+        setSelectedCategories([...selectedCategories, categoryValue])
+      } else {
+        setError('최대 5개까지 선택할 수 있습니다')
+        setTimeout(() => setError(null), 2000)
+      }
     }
   }
 
@@ -170,8 +183,15 @@ export default function OnboardingStep4() {
           <p className="text-lg text-muted-foreground mb-8">
             관심 카테고리를 선택하시면
             <br />
-            원하는 물건을 더 쉽게 찾을 수 있어요 (선택 사항)
+            원하는 물건을 더 쉽게 찾을 수 있어요 (최대 5개)
           </p>
+
+          {/* 선택 개수 표시 */}
+          {selectedCategories.length > 0 && (
+            <div className="inline-block px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-semibold mb-4">
+              {selectedCategories.length}/5 선택됨
+            </div>
+          )}
         </div>
 
         {/* 카테고리 그리드 */}
@@ -232,12 +252,17 @@ export default function OnboardingStep4() {
             {selectedCategories.length > 0 ? (
               <>
                 💡 {selectedCategories.length}개의 카테고리를 선택했어요!
+                {selectedCategories.length < 5 && (
+                  <>
+                    {' '}(최대 {5 - selectedCategories.length}개 더 선택 가능)
+                  </>
+                )}
                 <br />
                 나중에 설정에서 언제든지 변경할 수 있어요
               </>
             ) : (
               <>
-                💡 카테고리를 선택하지 않아도 괜찮아요
+                💡 관심 있는 카테고리를 최대 5개까지 선택하세요
                 <br />
                 나중에 설정에서 언제든지 추가할 수 있어요
               </>

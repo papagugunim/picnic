@@ -20,6 +20,12 @@ export default function OnboardingStep3() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // 지하철역 이름에서 영문 제거 (한국어 / 러시아어만)
+  const formatStationName = (label: string) => {
+    const parts = label.split(' / ')
+    return parts.slice(0, 2).join(' / ')
+  }
+
   // 사용자의 도시 정보 가져오기
   useEffect(() => {
     async function fetchUserProfile() {
@@ -53,7 +59,7 @@ export default function OnboardingStep3() {
 
   // 도시에 따른 지하철역 목록
   const metroStations =
-    userCity === 'Moscow' ? MOSCOW_METRO_STATIONS : SPB_METRO_STATIONS
+    userCity === 'moscow' ? MOSCOW_METRO_STATIONS : SPB_METRO_STATIONS
 
   // 검색 필터링
   const filteredStations = useMemo(() => {
@@ -70,11 +76,11 @@ export default function OnboardingStep3() {
       // 이미 선택된 역 제거
       setSelectedStations(selectedStations.filter((s) => s !== stationValue))
     } else {
-      // 새 역 추가 (최대 3개)
-      if (selectedStations.length < 3) {
+      // 새 역 추가 (최대 5개)
+      if (selectedStations.length < 5) {
         setSelectedStations([...selectedStations, stationValue])
       } else {
-        setError('최대 3개까지 선택할 수 있습니다')
+        setError('최대 5개까지 선택할 수 있습니다')
         setTimeout(() => setError(null), 2000)
       }
     }
@@ -155,7 +161,7 @@ export default function OnboardingStep3() {
           <div className="mb-6 glass-strong rounded-2xl p-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold">
-                선택한 역 ({selectedStations.length}/3)
+                선택한 역 ({selectedStations.length}/5)
               </h3>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -169,7 +175,7 @@ export default function OnboardingStep3() {
                     onClick={() => handleStationToggle(stationValue)}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:bg-primary/90 transition-colors"
                   >
-                    {station?.label}
+                    {station ? formatStationName(station.label) : ''}
                     <X className="w-4 h-4" />
                   </button>
                 )
@@ -231,7 +237,7 @@ export default function OnboardingStep3() {
                             {station.line}
                           </span>
                           <span className="font-medium text-sm truncate">
-                            {station.label}
+                            {formatStationName(station.label)}
                           </span>
                         </div>
                       </div>
