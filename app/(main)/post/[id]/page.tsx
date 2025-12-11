@@ -127,8 +127,14 @@ export default function PostDetailPage() {
         .eq('post_id', postId)
         .single()
 
+      // Extract author profile (Supabase returns it as array)
+      const author = Array.isArray(postData.profiles)
+        ? postData.profiles[0]
+        : postData.profiles
+
       setPost({
         ...postData,
+        profiles: author,
         likes_count: likesData?.length || 0,
         interests_count: interestsData?.length || 0,
         user_liked: !!userLikeData,
