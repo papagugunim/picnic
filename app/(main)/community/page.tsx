@@ -104,7 +104,10 @@ export default function CommunityPage() {
 
       // Filter posts by city (작성자의 도시가 현재 사용자의 도시와 일치하는 게시글만)
       const filteredByCity = userCity
-        ? (postsData || []).filter((post) => post.profiles?.city === userCity)
+        ? (postsData || []).filter((post) => {
+            const author = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles
+            return author?.city === userCity
+          })
         : postsData
 
       // For each post, get likes count, comments count, and check if user liked
@@ -130,8 +133,14 @@ export default function CommunityPage() {
             .eq('user_id', user.id)
             .single()
 
+          // Extract author profile (Supabase returns it as array)
+          const postAuthor = Array.isArray(post.profiles)
+            ? post.profiles[0]
+            : post.profiles
+
           return {
             ...post,
+            profiles: postAuthor,
             likes_count: likesCount || 0,
             comments_count: commentsCount || 0,
             is_liked: !!userLike,
