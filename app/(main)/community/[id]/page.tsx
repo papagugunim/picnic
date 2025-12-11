@@ -171,8 +171,14 @@ export default function CommunityPostDetailPage() {
             .eq('user_id', user.id)
             .single()
 
+          // Extract author profile (Supabase returns it as array)
+          const commentAuthor = Array.isArray(comment.profiles)
+            ? comment.profiles[0]
+            : comment.profiles
+
           return {
             ...comment,
+            profiles: commentAuthor,
             likes_count: commentLikesCount || 0,
             is_liked: !!userCommentLike,
           }
