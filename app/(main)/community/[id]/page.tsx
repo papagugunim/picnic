@@ -121,8 +121,14 @@ export default function CommunityPostDetailPage() {
         .select('*', { count: 'exact', head: true })
         .eq('post_id', postId)
 
+      // Extract author profile (Supabase returns it as array)
+      const author = Array.isArray(postData.profiles)
+        ? postData.profiles[0]
+        : postData.profiles
+
       setPost({
         ...postData,
+        profiles: author,
         likes_count: likesCount || 0,
         comments_count: commentsCount || 0,
         is_liked: !!userLike,
