@@ -1,63 +1,254 @@
 'use client'
 
-import { Plus } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Heart, Bookmark } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase/client'
+import { MOSCOW_METRO_STATIONS, SPB_METRO_STATIONS } from '@/lib/constants'
 
-// 임시 데이터
-const mockPosts = [
-  {
-    id: 1,
-    title: '테슬라 모델 Y 주니퍼',
-    price: 5500,
-    location: '동탄6동',
-    timeAgo: '2분 전',
-    image: null,
-    chatCount: 9,
-    likeCount: 96,
-  },
-  {
-    id: 2,
-    title: '오피스텔 35.38㎡ 중층',
-    price: 200,
-    priceUnit: '월세 2,000/20만원',
-    location: '반송동',
-    timeAgo: '3일 전',
-    image: null,
-    chatCount: 1,
-    likeCount: 33,
-  },
-  {
-    id: 3,
-    title: '아이폰 14 플러스 128GB 미드나이트',
-    price: 150000,
-    location: '능동',
-    timeAgo: '1일 전',
-    image: null,
-    chatCount: 3,
-    likeCount: 9,
-  },
-  {
-    id: 4,
-    title: '(급처!!!) 아이패드 에어4 스페이스 그레이',
-    price: 343000,
-    location: '신석동',
-    timeAgo: '1일 전',
-    image: null,
-    chatCount: 5,
-    likeCount: 19,
-  },
-]
+interface Post {
+  id: string
+  title: string
+  price: number | null
+  city: string
+  neighborhood: string
+  preferred_metro_stations: string[]
+  created_at: string
+  images: string[]
+  status: string
+  profiles: {
+    full_name: string | null
+  }
+  likes_count: number
+  interests_count: number
+  user_liked: boolean
+  user_interested: boolean
+}
 
 const categories = [
   { id: 'all', label: '전체' },
   { id: 'nearby', label: '가까운 동네' },
   { id: 'recent', label: '방금 전' },
-  { id: 'fashion', label: '정장' },
-  { id: 'used', label: '중고거래' },
 ]
 
 export default function FeedPage() {
+  const [posts, setPosts] = useState<Post[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [userCity, setUserCity] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchPosts()
+  }, [])
+
+  async function fetchPosts() {
+    try {
+      setIsLoading(true)
+      const supabase = createClient()
+
+      // 현재 사용자의 도시 가져오기
+      const { data: { user } } = await supabase.auth.getUser()
+      let cityFilter = null
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('city')
+          .eq('id', user.id)
+          .single()
+
+        if (profile?.city) {
+          cityFilter = profile.city
+          setUserCity(profile.city)
+        }
+      }
+
+      // 도시별로 필터링된 게시글 가져오기
+      let query = supabase
+        .from('posts')
+        .select(`
+          id,
+          title,
+          price,
+          city,
+          neighborhood,
+          preferred_metro_stations,
+          created_at,
+          images,
+          status,
+          profiles:author_id (
+            full_name
+          )
+        `)
+        .eq('status', 'active')
+
+      // 도시 필터 적용
+      if (cityFilter) {
+        query = query.eq('city', cityFilter)
+      }
+
+      const { data: postsData, error } = await query
+        .order('created_at', { ascending: false })
+        .limit(20)
+
+      if (error) {
+        console.error('Posts fetch error:', error)
+        return
+      }
+
+      // 좋아요 및 관심 정보 가져오기
+      const postIds = postsData?.map((p: any) => p.id) || []
+
+      // 각 게시글의 좋아요 수
+      const { data: likesData } = await supabase
+        .from('post_likes')
+        .select('post_id')
+        .in('post_id', postIds)
+
+      // 각 게시글의 관심 수
+      const { data: interestsData } = await supabase
+        .from('post_interests')
+        .select('post_id')
+        .in('post_id', postIds)
+
+      // 현재 사용자의 좋아요 목록
+      const { data: userLikes } = user
+        ? await supabase
+            .from('post_likes')
+            .select('post_id')
+            .eq('user_id', user.id)
+            .in('post_id', postIds)
+        : { data: [] }
+
+      // 현재 사용자의 관심 목록
+      const { data: userInterests } = user
+        ? await supabase
+            .from('post_interests')
+            .select('post_id')
+            .eq('user_id', user.id)
+            .in('post_id', postIds)
+        : { data: [] }
+
+      // 데이터 매핑
+      const postsWithReactions = postsData?.map((post: any) => ({
+        ...post,
+        likes_count: likesData?.filter((l) => l.post_id === post.id).length || 0,
+        interests_count: interestsData?.filter((i) => i.post_id === post.id).length || 0,
+        user_liked: userLikes?.some((l) => l.post_id === post.id) || false,
+        user_interested: userInterests?.some((i) => i.post_id === post.id) || false,
+      }))
+
+      setPosts(postsWithReactions as Post[])
+    } catch (err) {
+      console.error('Fetch error:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+    if (diffInSeconds < 60) return '방금 전'
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}분 전`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}시간 전`
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}일 전`
+    return date.toLocaleDateString('ko-KR')
+  }
+
+  const getCityNameInKorean = (city: string) => {
+    const cityMap: { [key: string]: string } = {
+      'moscow': '모스크바',
+      'saint_petersburg': '상트페테르부르크',
+      'vladivostok': '블라디보스토크',
+      'khabarovsk': '하바롭스크',
+      'irkutsk': '이르쿠츠크',
+    }
+    return cityMap[city.toLowerCase()] || city
+  }
+
+  const getMetroStationInfo = (value: string, city: string) => {
+    const stations = city.toLowerCase() === 'moscow' ? MOSCOW_METRO_STATIONS : SPB_METRO_STATIONS
+    const station = stations.find((s) => s.value === value)
+
+    if (!station) return null
+
+    // label 형식: "한글 / 러시아어 / 영어"에서 한글 부분만 추출
+    const koreanName = station.label.split(' / ')[0]
+
+    return {
+      koreanName,
+      lineColor: station.lineColor,
+      line: station.line,
+    }
+  }
+
+  async function toggleLike(postId: string, currentlyLiked: boolean) {
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) return
+
+      if (currentlyLiked) {
+        // 좋아요 취소
+        await supabase
+          .from('post_likes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('post_id', postId)
+      } else {
+        // 좋아요 추가
+        await supabase
+          .from('post_likes')
+          .insert({ user_id: user.id, post_id: postId })
+      }
+
+      // 게시글 목록 새로고침
+      fetchPosts()
+    } catch (err) {
+      console.error('Toggle like error:', err)
+    }
+  }
+
+  async function toggleInterest(postId: string, currentlyInterested: boolean) {
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) return
+
+      if (currentlyInterested) {
+        // 관심 취소
+        await supabase
+          .from('post_interests')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('post_id', postId)
+      } else {
+        // 관심 추가
+        await supabase
+          .from('post_interests')
+          .insert({ user_id: user.id, post_id: postId })
+      }
+
+      // 게시글 목록 새로고침
+      fetchPosts()
+    } catch (err) {
+      console.error('Toggle interest error:', err)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-muted-foreground">로딩 중...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen">
       {/* 카테고리 필터 */}
@@ -82,85 +273,124 @@ export default function FeedPage() {
       </div>
 
       {/* 게시물 목록 */}
-      <div className="divide-y divide-border">
-        {mockPosts.map((post) => (
-          <Link
-            key={post.id}
-            href={`/post/${post.id}`}
-            className="flex gap-4 p-4 hover:bg-muted/30 transition-colors"
-          >
-            {/* 이미지 (임시 회색 박스) */}
-            <div className="flex-shrink-0 w-28 h-28 bg-muted rounded-xl overflow-hidden">
-              {post.image ? (
-                <img
-                  src={post.image}
-                  alt={post.title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                  이미지
-                </div>
-              )}
-            </div>
-
-            {/* 내용 */}
-            <div className="flex-1 flex flex-col justify-between min-w-0">
-              <div>
-                <h3 className="text-base font-normal line-clamp-2 mb-1">
-                  {post.title}
-                </h3>
-                <p className="text-sm text-muted-foreground mb-1">
-                  {post.location} · {post.timeAgo}
-                </p>
-                <p className="text-lg font-bold">
-                  {post.priceUnit
-                    ? post.priceUnit
-                    : post.price === 0
-                    ? '무료나눔'
-                    : `${post.price.toLocaleString()}만원`}
-                </p>
-              </div>
-
-              {/* 채팅/좋아요 카운트 */}
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
-                  </svg>
-                  <span>{post.chatCount}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                    />
-                  </svg>
-                  <span>{post.likeCount}</span>
-                </div>
-              </div>
-            </div>
+      {posts.length === 0 ? (
+        <div className="text-center py-16">
+          <p className="text-muted-foreground mb-4">아직 게시글이 없습니다</p>
+          <Link href="/post/new">
+            <Button>첫 게시글 작성하기</Button>
           </Link>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="divide-y divide-border">
+          {posts.map((post) => (
+            <div key={post.id} className="hover:bg-muted/30 transition-colors">
+              <Link
+                href={`/post/${post.id}`}
+                className="flex gap-4 p-4"
+              >
+                {/* 이미지 */}
+                <div className="flex-shrink-0 w-28 h-28 bg-muted rounded-xl overflow-hidden">
+                  {post.images && post.images.length > 0 ? (
+                    <img
+                      src={post.images[0]}
+                      alt={post.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                      이미지 없음
+                    </div>
+                  )}
+                </div>
+
+                {/* 내용 */}
+                <div className="flex-1 flex flex-col justify-between min-w-0">
+                  <div>
+                    <h3 className="text-base font-normal line-clamp-2 mb-1">
+                      {post.title}
+                    </h3>
+                    <div className="text-sm text-muted-foreground mb-1">
+                      <span>{getCityNameInKorean(post.city)}</span>
+                      <span> · </span>
+                      <span>{formatTimeAgo(post.created_at)}</span>
+                    </div>
+                    <p className="text-lg font-bold mb-2">
+                      {post.price === 0 || post.price === null
+                        ? '무료나눔'
+                        : `${post.price.toLocaleString()}₽`}
+                    </p>
+                    {post.preferred_metro_stations && post.preferred_metro_stations.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {post.preferred_metro_stations.slice(0, 3).map((station) => {
+                          const stationInfo = getMetroStationInfo(station, post.city)
+                          if (!stationInfo) return null
+
+                          return (
+                            <span
+                              key={station}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs"
+                              style={{
+                                backgroundColor: `${stationInfo.lineColor}20`,
+                                border: `1px solid ${stationInfo.lineColor}`,
+                                color: stationInfo.lineColor
+                              }}
+                            >
+                              <span
+                                className="w-1 h-1 rounded-full"
+                                style={{ backgroundColor: stationInfo.lineColor }}
+                              />
+                              {stationInfo.koreanName}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Link>
+
+              {/* 좋아요/관심 버튼 */}
+              <div className="px-4 pb-3 flex gap-4 items-center text-sm">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    toggleLike(post.id, post.user_liked)
+                  }}
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Heart
+                    className={`w-5 h-5 ${post.user_liked ? 'fill-red-500 text-red-500' : ''}`}
+                  />
+                  {post.likes_count > 0 && (
+                    <span className={post.user_liked ? 'text-red-500' : ''}>
+                      {post.likes_count}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    toggleInterest(post.id, post.user_interested)
+                  }}
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Bookmark
+                    className={`w-5 h-5 ${post.user_interested ? 'fill-primary text-primary' : ''}`}
+                  />
+                  {post.interests_count > 0 && (
+                    <span className={post.user_interested ? 'text-primary' : ''}>
+                      {post.interests_count}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* FAB 버튼 */}
       <Button

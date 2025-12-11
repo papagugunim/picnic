@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, ChevronLeft, Save, Train, X, Search } from 'lucide-react'
+import { Camera, ChevronLeft, Save, Train, X, Search, Sun, Moon, Monitor } from 'lucide-react'
+import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
@@ -21,6 +22,7 @@ interface Profile {
 
 export default function SettingsPage() {
   const router = useRouter()
+  const { theme, setTheme } = useTheme()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [selectedCity, setSelectedCity] = useState<string>('')
   const [selectedStations, setSelectedStations] = useState<string[]>([])
@@ -31,6 +33,11 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     async function fetchProfile() {
@@ -197,7 +204,7 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">로딩 중...</div>
       </div>
     )
   }
@@ -206,8 +213,8 @@ export default function SettingsPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-muted-foreground mb-4">Profile not found</p>
-          <Button onClick={() => router.push('/feed')}>Go to Feed</Button>
+          <p className="text-muted-foreground mb-4">프로필을 찾을 수 없습니다</p>
+          <Button onClick={() => router.push('/feed')}>피드로 가기</Button>
         </div>
       </div>
     )
@@ -224,24 +231,12 @@ export default function SettingsPage() {
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-2xl font-bold">Settings</h1>
+          <h1 className="text-2xl font-bold">설정</h1>
         </div>
-
-        {error && (
-          <div className="mb-6 p-4 bg-destructive/10 text-destructive rounded-lg text-sm">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-6 p-4 bg-green-500/10 text-green-600 rounded-lg text-sm">
-            {success}
-          </div>
-        )}
 
         <div className="space-y-8">
           <div className="glass-strong rounded-2xl p-6">
-            <h2 className="text-lg font-semibold mb-4">Profile Photo</h2>
+            <h2 className="text-lg font-semibold mb-4">프로필 사진</h2>
             <div className="flex items-center gap-6">
               <div className="relative">
                 {avatarPreview ? (
@@ -270,36 +265,80 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <p className="text-sm font-medium mb-1">Change photo</p>
-                <p className="text-xs text-muted-foreground">Max 5MB</p>
+                <p className="text-sm font-medium mb-1">사진 변경</p>
+                <p className="text-xs text-muted-foreground">최대 5MB</p>
               </div>
             </div>
           </div>
 
           <div className="glass-strong rounded-2xl p-6">
-            <h2 className="text-lg font-semibold mb-4">Name</h2>
+            <h2 className="text-lg font-semibold mb-4">닉네임</h2>
             <Input
               value={profile.full_name || ''}
               disabled
               className="bg-muted cursor-not-allowed"
             />
             <p className="text-xs text-muted-foreground mt-2">
-              Name cannot be changed
+              닉네임은 변경할 수 없습니다
             </p>
           </div>
 
           <div className="glass-strong rounded-2xl p-6">
-            <h2 className="text-lg font-semibold mb-4">City</h2>
+            <h2 className="text-lg font-semibold mb-4">테마</h2>
+            {mounted && (
+              <div className="grid grid-cols-3 gap-4">
+                <button
+                  onClick={() => setTheme('light')}
+                  className={'p-4 rounded-xl text-center transition-all ' +
+                    (theme === 'light'
+                      ? 'ring-4 ring-primary/50 bg-primary/10'
+                      : 'bg-secondary hover:bg-muted')}
+                >
+                  <div className="flex justify-center mb-2">
+                    <Sun className="w-8 h-8" />
+                  </div>
+                  <div className="font-medium text-sm">라이트</div>
+                </button>
+                <button
+                  onClick={() => setTheme('dark')}
+                  className={'p-4 rounded-xl text-center transition-all ' +
+                    (theme === 'dark'
+                      ? 'ring-4 ring-primary/50 bg-primary/10'
+                      : 'bg-secondary hover:bg-muted')}
+                >
+                  <div className="flex justify-center mb-2">
+                    <Moon className="w-8 h-8" />
+                  </div>
+                  <div className="font-medium text-sm">다크</div>
+                </button>
+                <button
+                  onClick={() => setTheme('system')}
+                  className={'p-4 rounded-xl text-center transition-all ' +
+                    (theme === 'system'
+                      ? 'ring-4 ring-primary/50 bg-primary/10'
+                      : 'bg-secondary hover:bg-muted')}
+                >
+                  <div className="flex justify-center mb-2">
+                    <Monitor className="w-8 h-8" />
+                  </div>
+                  <div className="font-medium text-sm">시스템</div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="glass-strong rounded-2xl p-6">
+            <h2 className="text-lg font-semibold mb-4">도시</h2>
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => handleCityChange('Moscow')}
-                className={'p-4 rounded-xl text-center transition-all ' + 
+                className={'p-4 rounded-xl text-center transition-all ' +
                   (selectedCity === 'Moscow' || selectedCity === 'moscow'
                     ? 'ring-4 ring-primary/50 bg-primary/10'
                     : 'bg-secondary hover:bg-muted')}
               >
                 <div className="text-3xl mb-2">🏛️</div>
-                <div className="font-medium">Moscow</div>
+                <div className="font-medium">모스크바</div>
               </button>
               <button
                 onClick={() => handleCityChange('Saint Petersburg')}
@@ -309,7 +348,7 @@ export default function SettingsPage() {
                     : 'bg-secondary hover:bg-muted')}
               >
                 <div className="text-3xl mb-2">⛲</div>
-                <div className="font-medium">Saint Petersburg</div>
+                <div className="font-medium">상트페테르부르크</div>
               </button>
             </div>
           </div>
@@ -317,7 +356,7 @@ export default function SettingsPage() {
           {selectedCity && (
             <div className="glass-strong rounded-2xl p-6">
               <h2 className="text-lg font-semibold mb-4">
-                Preferred Metro Stations ({selectedStations.length}/5)
+                선호하는 지하철역 ({selectedStations.length}/5)
               </h2>
 
               {selectedStations.length > 0 && (
@@ -343,7 +382,7 @@ export default function SettingsPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Search stations..."
+                  placeholder="지하철역 검색..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -398,13 +437,25 @@ export default function SettingsPage() {
             disabled={isSaving}
             className="w-full h-14 text-base font-semibold"
           >
-            {isSaving ? 'Saving...' : (
+            {isSaving ? '저장 중...' : (
               <>
                 <Save className="w-5 h-5 mr-2" />
-                Save Changes
+                저장하기
               </>
             )}
           </Button>
+
+          {success && (
+            <div className="p-4 bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400 rounded-lg text-sm font-medium text-center">
+              {success}
+            </div>
+          )}
+
+          {error && (
+            <div className="p-4 bg-destructive/10 text-destructive dark:bg-destructive/20 rounded-lg text-sm font-medium text-center">
+              {error}
+            </div>
+          )}
         </div>
       </div>
     </div>

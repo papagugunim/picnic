@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -33,10 +33,16 @@ const postSchema = z.object({
 
 type PostFormValues = z.infer<typeof postSchema>
 
-export default function NewPostForm() {
+interface EditPostFormProps {
+  postId: string
+}
+
+export default function EditPostForm({ postId }: EditPostFormProps) {
   const router = useRouter()
   const [images, setImages] = useState<File[]>([])
+  const [existingImages, setExistingImages] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isFetchingPost, setIsFetchingPost] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const form = useForm<PostFormValues>({
@@ -49,7 +55,60 @@ export default function NewPostForm() {
     },
   })
 
-  async function uploadImages(userId: string, postId: string): Promise<string[]> {
+  useEffect(() => {
+    fetchPost()
+  }, [postId])
+
+  async function fetchPost() {
+    try {
+      setIsFetchingPost(true)
+      const supabase = createClient()
+
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/login')
+        return
+      }
+
+      const { data: post, error: postError } = await supabase
+        .from('posts')
+        .select('*')
+        .eq('id', postId)
+        .single()
+
+      if (postError || !post) {
+        console.error('Post fetch error:', postError)
+        setError('게시글을 불러올 수 없습니다')
+        return
+      }
+
+      // Check if user is the author
+      if (post.author_id !== user.id) {
+        setError('게시글 작성자만 수정할 수 있습니다')
+        return
+      }
+
+      // Set form values
+      form.reset({
+        title: post.title,
+        description: post.description,
+        price: post.price !== null ? String(post.price) : '',
+        category: post.category,
+      })
+
+      // Set existing images
+      if (post.images && post.images.length > 0) {
+        setExistingImages(post.images)
+      }
+    } catch (err) {
+      console.error('Fetch error:', err)
+      setError('게시글을 불러오는 중 오류가 발생했습니다')
+    } finally {
+      setIsFetchingPost(false)
+    }
+  }
+
+  async function uploadImages(userId: string): Promise<string[]> {
     const supabase = createClient()
     const imageUrls: string[] = []
 
@@ -94,87 +153,109 @@ export default function NewPostForm() {
         return
       }
 
-      // 사용자 프로필에서 도시와 지하철역 정보 가져오기
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('city, preferred_metro_stations')
-        .eq('id', user.id)
-        .single()
-
-      if (profileError || !profile) {
-        setError('프로필 정보를 가져올 수 없습니다')
-        return
-      }
-
-      if (!profile.city) {
-        setError('설정에서 도시를 먼저 선택해주세요')
-        return
-      }
-
-      // 임시 post ID 생성 (이미지 업로드용)
-      const tempPostId = crypto.randomUUID()
-
-      // 이미지 업로드
-      let imageUrls: string[] = []
+      // 새 이미지 업로드
+      let newImageUrls: string[] = []
       if (images.length > 0) {
-        imageUrls = await uploadImages(user.id, tempPostId)
+        newImageUrls = await uploadImages(user.id)
       }
 
-      // 게시물 생성
-      const postData = {
-        id: tempPostId,
-        author_id: user.id,
+      // 기존 이미지와 새 이미지 합치기
+      const allImages = [...existingImages, ...newImageUrls]
+
+      // 게시물 업데이트
+      const updateData = {
         title: values.title,
         description: values.description,
         price: values.price ? parseInt(values.price) : null,
         category: values.category,
-        images: imageUrls,
-        city: profile.city,
-        neighborhood: profile.city, // 일단 city를 neighborhood에도 저장
-        preferred_metro_stations: profile.preferred_metro_stations || [], // 프로필의 지하철역 정보 저장
-        trade_method: [], // 빈 배열로 설정
-        status: 'active',
+        images: allImages,
       }
 
-      console.log('Inserting post data:', postData)
+      console.log('Updating post data:', updateData)
 
-      const { data: post, error: postError } = await supabase
+      const { error: postError } = await supabase
         .from('posts')
-        .insert(postData)
-        .select()
-        .single()
+        .update(updateData)
+        .eq('id', postId)
 
       if (postError) {
-        console.error('Post creation error:', postError)
-        console.error('Error details:', JSON.stringify(postError, null, 2))
-        console.error('Error message:', postError.message)
-        console.error('Error code:', postError.code)
-        console.error('Error hint:', postError.hint)
-        console.error('Error details:', postError.details)
-        setError(`게시물 작성 중 오류가 발생했습니다: ${postError.message || JSON.stringify(postError)}`)
+        console.error('Post update error:', postError)
+        setError(`게시물 수정 중 오류가 발생했습니다: ${postError.message}`)
         return
       }
 
       // 성공! 게시물 상세 페이지로 이동
-      router.push(`/post/${tempPostId}`)
+      router.push(`/post/${postId}`)
       router.refresh()
     } catch (err) {
       console.error('Submission error:', err)
-      setError(err instanceof Error ? err.message : '게시물 작성 중 오류가 발생했습니다')
+      setError(err instanceof Error ? err.message : '게시물 수정 중 오류가 발생했습니다')
     } finally {
       setIsLoading(false)
     }
   }
 
+  const removeExistingImage = (index: number) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  if (isFetchingPost) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (error && !form.formState.isDirty) {
+    return (
+      <div className="text-center py-16">
+        <p className="text-destructive mb-4">{error}</p>
+        <Button onClick={() => router.back()}>돌아가기</Button>
+      </div>
+    )
+  }
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* 이미지 업로드 */}
+        {/* 기존 이미지 */}
+        {existingImages.length > 0 && (
+          <div>
+            <label className="text-sm font-medium mb-2 block">
+              현재 이미지
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {existingImages.map((url, index) => (
+                <div key={url} className="relative aspect-square">
+                  <img
+                    src={url}
+                    alt={`기존 이미지 ${index + 1}`}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeExistingImage(index)}
+                    className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 새 이미지 업로드 */}
         <div>
           <label className="text-sm font-medium mb-2 block">
-            이미지 (최대 5장)
+            이미지 추가 (최대 {5 - existingImages.length}장)
           </label>
-          <ImageUpload value={images} onChange={setImages} maxFiles={5} />
+          <ImageUpload
+            value={images}
+            onChange={setImages}
+            maxFiles={5 - existingImages.length}
+          />
         </div>
 
         {/* 제목 */}
@@ -273,7 +354,6 @@ export default function NewPostForm() {
           )}
         />
 
-
         {/* 에러 메시지 */}
         {error && (
           <div className="text-sm text-destructive p-3 glass-strong rounded-lg">
@@ -296,10 +376,10 @@ export default function NewPostForm() {
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                게시 중...
+                수정 중...
               </>
             ) : (
-              '게시하기'
+              '수정하기'
             )}
           </Button>
         </div>

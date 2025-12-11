@@ -30,7 +30,7 @@ export default function HomePage() {
         </div>
 
         <div className="pt-8 text-sm text-muted-foreground">
-          <p>지원 지역: Moscow, Saint Petersburg</p>
+          <p>지원 지역: 모스크바, 상트페테르부르크</p>
         </div>
       </div>
     </div>
