@@ -18,7 +18,7 @@ export default function LoginPage() {
             <h1 className="text-5xl font-bold gradient-text">picnic</h1>
           </Link>
           <p className="text-muted-foreground text-lg">
-            러시아 한인 커뮤니티
+            피크닉 - 해외 한인 커뮤니티
           </p>
         </div>
 

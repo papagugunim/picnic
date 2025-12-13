@@ -12,6 +12,7 @@ import {
   SPB_METRO_STATIONS,
 } from '@/lib/constants'
 import { getMatryoshkaInfo, getMatryoshkaDescription } from '@/lib/matryoshka'
+import { getLoadingMessage } from '@/lib/loading-messages'
 
 interface Profile {
   id: string
@@ -239,7 +240,7 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">로딩 중...</div>
+        <div className="text-muted-foreground">{getLoadingMessage('profile')}</div>
       </div>
     )
   }
@@ -314,7 +315,7 @@ export default function ProfilePage() {
                 disabled={isStartingChat}
               >
                 <MessageCircle className="w-4 h-4" />
-                {isStartingChat ? '로딩 중...' : '채팅하기'}
+                {isStartingChat ? getLoadingMessage('chat') : '채팅하기'}
               </Button>
             )}
           </div>
@@ -338,9 +339,21 @@ export default function ProfilePage() {
 
             {/* 정보 */}
             <div className="flex-1 min-w-0">
-              <h1 className="text-3xl font-bold mb-2">
-                {profile.full_name || '이름 없음'}
-              </h1>
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
+                <h1 className="text-3xl font-bold">
+                  {profile.full_name || '이름 없음'}
+                </h1>
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>{formatDate(profile.created_at)}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span>{getCityLabel(profile.city)}</span>
+                  </div>
+                </div>
+              </div>
 
               {/* Matryoshka Level Badge */}
               <div className="mb-3">
@@ -373,44 +386,34 @@ export default function ProfilePage() {
                 })()}
               </div>
 
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="w-4 h-4" />
-                  <span>{formatDate(profile.created_at)} 가입</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <MapPin className="w-4 h-4" />
-                  <span>{getCityLabel(profile.city)}</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Train className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                  <div className="flex flex-wrap gap-2">
-                    {profile.preferred_metro_stations && profile.preferred_metro_stations.length > 0 ? (
-                      profile.preferred_metro_stations.map((stationValue) => {
-                        const station = getStationInfo(stationValue)
-                        if (!station) return null
-                        return (
+              <div className="flex items-start gap-2">
+                <Train className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                <div className="flex flex-wrap gap-2">
+                  {profile.preferred_metro_stations && profile.preferred_metro_stations.length > 0 ? (
+                    profile.preferred_metro_stations.map((stationValue) => {
+                      const station = getStationInfo(stationValue)
+                      if (!station) return null
+                      return (
+                        <span
+                          key={stationValue}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs"
+                          style={{
+                            backgroundColor: `${station.lineColor}20`,
+                            border: `1px solid ${station.lineColor}`,
+                            color: station.lineColor
+                          }}
+                        >
                           <span
-                            key={stationValue}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs"
-                            style={{
-                              backgroundColor: `${station.lineColor}20`,
-                              border: `1px solid ${station.lineColor}`,
-                              color: station.lineColor
-                            }}
-                          >
-                            <span
-                              className="w-2 h-2 rounded-full"
-                              style={{ backgroundColor: station.lineColor }}
-                            />
-                            {formatStationName(station.label)}
-                          </span>
-                        )
-                      })
-                    ) : (
-                      <span className="text-muted-foreground text-xs">설정 안 함</span>
-                    )}
-                  </div>
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: station.lineColor }}
+                          />
+                          {formatStationName(station.label)}
+                        </span>
+                      )
+                    })
+                  ) : (
+                    <span className="text-muted-foreground text-xs">설정 안 함</span>
+                  )}
                 </div>
               </div>
             </div>

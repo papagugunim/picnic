@@ -11,6 +11,7 @@ import {
   MOSCOW_METRO_STATIONS,
   SPB_METRO_STATIONS,
 } from '@/lib/constants'
+import { getLoadingMessage } from '@/lib/loading-messages'
 
 interface Profile {
   id: string
@@ -204,7 +205,7 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">로딩 중...</div>
+        <div className="text-muted-foreground">{getLoadingMessage('settings')}</div>
       </div>
     )
   }

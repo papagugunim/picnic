@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
+import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 const loginSchema = z.object({
   email: z.string().email('올바른 이메일 주소를 입력해주세요'),
@@ -218,7 +219,7 @@ export default function LoginForm() {
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                로그인 중...
+                {getRandomLoadingMessage()}
               </>
             ) : (
               '로그인'
