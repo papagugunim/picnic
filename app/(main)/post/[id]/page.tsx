@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, MapPin, Clock, MessageCircle, Heart, MoreVer
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { CATEGORIES, TRADE_METHODS, MOSCOW_METRO_STATIONS, SPB_METRO_STATIONS } from '@/lib/constants'
 import {
   DropdownMenu,
@@ -235,29 +236,41 @@ export default function PostDetailPage() {
     if (!post) return
 
     try {
+      const currentLiked = post.user_liked
+
+      // 낙관적 업데이트
+      setPost({
+        ...post,
+        user_liked: !currentLiked,
+        likes_count: currentLiked ? post.likes_count - 1 : post.likes_count + 1
+      })
+
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) return
 
-      if (post.user_liked) {
-        // 좋아요 취소
+      if (currentLiked) {
         await supabase
           .from('post_likes')
           .delete()
           .eq('user_id', user.id)
           .eq('post_id', postId)
       } else {
-        // 좋아요 추가
         await supabase
           .from('post_likes')
           .insert({ user_id: user.id, post_id: postId })
       }
-
-      // 게시글 정보 새로고침
-      fetchPost()
     } catch (err) {
       console.error('Toggle like error:', err)
+      // 실패 시 원래 상태로 복구
+      if (post) {
+        setPost({
+          ...post,
+          user_liked: post.user_liked,
+          likes_count: post.user_liked ? post.likes_count + 1 : post.likes_count - 1
+        })
+      }
     }
   }
 
@@ -265,29 +278,41 @@ export default function PostDetailPage() {
     if (!post) return
 
     try {
+      const currentInterested = post.user_interested
+
+      // 낙관적 업데이트
+      setPost({
+        ...post,
+        user_interested: !currentInterested,
+        interests_count: currentInterested ? post.interests_count - 1 : post.interests_count + 1
+      })
+
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) return
 
-      if (post.user_interested) {
-        // 관심 취소
+      if (currentInterested) {
         await supabase
           .from('post_interests')
           .delete()
           .eq('user_id', user.id)
           .eq('post_id', postId)
       } else {
-        // 관심 추가
         await supabase
           .from('post_interests')
           .insert({ user_id: user.id, post_id: postId })
       }
-
-      // 게시글 정보 새로고침
-      fetchPost()
     } catch (err) {
       console.error('Toggle interest error:', err)
+      // 실패 시 원래 상태로 복구
+      if (post) {
+        setPost({
+          ...post,
+          user_interested: post.user_interested,
+          interests_count: post.user_interested ? post.interests_count + 1 : post.interests_count - 1
+        })
+      }
     }
   }
 
@@ -337,8 +362,45 @@ export default function PostDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">{getRandomLoadingMessage()}</div>
+      <div className="min-h-screen bg-background pb-32">
+        <div className="max-w-4xl mx-auto">
+          {/* Header Skeleton */}
+          <div className="sticky top-0 z-40 bg-background border-b border-border">
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="w-10 h-10 bg-muted rounded animate-pulse" />
+              <div className="h-6 bg-muted rounded w-24 animate-pulse" />
+              <div className="w-10 h-10 bg-muted rounded animate-pulse" />
+            </div>
+          </div>
+
+          {/* Image Skeleton */}
+          <div className="aspect-square bg-muted animate-pulse" />
+
+          {/* Content Skeleton */}
+          <div className="p-4 space-y-4">
+            {/* Author Info Skeleton */}
+            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-border">
+              <div className="w-12 h-12 rounded-full bg-muted animate-pulse" />
+              <div className="flex-1 space-y-2">
+                <div className="h-5 bg-muted rounded w-32 animate-pulse" />
+                <div className="h-4 bg-muted rounded w-48 animate-pulse" />
+              </div>
+            </div>
+
+            {/* Title & Price Skeleton */}
+            <div className="space-y-2">
+              <div className="h-8 bg-muted rounded w-3/4 animate-pulse" />
+              <div className="h-10 bg-muted rounded w-40 animate-pulse" />
+            </div>
+
+            {/* Description Skeleton */}
+            <div className="space-y-2 pt-4">
+              <div className="h-4 bg-muted rounded w-full animate-pulse" />
+              <div className="h-4 bg-muted rounded w-full animate-pulse" />
+              <div className="h-4 bg-muted rounded w-2/3 animate-pulse" />
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -403,11 +465,14 @@ export default function PostDetailPage() {
         {/* Images */}
         {post.images && post.images.length > 0 && (
           <div className="relative">
-            <div className="aspect-square bg-muted">
-              <img
+            <div className="aspect-square bg-muted relative">
+              <Image
                 src={post.images[selectedImageIndex]}
                 alt={post.title}
-                className="w-full h-full object-contain"
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                className="object-contain"
+                priority={selectedImageIndex === 0}
               />
             </div>
 
@@ -467,11 +532,15 @@ export default function PostDetailPage() {
             className="flex items-center gap-3 mb-4 pb-4 border-b border-border"
           >
             {post.profiles.avatar_url ? (
-              <img
-                src={post.profiles.avatar_url}
-                alt={post.profiles.full_name || '사용자'}
-                className="w-12 h-12 rounded-full object-cover"
-              />
+              <div className="w-12 h-12 rounded-full overflow-hidden relative flex-shrink-0">
+                <Image
+                  src={post.profiles.avatar_url}
+                  alt={post.profiles.full_name || '사용자'}
+                  fill
+                  sizes="48px"
+                  className="object-cover"
+                />
+              </div>
             ) : (
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-bold">
                 {post.profiles.full_name?.charAt(0).toUpperCase() || '?'}
