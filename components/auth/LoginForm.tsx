@@ -18,7 +18,6 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { createClient } from '@/lib/supabase/client'
 
 const loginSchema = z.object({
   email: z.string().email('올바른 이메일 주소를 입력해주세요'),
@@ -45,33 +44,39 @@ export default function LoginForm() {
       setIsLoading(true)
       setError(null)
 
-      const supabase = createClient()
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: values.email,
-        password: values.password,
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: values.email,
+          password: values.password,
+        }),
       })
 
-      if (error) {
-        console.error('Login error:', error)
+      const result = await response.json()
+
+      if (!response.ok) {
+        const errorMessage = result.error || '로그인 중 오류가 발생했습니다'
 
         // 이메일 확인이 안 된 경우
-        if (error.message.includes('Email not confirmed')) {
+        if (errorMessage.includes('Email not confirmed')) {
           setError('이메일 인증이 완료되지 않았습니다. 이메일을 확인해주세요.')
           return
         }
 
         // 잘못된 이메일/비밀번호
-        if (error.message.includes('Invalid login credentials')) {
+        if (errorMessage.includes('Invalid login credentials')) {
           setError('이메일 또는 비밀번호가 올바르지 않습니다')
           return
         }
 
-        // 기타 에러
-        setError(error.message || '로그인 중 오류가 발생했습니다')
+        setError(errorMessage)
         return
       }
 
-      console.log('Login success:', data)
+      console.log('Login success:', result.data)
       router.push('/feed')
       router.refresh()
     } catch (err) {
