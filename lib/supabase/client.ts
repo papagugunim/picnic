@@ -1,22 +1,30 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
-// Custom fetch wrapper to debug and handle errors
+// Custom fetch wrapper to handle invalid header values
 const customFetch: typeof fetch = async (input, init) => {
-  console.log('[Custom Fetch] Input:', input)
-  console.log('[Custom Fetch] Init:', init)
+  // Clean headers by removing undefined/null values
+  let cleanHeaders: HeadersInit | undefined = undefined
 
-  // Ensure all values are valid
+  if (init?.headers) {
+    const headers: Record<string, string> = {}
+    const headersObj = init.headers as Record<string, string | undefined | null>
+
+    for (const [key, value] of Object.entries(headersObj)) {
+      // Only include headers with valid string values
+      if (value !== undefined && value !== null && value !== '') {
+        headers[key] = value
+      }
+    }
+
+    cleanHeaders = headers
+  }
+
   const cleanInit = init ? {
     ...init,
-    headers: init.headers ? new Headers(init.headers) : undefined,
+    headers: cleanHeaders,
   } : undefined
 
-  try {
-    return await fetch(input, cleanInit)
-  } catch (error) {
-    console.error('[Custom Fetch] Error:', error)
-    throw error
-  }
+  return fetch(input, cleanInit)
 }
 
 export function createClient() {
