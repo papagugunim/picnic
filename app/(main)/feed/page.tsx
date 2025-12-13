@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react'
 import { Plus, Heart, Bookmark } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { MOSCOW_METRO_STATIONS, SPB_METRO_STATIONS } from '@/lib/constants'
-import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 interface Post {
   id: string
@@ -188,6 +188,19 @@ export default function FeedPage() {
 
   async function toggleLike(postId: string, currentlyLiked: boolean) {
     try {
+      // 낙관적 업데이트: UI 먼저 업데이트
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === postId
+            ? {
+                ...post,
+                user_liked: !currentlyLiked,
+                likes_count: currentlyLiked ? post.likes_count - 1 : post.likes_count + 1
+              }
+            : post
+        )
+      )
+
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
@@ -206,16 +219,38 @@ export default function FeedPage() {
           .from('post_likes')
           .insert({ user_id: user.id, post_id: postId })
       }
-
-      // 게시글 목록 새로고침
-      fetchPosts()
     } catch (err) {
       console.error('Toggle like error:', err)
+      // 실패 시 원래 상태로 복구
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === postId
+            ? {
+                ...post,
+                user_liked: currentlyLiked,
+                likes_count: currentlyLiked ? post.likes_count + 1 : post.likes_count - 1
+              }
+            : post
+        )
+      )
     }
   }
 
   async function toggleInterest(postId: string, currentlyInterested: boolean) {
     try {
+      // 낙관적 업데이트: UI 먼저 업데이트
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === postId
+            ? {
+                ...post,
+                user_interested: !currentlyInterested,
+                interests_count: currentlyInterested ? post.interests_count - 1 : post.interests_count + 1
+              }
+            : post
+        )
+      )
+
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
@@ -234,18 +269,46 @@ export default function FeedPage() {
           .from('post_interests')
           .insert({ user_id: user.id, post_id: postId })
       }
-
-      // 게시글 목록 새로고침
-      fetchPosts()
     } catch (err) {
       console.error('Toggle interest error:', err)
+      // 실패 시 원래 상태로 복구
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === postId
+            ? {
+                ...post,
+                user_interested: currentlyInterested,
+                interests_count: currentlyInterested ? post.interests_count + 1 : post.interests_count - 1
+              }
+            : post
+        )
+      )
     }
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">{getRandomLoadingMessage()}</div>
+      <div className="min-h-screen">
+        {/* Skeleton 로딩 */}
+        <div className="divide-y divide-border">
+          {[...Array(5)].map((_, index) => (
+            <div key={index} className="flex gap-4 p-4 animate-pulse">
+              {/* 이미지 Skeleton */}
+              <div className="flex-shrink-0 w-28 h-28 bg-muted rounded-xl" />
+
+              {/* 내용 Skeleton */}
+              <div className="flex-1 space-y-2">
+                <div className="h-5 bg-muted rounded w-3/4" />
+                <div className="h-4 bg-muted rounded w-1/2" />
+                <div className="h-6 bg-muted rounded w-1/4" />
+                <div className="flex gap-2">
+                  <div className="h-6 bg-muted rounded w-16" />
+                  <div className="h-6 bg-muted rounded w-20" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -290,12 +353,15 @@ export default function FeedPage() {
                 className="flex gap-4 p-4"
               >
                 {/* 이미지 */}
-                <div className="flex-shrink-0 w-28 h-28 bg-muted rounded-xl overflow-hidden">
+                <div className="flex-shrink-0 w-28 h-28 bg-muted rounded-xl overflow-hidden relative">
                   {post.images && post.images.length > 0 ? (
-                    <img
+                    <Image
                       src={post.images[0]}
                       alt={post.title}
-                      className="w-full h-full object-cover"
+                      fill
+                      sizes="112px"
+                      className="object-cover"
+                      loading="lazy"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
