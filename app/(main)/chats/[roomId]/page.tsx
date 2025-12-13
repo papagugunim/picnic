@@ -290,7 +290,8 @@ export default function ChatRoomPage() {
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             rows={1}
-            className="resize-none"
+            className="resize-none text-base"
+            style={{ fontSize: '16px' }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()

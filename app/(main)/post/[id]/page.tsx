@@ -53,6 +53,8 @@ export default function PostDetailPage() {
   const [isStartingChat, setIsStartingChat] = useState(false)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
 
   useEffect(() => {
     fetchPost()
@@ -360,6 +362,39 @@ export default function PostDetailPage() {
     }
   }
 
+  // 스와이프 핸들러
+  const minSwipeDistance = 50
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd || !post) return
+
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe) {
+      // 왼쪽으로 스와이프 = 다음 이미지
+      setSelectedImageIndex((prev) =>
+        prev === post.images.length - 1 ? 0 : prev + 1
+      )
+    }
+    if (isRightSwipe) {
+      // 오른쪽으로 스와이프 = 이전 이미지
+      setSelectedImageIndex((prev) =>
+        prev === 0 ? post.images.length - 1 : prev - 1
+      )
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background pb-32">
@@ -465,7 +500,12 @@ export default function PostDetailPage() {
         {/* Images */}
         {post.images && post.images.length > 0 && (
           <div className="relative">
-            <div className="aspect-square bg-muted relative">
+            <div
+              className="aspect-square bg-muted relative"
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
+            >
               <Image
                 src={post.images[selectedImageIndex]}
                 alt={post.title}
