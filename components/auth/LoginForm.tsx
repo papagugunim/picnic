@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { createClient } from '@/lib/supabase/client'
 
 const loginSchema = z.object({
   email: z.string().email('올바른 이메일 주소를 입력해주세요'),
@@ -77,6 +78,16 @@ export default function LoginForm() {
       }
 
       console.log('Login success:', result.data)
+
+      // 클라이언트의 Supabase 세션도 설정
+      if (result.data?.session) {
+        const supabase = createClient()
+        await supabase.auth.setSession({
+          access_token: result.data.session.access_token,
+          refresh_token: result.data.session.refresh_token,
+        })
+      }
+
       router.push('/feed')
       router.refresh()
     } catch (err) {
