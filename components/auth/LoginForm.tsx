@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -31,6 +31,8 @@ export default function LoginForm() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [showPasswordField, setShowPasswordField] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -39,6 +41,31 @@ export default function LoginForm() {
       password: '',
     },
   })
+
+  // 저장된 이메일 불러오기
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('rememberedEmail')
+    if (savedEmail) {
+      form.setValue('email', savedEmail)
+      setRememberMe(true)
+      // 유효한 이메일이면 비밀번호 필드 바로 표시
+      if (z.string().email().safeParse(savedEmail).success) {
+        setShowPasswordField(true)
+      }
+    }
+  }, [])
+
+  // 이메일 필드 감시
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'email') {
+        const email = value.email || ''
+        const isValidEmail = z.string().email().safeParse(email).success
+        setShowPasswordField(isValidEmail)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [form])
 
   async function onSubmit(values: LoginFormValues) {
     try {
@@ -78,6 +105,13 @@ export default function LoginForm() {
       }
 
       console.log('Login success:', result.data)
+
+      // 로그인 기억하기 처리
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', values.email)
+      } else {
+        localStorage.removeItem('rememberedEmail')
+      }
 
       // 클라이언트의 Supabase 세션도 설정
       if (result.data?.session) {
@@ -121,33 +155,53 @@ export default function LoginForm() {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <div className="flex items-center justify-between">
-                <FormLabel>비밀번호</FormLabel>
-                <Link
-                  href="/forgot-password"
-                  className="text-xs text-primary hover:underline"
-                >
-                  비밀번호 찾기
-                </Link>
-              </div>
-              <FormControl>
-                <Input
-                  type="password"
-                  placeholder="••••••••"
-                  {...field}
-                  disabled={isLoading}
-                  className="glass"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {showPasswordField && (
+          <>
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem className="animate-in">
+                  <div className="flex items-center justify-between">
+                    <FormLabel>비밀번호</FormLabel>
+                    <Link
+                      href="/forgot-password"
+                      className="text-xs text-primary hover:underline"
+                    >
+                      비밀번호 찾기
+                    </Link>
+                  </div>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      placeholder="••••••••"
+                      {...field}
+                      disabled={isLoading}
+                      className="glass"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex items-center space-x-2 animate-in">
+              <input
+                id="remember"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-input text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2"
+              />
+              <label
+                htmlFor="remember"
+                className="text-sm text-muted-foreground cursor-pointer select-none"
+              >
+                로그인 기억하기
+              </label>
+            </div>
+          </>
+        )}
 
         {error && (
           <div className="text-sm text-destructive text-center p-3 glass-strong rounded-lg">
@@ -155,20 +209,22 @@ export default function LoginForm() {
           </div>
         )}
 
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              로그인 중...
-            </>
-          ) : (
-            '로그인'
-          )}
-        </Button>
+        {showPasswordField && (
+          <Button
+            type="submit"
+            className="w-full animate-in"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                로그인 중...
+              </>
+            ) : (
+              '로그인'
+            )}
+          </Button>
+        )}
       </form>
     </Form>
   )
