@@ -26,7 +26,13 @@ export default function MatryoshkaInfoPage() {
         {/* Introduction */}
         <div className="bg-card rounded-xl p-3 mb-4 border border-border">
           <div className="text-center mb-3">
-            <div className="text-4xl mb-2">🪆</div>
+            <div className="mb-2 flex justify-center">
+              <img
+                src="/icons/matryoshka-1.svg"
+                alt="마트료시카"
+                className="w-16 h-16"
+              />
+            </div>
             <h2 className="text-xl font-bold mb-1">피크닉 신뢰 등급</h2>
             <p className="text-sm text-muted-foreground">
               거래를 거듭할수록 더 큰 신뢰를 쌓아가세요!
@@ -59,15 +65,24 @@ export default function MatryoshkaInfoPage() {
           <h2 className="text-lg font-bold mb-2">거래 평가</h2>
           <div className="space-y-1.5">
             {[
-              { emoji: '🪆', count: 1, label: '별로예요', points: 10 },
-              { emoji: '🪆🪆', count: 2, label: '그저 그래요', points: 20 },
-              { emoji: '🪆🪆🪆', count: 3, label: '괜찮아요', points: 30 },
-              { emoji: '🪆🪆🪆🪆', count: 4, label: '좋아요', points: 40 },
-              { emoji: '🪆🪆🪆🪆🪆', count: 5, label: '최고예요!', points: 50 },
+              { count: 1, label: '별로예요', points: 10 },
+              { count: 2, label: '그저 그래요', points: 20 },
+              { count: 3, label: '괜찮아요', points: 30 },
+              { count: 4, label: '좋아요', points: 40 },
+              { count: 5, label: '최고예요!', points: 50 },
             ].map((item) => (
               <div key={item.count} className="flex items-center justify-between p-2 rounded-lg">
                 <div className="flex items-center gap-2">
-                  <div className="text-xl">{item.emoji}</div>
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: item.count }).map((_, i) => (
+                      <img
+                        key={i}
+                        src={MATRYOSHKA_LEVELS[item.count as keyof typeof MATRYOSHKA_LEVELS].icon}
+                        alt="마트료시카"
+                        className="w-5 h-5"
+                      />
+                    ))}
+                  </div>
                   <span className="font-medium text-sm">{item.label}</span>
                 </div>
                 <span className="text-sm font-bold text-primary">+{item.points}점</span>
