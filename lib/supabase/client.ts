@@ -1,30 +1,64 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
-// Custom fetch wrapper to handle invalid header values
+// Custom fetch wrapper to handle invalid values
 const customFetch: typeof fetch = async (input, init) => {
-  // Clean headers by removing undefined/null values
-  let cleanHeaders: HeadersInit | undefined = undefined
+  if (!init) {
+    return window.fetch(input)
+  }
 
-  if (init?.headers) {
+  // Clean init object by removing all undefined/null values
+  const cleanInit: RequestInit = {}
+
+  // Copy method
+  if (init.method) {
+    cleanInit.method = init.method
+  }
+
+  // Clean and copy headers
+  if (init.headers) {
     const headers: Record<string, string> = {}
-    const headersObj = init.headers as Record<string, string | undefined | null>
 
-    for (const [key, value] of Object.entries(headersObj)) {
-      // Only include headers with valid string values
-      if (value !== undefined && value !== null && value !== '') {
-        headers[key] = value
+    // Convert headers to plain object
+    if (init.headers instanceof Headers) {
+      init.headers.forEach((value, key) => {
+        if (value !== undefined && value !== null && value !== '') {
+          headers[key] = value
+        }
+      })
+    } else if (Array.isArray(init.headers)) {
+      for (const [key, value] of init.headers) {
+        if (value !== undefined && value !== null && value !== '') {
+          headers[key] = value
+        }
+      }
+    } else {
+      const headersObj = init.headers as Record<string, string | undefined | null>
+      for (const [key, value] of Object.entries(headersObj)) {
+        if (value !== undefined && value !== null && value !== '') {
+          headers[key] = String(value)
+        }
       }
     }
 
-    cleanHeaders = headers
+    if (Object.keys(headers).length > 0) {
+      cleanInit.headers = headers
+    }
   }
 
-  const cleanInit = init ? {
-    ...init,
-    headers: cleanHeaders,
-  } : undefined
+  // Copy body
+  if (init.body !== undefined && init.body !== null) {
+    cleanInit.body = init.body
+  }
 
-  return fetch(input, cleanInit)
+  // Copy other common properties
+  if (init.mode) cleanInit.mode = init.mode
+  if (init.credentials) cleanInit.credentials = init.credentials
+  if (init.cache) cleanInit.cache = init.cache
+  if (init.redirect) cleanInit.redirect = init.redirect
+  if (init.referrer) cleanInit.referrer = init.referrer
+  if (init.integrity) cleanInit.integrity = init.integrity
+
+  return window.fetch(input, cleanInit)
 }
 
 export function createClient() {
