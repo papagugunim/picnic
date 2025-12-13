@@ -7,6 +7,9 @@ export function createClient() {
   // 디버깅: 환경 변수 확인
   console.log('[Supabase Client] URL:', supabaseUrl ? '존재함' : '없음')
   console.log('[Supabase Client] Key:', supabaseAnonKey ? '존재함' : '없음')
+  console.log('[Supabase Client] URL 값:', supabaseUrl)
+  console.log('[Supabase Client] URL 타입:', typeof supabaseUrl)
+  console.log('[Supabase Client] URL 길이:', supabaseUrl?.length)
 
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error('[Supabase Client] 환경 변수 누락!')
