@@ -23,9 +23,10 @@ export async function POST(request: NextRequest) {
 
     if (data.session) {
       // access_token과 refresh_token을 쿠키에 저장
+      // httpOnly를 false로 설정하여 클라이언트에서도 접근 가능하게 함
       response.cookies.set('sb-access-token', data.session.access_token, {
         path: '/',
-        httpOnly: true,
+        httpOnly: false,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 7, // 7 days
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
 
       response.cookies.set('sb-refresh-token', data.session.refresh_token, {
         path: '/',
-        httpOnly: true,
+        httpOnly: false,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 30, // 30 days
