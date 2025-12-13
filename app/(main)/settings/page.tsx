@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, ChevronLeft, Save, Train, X, Search, Sun, Moon, Monitor } from 'lucide-react'
+import { Camera, ChevronLeft, X, Search, Sun, Moon, Monitor } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -234,27 +234,27 @@ export default function SettingsPage() {
           <h1 className="text-2xl font-bold">설정</h1>
         </div>
 
-        <div className="space-y-8">
-          <div className="glass-strong rounded-2xl p-6">
-            <h2 className="text-lg font-semibold mb-4">프로필 사진</h2>
-            <div className="flex items-center gap-6">
-              <div className="relative">
+        <div className="space-y-6">
+          <div className="glass-strong rounded-xl p-6">
+            <h2 className="text-base font-semibold mb-4">프로필</h2>
+            <div className="flex items-start gap-6">
+              <div className="relative flex-shrink-0">
                 {avatarPreview ? (
                   <img
                     src={avatarPreview}
                     alt="Avatar"
-                    className="w-24 h-24 rounded-full object-cover"
+                    className="w-20 h-20 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-3xl font-bold">
+                  <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center text-foreground text-2xl font-bold">
                     {profile.full_name?.charAt(0).toUpperCase() || '?'}
                   </div>
                 )}
                 <label
                   htmlFor="avatar-upload"
-                  className="absolute bottom-0 right-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors"
+                  className="absolute bottom-0 right-0 w-7 h-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors"
                 >
-                  <Camera className="w-4 h-4" />
+                  <Camera className="w-3.5 h-3.5" />
                 </label>
                 <input
                   id="avatar-upload"
@@ -264,98 +264,93 @@ export default function SettingsPage() {
                   onChange={handleAvatarChange}
                 />
               </div>
-              <div>
-                <p className="text-sm font-medium mb-1">사진 변경</p>
-                <p className="text-xs text-muted-foreground">최대 5MB</p>
+              <div className="flex-1 space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">닉네임</label>
+                  <Input
+                    value={profile.full_name || ''}
+                    disabled
+                    className="bg-muted cursor-not-allowed text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">닉네임은 변경할 수 없습니다</p>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="glass-strong rounded-2xl p-6">
-            <h2 className="text-lg font-semibold mb-4">닉네임</h2>
-            <Input
-              value={profile.full_name || ''}
-              disabled
-              className="bg-muted cursor-not-allowed"
-            />
-            <p className="text-xs text-muted-foreground mt-2">
-              닉네임은 변경할 수 없습니다
-            </p>
-          </div>
-
-          <div className="glass-strong rounded-2xl p-6">
-            <h2 className="text-lg font-semibold mb-4">테마</h2>
+          <div className="glass-strong rounded-xl p-6">
+            <h2 className="text-base font-semibold mb-3">테마</h2>
             {mounted && (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-3">
                 <button
                   onClick={() => setTheme('light')}
-                  className={'p-4 rounded-xl text-center transition-all ' +
+                  className={'p-3 rounded-lg text-center transition-all ' +
                     (theme === 'light'
-                      ? 'ring-4 ring-primary/50 bg-primary/10'
+                      ? 'ring-2 ring-primary bg-primary/5'
                       : 'bg-secondary hover:bg-muted')}
                 >
-                  <div className="flex justify-center mb-2">
-                    <Sun className="w-8 h-8" />
+                  <div className="flex justify-center mb-1.5">
+                    <Sun className="w-5 h-5" />
                   </div>
-                  <div className="font-medium text-sm">라이트</div>
+                  <div className="font-medium text-xs">라이트</div>
                 </button>
                 <button
                   onClick={() => setTheme('dark')}
-                  className={'p-4 rounded-xl text-center transition-all ' +
+                  className={'p-3 rounded-lg text-center transition-all ' +
                     (theme === 'dark'
-                      ? 'ring-4 ring-primary/50 bg-primary/10'
+                      ? 'ring-2 ring-primary bg-primary/5'
                       : 'bg-secondary hover:bg-muted')}
                 >
-                  <div className="flex justify-center mb-2">
-                    <Moon className="w-8 h-8" />
+                  <div className="flex justify-center mb-1.5">
+                    <Moon className="w-5 h-5" />
                   </div>
-                  <div className="font-medium text-sm">다크</div>
+                  <div className="font-medium text-xs">다크</div>
                 </button>
                 <button
                   onClick={() => setTheme('system')}
-                  className={'p-4 rounded-xl text-center transition-all ' +
+                  className={'p-3 rounded-lg text-center transition-all ' +
                     (theme === 'system'
-                      ? 'ring-4 ring-primary/50 bg-primary/10'
+                      ? 'ring-2 ring-primary bg-primary/5'
                       : 'bg-secondary hover:bg-muted')}
                 >
-                  <div className="flex justify-center mb-2">
-                    <Monitor className="w-8 h-8" />
+                  <div className="flex justify-center mb-1.5">
+                    <Monitor className="w-5 h-5" />
                   </div>
-                  <div className="font-medium text-sm">시스템</div>
+                  <div className="font-medium text-xs">시스템</div>
                 </button>
               </div>
             )}
           </div>
 
-          <div className="glass-strong rounded-2xl p-6">
-            <h2 className="text-lg font-semibold mb-4">도시</h2>
-            <div className="grid grid-cols-2 gap-4">
+          <div className="glass-strong rounded-xl p-6">
+            <h2 className="text-base font-semibold mb-3">도시</h2>
+            <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => handleCityChange('Moscow')}
-                className={'p-4 rounded-xl text-center transition-all ' +
+                className={'p-3 rounded-lg text-center transition-all ' +
                   (selectedCity === 'Moscow' || selectedCity === 'moscow'
-                    ? 'ring-4 ring-primary/50 bg-primary/10'
+                    ? 'ring-2 ring-primary bg-primary/5'
                     : 'bg-secondary hover:bg-muted')}
               >
-                <div className="text-3xl mb-2">🏛️</div>
-                <div className="font-medium">모스크바</div>
+                <div className="text-2xl mb-1.5">🏛️</div>
+                <div className="font-medium text-xs">모스크바</div>
               </button>
               <button
                 onClick={() => handleCityChange('Saint Petersburg')}
-                className={'p-4 rounded-xl text-center transition-all ' +
+                className={'p-3 rounded-lg text-center transition-all ' +
                   (selectedCity === 'Saint Petersburg' || selectedCity === 'spb'
-                    ? 'ring-4 ring-primary/50 bg-primary/10'
+                    ? 'ring-2 ring-primary bg-primary/5'
                     : 'bg-secondary hover:bg-muted')}
               >
-                <div className="text-3xl mb-2">⛲</div>
-                <div className="font-medium">상트페테르부르크</div>
+                <div className="text-2xl mb-1.5">⛲</div>
+                <div className="font-medium text-xs">상트페테르부르크</div>
               </button>
             </div>
           </div>
 
           {selectedCity && (
-            <div className="glass-strong rounded-2xl p-6">
-              <h2 className="text-lg font-semibold mb-4">
+            <div className="glass-strong rounded-xl p-6">
+              <h2 className="text-base font-semibold mb-3">
                 선호하는 지하철역 ({selectedStations.length}/5)
               </h2>
 
@@ -368,7 +363,8 @@ export default function SettingsPage() {
                       <button
                         key={stationValue}
                         onClick={() => handleStationToggle(stationValue)}
-                        className="inline-flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:bg-primary/90"
+                        className="inline-flex items-center gap-2 px-3 py-2 text-white rounded-full text-sm font-medium hover:opacity-90 transition-opacity"
+                        style={{ backgroundColor: station.lineColor }}
                       >
                         {formatStationName(station.label)}
                         <X className="w-4 h-4" />
@@ -435,14 +431,9 @@ export default function SettingsPage() {
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="w-full h-14 text-base font-semibold"
+            className="w-full h-12 text-sm font-medium"
           >
-            {isSaving ? '저장 중...' : (
-              <>
-                <Save className="w-5 h-5 mr-2" />
-                저장하기
-              </>
-            )}
+            {isSaving ? '저장 중...' : '저장하기'}
           </Button>
 
           {success && (
