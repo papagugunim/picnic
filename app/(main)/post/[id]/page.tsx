@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, MapPin, Clock, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MapPin, Clock, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
+import { getMatryoshkaInfo } from '@/lib/matryoshka'
 
 interface Post {
   id: string
@@ -410,6 +411,28 @@ export default function PostDetailPage() {
               />
             </div>
 
+            {/* Previous/Next buttons */}
+            {post.images.length > 1 && (
+              <>
+                <button
+                  onClick={() => setSelectedImageIndex((prev) =>
+                    prev === 0 ? post.images.length - 1 : prev - 1
+                  )}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setSelectedImageIndex((prev) =>
+                    prev === post.images.length - 1 ? 0 : prev + 1
+                  )}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </>
+            )}
+
             {/* Image indicators */}
             {post.images.length > 1 && (
               <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
@@ -456,8 +479,15 @@ export default function PostDetailPage() {
             )}
 
             <div className="flex-1">
-              <div className="font-semibold">
-                {post.profiles.full_name || '익명'}
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">
+                  {post.profiles.full_name || '익명'}
+                </span>
+                <img
+                  src={getMatryoshkaInfo(post.profiles.matryoshka_level).icon}
+                  alt={getMatryoshkaInfo(post.profiles.matryoshka_level).name}
+                  className="w-5 h-5"
+                />
               </div>
               <div className="text-sm text-muted-foreground">
                 {getCityNameInKorean(post.city)} · {formatTimeAgo(post.created_at)}
