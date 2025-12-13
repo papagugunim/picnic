@@ -204,7 +204,7 @@ export default function ChatRoomPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 pb-40 flex flex-col">
+      <div className="flex-1 overflow-y-auto p-4 pb-52 flex flex-col">
         {messages.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground flex-1 flex items-center justify-center">
             메시지를 보내서 대화를 시작해보세요
