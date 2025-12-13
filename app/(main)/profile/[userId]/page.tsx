@@ -12,7 +12,7 @@ import {
   SPB_METRO_STATIONS,
 } from '@/lib/constants'
 import { getMatryoshkaInfo, getMatryoshkaDescription } from '@/lib/matryoshka'
-import { getLoadingMessage } from '@/lib/loading-messages'
+import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 interface Profile {
   id: string
@@ -240,7 +240,7 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">{getLoadingMessage('profile')}</div>
+        <div className="text-muted-foreground">{getRandomLoadingMessage()}</div>
       </div>
     )
   }
@@ -315,7 +315,7 @@ export default function ProfilePage() {
                 disabled={isStartingChat}
               >
                 <MessageCircle className="w-4 h-4" />
-                {isStartingChat ? getLoadingMessage('chat') : '채팅하기'}
+                {isStartingChat ? getRandomLoadingMessage() : '채팅하기'}
               </Button>
             )}
           </div>
