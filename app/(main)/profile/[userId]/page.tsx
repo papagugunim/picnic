@@ -422,7 +422,7 @@ export default function ProfilePage() {
       </div>
 
       {/* 통계 */}
-      <div className="border-b border-border">
+      <div>
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex gap-8">
             <div className="text-center">
