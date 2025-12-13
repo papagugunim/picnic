@@ -4,7 +4,7 @@ import Link from 'next/link'
 
 export default function NewPostPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8">
+    <div className="min-h-screen bg-background py-8">
       <div className="max-w-3xl mx-auto px-4">
         {/* 헤더 */}
         <div className="mb-6">
