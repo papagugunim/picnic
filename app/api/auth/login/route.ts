@@ -18,7 +18,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ data })
+    // 세션 쿠키 설정
+    const response = NextResponse.json({ data })
+
+    if (data.session) {
+      // access_token과 refresh_token을 쿠키에 저장
+      response.cookies.set('sb-access-token', data.session.access_token, {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+      })
+
+      response.cookies.set('sb-refresh-token', data.session.refresh_token, {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+      })
+    }
+
+    return response
   } catch (error) {
     return NextResponse.json(
       { error: 'Internal server error' },
