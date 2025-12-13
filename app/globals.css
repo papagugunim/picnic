@@ -2,70 +2,70 @@
 
 @layer theme {
   :root {
-    /* Picnic Colors - Light Mode (당근마켓 스타일) */
+    /* Notion-inspired Light Mode - 간결하고 깔끔한 무채색 */
     --background: 0 0% 100%;
-    --foreground: 0 0% 5%;
+    --foreground: 0 0% 9%;
     --card: 0 0% 98%;
-    --card-foreground: 0 0% 5%;
+    --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 5%;
+    --popover-foreground: 0 0% 9%;
 
-    /* Primary - Orange (당근마켓 #ff8039) */
-    --primary: 16 100% 62%;
+    /* Primary - Sage Green (채도 낮은 초록색) */
+    --primary: 150 20% 45%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Light Pink (#ffc3a1) */
-    --secondary: 22 100% 82%;
-    --secondary-foreground: 0 0% 5%;
+    /* Secondary - 무채색 */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
 
-    /* Muted - Grey (#afb0b1) */
-    --muted: 200 2% 69%;
+    /* Muted - 무채색 */
+    --muted: 0 0% 96%;
     --muted-foreground: 0 0% 45%;
 
-    /* Accent - Orange Lighter */
-    --accent: 22 100% 75%;
-    --accent-foreground: 0 0% 5%;
+    /* Accent - 무채색 */
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 9%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 0 0% 90%;
     --input: 0 0% 90%;
-    --ring: 16 100% 62%;
-    --radius: 12px;
+    --ring: 150 20% 45%;
+    --radius: 8px;
   }
 
   .dark {
-    /* Picnic Colors - Dark Mode (당근마켓 다크 스타일) */
-    --background: 0 0% 0%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 16%;
-    --popover-foreground: 0 0% 98%;
+    /* Notion-inspired Dark Mode - 간결하고 깔끔한 무채색 */
+    --background: 0 0% 9%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 13%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 13%;
+    --popover-foreground: 0 0% 95%;
 
-    /* Primary - Orange (당근마켓 #ff8039) */
-    --primary: 16 100% 62%;
+    /* Primary - Sage Green (채도 낮은 초록색) */
+    --primary: 150 20% 50%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Dark Card */
+    /* Secondary - 무채색 */
     --secondary: 0 0% 16%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary-foreground: 0 0% 95%;
 
-    /* Muted - Grey (#afb0b1) */
+    /* Muted - 무채색 */
     --muted: 0 0% 16%;
-    --muted-foreground: 200 2% 69%;
+    --muted-foreground: 0 0% 65%;
 
-    /* Accent - Orange Lighter */
-    --accent: 22 100% 75%;
-    --accent-foreground: 0 0% 5%;
+    /* Accent - 무채색 */
+    --accent: 0 0% 18%;
+    --accent-foreground: 0 0% 95%;
 
     --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 0 0% 95%;
 
     --border: 0 0% 20%;
     --input: 0 0% 16%;
-    --ring: 16 100% 62%;
+    --ring: 150 20% 50%;
   }
 }
 
@@ -186,7 +186,7 @@
   --tw-ring-color: hsl(var(--ring));
 }
 
-/* 당근마켓 스타일 Card Effects */
+/* Notion-inspired Card Effects */
 @layer utilities {
   .glass {
     background-color: hsl(var(--card));
@@ -194,27 +194,10 @@
     border-radius: var(--radius);
   }
 
-  .dark .glass {
-    background-color: rgb(26 26 26 / 1);
-    border-color: rgb(255 255 255 / 0.05);
-  }
-
   .glass-strong {
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border));
     border-radius: var(--radius);
-  }
-
-  .dark .glass-strong {
-    background-color: rgb(43 43 43 / 1);
-    border-color: rgb(255 255 255 / 0.08);
-  }
-
-  .gradient-text {
-    background-image: linear-gradient(135deg, #ff8039 0%, #ffc3a1 100%);
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
   }
 
   .animate-in {
@@ -225,7 +208,7 @@
     animation: animateOut 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* 당근마켓 스타일 FAB 버튼 */
+  /* Notion 스타일 FAB 버튼 */
   .fab {
     position: fixed;
     bottom: 80px;
@@ -236,17 +219,24 @@
     border-radius: 50%;
     background-color: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
-    box-shadow: 0 4px 12px rgba(255, 128, 57, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     transition: all 0.2s ease;
   }
 
   .fab:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 16px rgba(255, 128, 57, 0.4);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
 
   .fab:active {
     transform: scale(0.95);
+  }
+
+  .dark .fab {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .dark .fab:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   }
 }
 
