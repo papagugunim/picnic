@@ -64,7 +64,9 @@ export default function SettingsPage() {
         }
 
         setProfile(profileData)
-        setSelectedCity(profileData.city || '')
+        // Convert DB city value to display format
+        const displayCity = profileData.city?.toLowerCase() === 'moscow' ? 'Moscow' : 'Saint Petersburg'
+        setSelectedCity(displayCity)
         setSelectedStations(profileData.preferred_metro_stations || [])
         setAvatarPreview(profileData.avatar_url)
       } catch (err) {
@@ -172,6 +174,7 @@ export default function SettingsPage() {
         avatarUrl = publicUrl
       }
 
+      // Convert display city value to DB format
       const cityValue = selectedCity === 'Moscow' ? 'moscow' : 'spb'
 
       const { error: updateError } = await supabase
@@ -280,7 +283,8 @@ export default function SettingsPage() {
           </div>
 
           <div className="glass-strong rounded-xl p-6">
-            <h2 className="text-base font-semibold mb-3">테마</h2>
+            <h2 className="text-base font-semibold mb-1">테마</h2>
+            <p className="text-xs text-muted-foreground mb-3">테마는 자동으로 저장됩니다</p>
             {mounted && (
               <div className="grid grid-cols-3 gap-3">
                 <button
