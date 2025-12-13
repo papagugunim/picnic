@@ -107,13 +107,16 @@ export default function MatryoshkaInfoPage() {
                   className="flex items-center gap-2 p-2 rounded-lg"
                 >
                   <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-base flex-shrink-0"
+                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                     style={{
                       backgroundColor: info.color,
-                      color: 'white',
                     }}
                   >
-                    {info.emoji}
+                    <img
+                      src={info.icon}
+                      alt={info.name}
+                      className="w-5 h-5 brightness-0 invert"
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className="font-semibold text-sm" style={{ color: info.color }}>

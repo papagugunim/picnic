@@ -376,7 +376,11 @@ export default function ProfilePage() {
                           border: `2px solid ${matryoshkaInfo.color}`,
                         }}
                       >
-                        <span className="text-base">{matryoshkaInfo.emoji}</span>
+                        <img
+                          src={matryoshkaInfo.icon}
+                          alt={matryoshkaInfo.name}
+                          className="w-5 h-5"
+                        />
                         <span>
                           {matryoshkaInfo.name} · {description}
                         </span>

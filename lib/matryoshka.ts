@@ -1,11 +1,11 @@
 export const MATRYOSHKA_LEVELS = {
-  1: { name: '마트료시카 1단계', color: '#EF4444', emoji: '🪆' }, // 빨강
-  2: { name: '마트료시카 2단계', color: '#F97316', emoji: '🪆' }, // 주황
-  3: { name: '마트료시카 3단계', color: '#EAB308', emoji: '🪆' }, // 노랑
-  4: { name: '마트료시카 4단계', color: '#22C55E', emoji: '🪆' }, // 초록
-  5: { name: '마트료시카 5단계', color: '#3B82F6', emoji: '🪆' }, // 파랑
-  6: { name: '관리자', color: '#6366F1', emoji: '🪆', role: 'admin' }, // 남색
-  7: { name: '개발자', color: '#A855F7', emoji: '🪆', role: 'developer' }, // 보라
+  1: { name: '마트료시카 1단계', color: '#EF4444', icon: '/icons/matryoshka-1.svg' }, // 빨강
+  2: { name: '마트료시카 2단계', color: '#F97316', icon: '/icons/matryoshka-2.svg' }, // 주황
+  3: { name: '마트료시카 3단계', color: '#EAB308', icon: '/icons/matryoshka-3.svg' }, // 노랑
+  4: { name: '마트료시카 4단계', color: '#22C55E', icon: '/icons/matryoshka-4.svg' }, // 초록
+  5: { name: '마트료시카 5단계', color: '#3B82F6', icon: '/icons/matryoshka-5.svg' }, // 파랑
+  6: { name: '관리자', color: '#6366F1', icon: '/icons/matryoshka-6.svg', role: 'admin' }, // 남색
+  7: { name: '개발자', color: '#A855F7', icon: '/icons/matryoshka-7.svg', role: 'developer' }, // 보라
 } as const
 
 export function getMatryoshkaInfo(level: number, role?: string) {
