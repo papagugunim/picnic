@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 function VerifyEmailContent() {
   const router = useRouter()
@@ -187,7 +188,7 @@ export default function VerifyEmailPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">로딩 중...</div>
+        <div className="text-muted-foreground">{getRandomLoadingMessage()}</div>
       </div>
     }>
       <VerifyEmailContent />

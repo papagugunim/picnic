@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { MapPin, Heart, MessageCircle } from 'lucide-react'
+import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 // 예시 데이터
 const SAMPLE_ITEMS = [
@@ -95,7 +96,7 @@ export default function WelcomePage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">로딩 중...</p>
+          <p className="text-muted-foreground">{getRandomLoadingMessage()}</p>
         </div>
       </div>
     )

@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useMessages } from '@/lib/hooks/useMessages'
 import Link from 'next/link'
 import type { ChatRoomWithProfile } from '@/types/chat'
+import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 export default function ChatRoomPage() {
   const params = useParams()
@@ -120,7 +121,7 @@ export default function ChatRoomPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">로딩 중...</div>
+        <div className="text-muted-foreground">{getRandomLoadingMessage()}</div>
       </div>
     )
   }

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 interface CommunityPost {
   id: string
@@ -283,7 +284,7 @@ export default function CommunityPostDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">로딩 중...</div>
+        <div className="text-muted-foreground">{getRandomLoadingMessage()}</div>
       </div>
     )
   }

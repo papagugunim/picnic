@@ -3,6 +3,7 @@
 import { MessageCircle, Package } from 'lucide-react'
 import Link from 'next/link'
 import { useChats } from '@/lib/hooks/useChats'
+import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 export default function ChatsPage() {
   const { chatRooms, isLoading, error } = useChats()
@@ -24,7 +25,7 @@ export default function ChatsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">로딩 중...</div>
+        <div className="text-muted-foreground">{getRandomLoadingMessage()}</div>
       </div>
     )
   }

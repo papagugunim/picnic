@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 interface CommunityPost {
   id: string
@@ -255,7 +256,7 @@ export default function CommunityPage() {
         <div className="px-4 py-4">
           {isLoading ? (
             <div className="text-center py-16 text-muted-foreground">
-              로딩 중...
+              {getRandomLoadingMessage()}
             </div>
           ) : filteredPosts.length === 0 ? (
             <div className="text-center py-16">

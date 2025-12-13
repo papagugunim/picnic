@@ -13,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 interface Post {
   id: string
@@ -336,7 +337,7 @@ export default function PostDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">로딩 중...</div>
+        <div className="text-muted-foreground">{getRandomLoadingMessage()}</div>
       </div>
     )
   }
@@ -571,7 +572,7 @@ export default function PostDetailPage() {
                 className="flex-1 h-14 text-lg"
               >
                 <MessageCircle className="w-5 h-5 mr-2" />
-                {isStartingChat ? '로딩 중...' : '채팅하기'}
+                {isStartingChat ? getRandomLoadingMessage() : '채팅하기'}
               </Button>
             </div>
           </div>

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { MOSCOW_METRO_STATIONS, SPB_METRO_STATIONS } from '@/lib/constants'
+import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 interface Post {
   id: string
@@ -244,7 +245,7 @@ export default function FeedPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">로딩 중...</div>
+        <div className="text-muted-foreground">{getRandomLoadingMessage()}</div>
       </div>
     )
   }

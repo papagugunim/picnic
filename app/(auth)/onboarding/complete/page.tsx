@@ -12,6 +12,7 @@ import {
   SPB_METRO_STATIONS,
   CATEGORIES,
 } from '@/lib/constants'
+import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 interface UserProfile {
   city: string | null
@@ -61,7 +62,7 @@ export default function OnboardingComplete() {
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">로딩 중...</p>
+          <p className="mt-4 text-muted-foreground">{getRandomLoadingMessage()}</p>
         </div>
       </div>
     )
