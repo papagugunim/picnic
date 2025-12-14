@@ -127,7 +127,7 @@ export default function MatryoshkaInfoPage() {
                     {item.emoji}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className="font-semibold text-sm" style={{ color: info.color }}>
+                    <span className="font-semibold text-sm text-foreground">
                       {info.name}
                     </span>
                   </div>

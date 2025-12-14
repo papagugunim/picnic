@@ -286,42 +286,54 @@ export default function SettingsPage() {
             <h2 className="text-base font-semibold mb-1">테마</h2>
             <p className="text-xs text-muted-foreground mb-3">테마는 자동으로 저장됩니다</p>
             {mounted && (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="flex flex-col gap-3">
                 <button
                   onClick={() => setTheme('light')}
-                  className={'p-3 rounded-lg text-center transition-all ' +
+                  className={'p-4 rounded-lg flex items-center gap-3 transition-all ' +
                     (theme === 'light'
                       ? 'ring-2 ring-primary bg-primary/5'
                       : 'bg-secondary hover:bg-muted')}
                 >
-                  <div className="flex justify-center mb-1.5">
-                    <Sun className="w-5 h-5" />
+                  <Sun className="w-5 h-5 flex-shrink-0" />
+                  <div className="text-left flex-1">
+                    <div className="font-medium text-sm">라이트 모드</div>
+                    <div className="text-xs text-muted-foreground">밝은 테마</div>
                   </div>
-                  <div className="font-medium text-xs">라이트</div>
+                  {theme === 'light' && (
+                    <div className="text-primary text-lg flex-shrink-0">✓</div>
+                  )}
                 </button>
                 <button
                   onClick={() => setTheme('dark')}
-                  className={'p-3 rounded-lg text-center transition-all ' +
+                  className={'p-4 rounded-lg flex items-center gap-3 transition-all ' +
                     (theme === 'dark'
                       ? 'ring-2 ring-primary bg-primary/5'
                       : 'bg-secondary hover:bg-muted')}
                 >
-                  <div className="flex justify-center mb-1.5">
-                    <Moon className="w-5 h-5" />
+                  <Moon className="w-5 h-5 flex-shrink-0" />
+                  <div className="text-left flex-1">
+                    <div className="font-medium text-sm">다크 모드</div>
+                    <div className="text-xs text-muted-foreground">어두운 테마</div>
                   </div>
-                  <div className="font-medium text-xs">다크</div>
+                  {theme === 'dark' && (
+                    <div className="text-primary text-lg flex-shrink-0">✓</div>
+                  )}
                 </button>
                 <button
                   onClick={() => setTheme('system')}
-                  className={'p-3 rounded-lg text-center transition-all ' +
+                  className={'p-4 rounded-lg flex items-center gap-3 transition-all ' +
                     (theme === 'system'
                       ? 'ring-2 ring-primary bg-primary/5'
                       : 'bg-secondary hover:bg-muted')}
                 >
-                  <div className="flex justify-center mb-1.5">
-                    <Monitor className="w-5 h-5" />
+                  <Monitor className="w-5 h-5 flex-shrink-0" />
+                  <div className="text-left flex-1">
+                    <div className="font-medium text-sm">시스템 설정</div>
+                    <div className="text-xs text-muted-foreground">기기 설정에 따름</div>
                   </div>
-                  <div className="font-medium text-xs">시스템</div>
+                  {theme === 'system' && (
+                    <div className="text-primary text-lg flex-shrink-0">✓</div>
+                  )}
                 </button>
               </div>
             )}

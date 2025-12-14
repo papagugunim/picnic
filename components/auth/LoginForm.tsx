@@ -146,6 +146,7 @@ export default function LoginForm() {
                 <Input
                   type="email"
                   placeholder="name@example.com"
+                  autoComplete="email"
                   {...field}
                   disabled={isLoading}
                   className="glass"
@@ -176,6 +177,7 @@ export default function LoginForm() {
                     <Input
                       type="password"
                       placeholder="••••••••"
+                      autoComplete="current-password"
                       {...field}
                       disabled={isLoading}
                       className="glass"

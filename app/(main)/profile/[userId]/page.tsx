@@ -372,16 +372,21 @@ export default function ProfilePage() {
                         className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold cursor-pointer hover:scale-105 transition-transform"
                         style={{
                           backgroundColor: matryoshkaInfo.color + '20',
-                          color: matryoshkaInfo.color,
                           border: `2px solid ${matryoshkaInfo.color}`,
                         }}
                       >
-                        <img
-                          src={matryoshkaInfo.icon}
-                          alt={matryoshkaInfo.name}
-                          className="w-5 h-5"
-                        />
-                        <span>
+                        <div
+                          className="w-5 h-5 flex items-center justify-center text-base"
+                        >
+                          {/* Use emoji based on level */}
+                          {profile.user_role === 'developer' ? '🍔' :
+                           profile.user_role === 'admin' ? '🥪' :
+                           profile.matryoshka_level === 5 ? '🥯' :
+                           profile.matryoshka_level === 4 ? '🥨' :
+                           profile.matryoshka_level === 3 ? '🥐' :
+                           profile.matryoshka_level === 2 ? '🥖' : '🍞'}
+                        </div>
+                        <span className="text-foreground">
                           {matryoshkaInfo.name} · {description}
                         </span>
                       </div>
