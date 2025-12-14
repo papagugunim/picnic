@@ -371,8 +371,7 @@ export default function ProfilePage() {
                       <div
                         className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold cursor-pointer hover:scale-105 transition-transform"
                         style={{
-                          backgroundColor: matryoshkaInfo.color + '20',
-                          border: `2px solid ${matryoshkaInfo.color}`,
+                          backgroundColor: matryoshkaInfo.color,
                         }}
                       >
                         <div
@@ -386,7 +385,13 @@ export default function ProfilePage() {
                            profile.matryoshka_level === 3 ? '🥐' :
                            profile.matryoshka_level === 2 ? '🥖' : '🍞'}
                         </div>
-                        <span className="text-foreground">
+                        <span
+                          style={{
+                            color: profile.user_role === 'developer' || profile.user_role === 'admin'
+                              ? '#FFFFFF'
+                              : '#1F2937'
+                          }}
+                        >
                           {matryoshkaInfo.name} · {description}
                         </span>
                       </div>
