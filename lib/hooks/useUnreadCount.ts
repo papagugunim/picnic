@@ -58,17 +58,9 @@ export function useUnreadCount() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // 내가 속한 모든 채팅방 가져오기
-      const { data: rooms } = await supabase
-        .from('chat_rooms')
-        .select('id')
-        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
-
-      if (!rooms || rooms.length === 0) return
-
       // 새로운 메시지가 추가되거나 읽음 상태가 변경되면 다시 가져오기
       subscription = supabase
-        .channel('unread-messages')
+        .channel(`unread-messages-${user.id}`)
         .on(
           'postgres_changes',
           {
@@ -77,10 +69,25 @@ export function useUnreadCount() {
             table: 'chat_messages',
           },
           () => {
+            console.log('Chat message changed, refetching unread count...')
             fetchUnreadCount()
           }
         )
-        .subscribe()
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'chat_rooms',
+          },
+          () => {
+            console.log('Chat room changed, refetching unread count...')
+            fetchUnreadCount()
+          }
+        )
+        .subscribe((status) => {
+          console.log('Unread count subscription status:', status)
+        })
     }
 
     fetchUnreadCount()

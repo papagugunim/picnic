@@ -103,7 +103,7 @@ export function useChats() {
 
       // Subscribe to changes in chat_rooms and chat_messages
       subscription = supabase
-        .channel('chat-rooms-changes')
+        .channel(`chat-rooms-${user.id}`)
         .on(
           'postgres_changes',
           {
@@ -112,21 +112,25 @@ export function useChats() {
             table: 'chat_rooms',
           },
           () => {
+            console.log('Chat room changed, refetching...')
             fetchChatRooms()
           }
         )
         .on(
           'postgres_changes',
           {
-            event: 'INSERT',
+            event: '*',
             schema: 'public',
             table: 'chat_messages',
           },
           () => {
+            console.log('Chat message changed, refetching...')
             fetchChatRooms()
           }
         )
-        .subscribe()
+        .subscribe((status) => {
+          console.log('Chat rooms subscription status:', status)
+        })
     }
 
     fetchChatRooms()
