@@ -381,37 +381,11 @@ export default function FeedPage() {
                       <span> · </span>
                       <span>{formatTimeAgo(post.created_at)}</span>
                     </div>
-                    <p className="text-lg font-bold mb-2">
+                    <p className="text-lg font-bold">
                       {post.price === 0 || post.price === null
                         ? '무료나눔'
                         : `${post.price.toLocaleString()}₽`}
                     </p>
-                    {post.preferred_metro_stations && post.preferred_metro_stations.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {post.preferred_metro_stations.slice(0, 3).map((station) => {
-                          const stationInfo = getMetroStationInfo(station, post.city)
-                          if (!stationInfo) return null
-
-                          return (
-                            <span
-                              key={station}
-                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs"
-                              style={{
-                                backgroundColor: `${stationInfo.lineColor}20`,
-                                border: `1px solid ${stationInfo.lineColor}`,
-                                color: stationInfo.lineColor
-                              }}
-                            >
-                              <span
-                                className="w-1 h-1 rounded-full"
-                                style={{ backgroundColor: stationInfo.lineColor }}
-                              />
-                              {stationInfo.koreanName}
-                            </span>
-                          )
-                        })}
-                      </div>
-                    )}
                   </div>
                 </div>
               </Link>
