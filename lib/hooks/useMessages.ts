@@ -112,13 +112,26 @@ export function useMessages(roomId: string) {
               },
             }
 
-            // 메시지가 이미 존재하지 않으면 추가
+            // 메시지가 이미 존재하지 않으면 추가 (중복 체크 강화)
             setMessages((prev) => {
-              const exists = prev.some((msg) => msg.id === newMessage.id)
-              if (exists) {
-                console.log('Message already exists, skipping')
+              // ID로 중복 체크
+              const existsById = prev.some((msg) => msg.id === newMessage.id)
+              if (existsById) {
+                console.log('Message already exists (by ID), skipping')
                 return prev
               }
+
+              // 같은 내용, 같은 발신자, 비슷한 시간(5초 이내)의 메시지 중복 체크
+              const existsByContent = prev.some((msg) =>
+                msg.content === newMessage.content &&
+                msg.sender_id === newMessage.sender_id &&
+                Math.abs(new Date(msg.created_at).getTime() - new Date(newMessage.created_at).getTime()) < 5000
+              )
+              if (existsByContent) {
+                console.log('Message already exists (by content), skipping')
+                return prev
+              }
+
               console.log('Adding new message to state')
               return [...prev, messageWithProfile as ChatMessageWithProfile]
             })
