@@ -103,6 +103,10 @@ export default function ChatRoomPage() {
     const success = await sendMessage(newMessage, currentUserId)
     if (success) {
       setNewMessage('')
+      // 메시지 전송 후 스크롤을 아래로 이동
+      setTimeout(() => {
+        scrollToBottom()
+      }, 100)
     }
   }
 
@@ -205,7 +209,7 @@ export default function ChatRoomPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 pb-52 flex flex-col">
+      <div className="flex-1 overflow-y-auto p-4 pb-[30rem] flex flex-col">
         {messages.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground flex-1 flex items-center justify-center">
             메시지를 보내서 대화를 시작해보세요
@@ -292,6 +296,12 @@ export default function ChatRoomPage() {
             rows={1}
             className="resize-none text-base"
             style={{ fontSize: '16px' }}
+            onFocus={() => {
+              // 키보드가 올라올 때 스크롤을 아래로 이동
+              setTimeout(() => {
+                scrollToBottom()
+              }, 300)
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
