@@ -77,9 +77,12 @@ export function useMessages(roomId: string) {
     }
 
     async function setupRealtimeSubscription() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
       // Subscribe to new messages in this room
       subscription = supabase
-        .channel(`room-${roomId}`)
+        .channel(`room-${roomId}-${user.id}`)
         .on(
           'postgres_changes',
           {
@@ -89,6 +92,7 @@ export function useMessages(roomId: string) {
             filter: `room_id=eq.${roomId}`,
           },
           async (payload) => {
+            console.log('New message received:', payload.new)
             // 새 메시지를 받으면 즉시 상태에 추가 (실시간 업데이트)
             const newMessage = payload.new
 
@@ -111,7 +115,11 @@ export function useMessages(roomId: string) {
             // 메시지가 이미 존재하지 않으면 추가
             setMessages((prev) => {
               const exists = prev.some((msg) => msg.id === newMessage.id)
-              if (exists) return prev
+              if (exists) {
+                console.log('Message already exists, skipping')
+                return prev
+              }
+              console.log('Adding new message to state')
               return [...prev, messageWithProfile as ChatMessageWithProfile]
             })
 
@@ -128,6 +136,7 @@ export function useMessages(roomId: string) {
             filter: `room_id=eq.${roomId}`,
           },
           (payload) => {
+            console.log('Message updated:', payload.new)
             // 메시지 업데이트 (읽음 표시 등)
             const updatedMessage = payload.new
             setMessages((prev) =>
@@ -139,7 +148,9 @@ export function useMessages(roomId: string) {
             )
           }
         )
-        .subscribe()
+        .subscribe((status) => {
+          console.log('Room subscription status:', status)
+        })
     }
 
     fetchMessages()
@@ -157,28 +168,82 @@ export function useMessages(roomId: string) {
     async (content: string, senderId: string) => {
       if (!content.trim() || !roomId) return false
 
+      // 임시 메시지 ID 생성 (낙관적 업데이트용)
+      const tempId = `temp-${Date.now()}`
+
       try {
         setIsSending(true)
         const supabase = createClient()
 
-        // 메시지 전송 (Realtime subscription이 자동으로 처리)
-        const { error } = await supabase.from('chat_messages').insert({
+        // 발신자 프로필 정보 가져오기
+        const { data: senderProfile } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .eq('id', senderId)
+          .single()
+
+        // 낙관적 업데이트: 즉시 UI에 메시지 추가
+        const optimisticMessage: ChatMessageWithProfile = {
+          id: tempId,
           room_id: roomId,
           sender_id: senderId,
           content: content.trim(),
-        })
+          is_read: false,
+          created_at: new Date().toISOString(),
+          sender: senderProfile || {
+            id: senderId,
+            full_name: null,
+            avatar_url: null,
+          },
+        }
+
+        console.log('Adding optimistic message:', optimisticMessage)
+        setMessages((prev) => [...prev, optimisticMessage])
+
+        // 메시지 전송
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .insert({
+            room_id: roomId,
+            sender_id: senderId,
+            content: content.trim(),
+          })
+          .select()
+          .single()
 
         if (error) {
           console.error('Send message error:', error)
+          // 실패 시 낙관적으로 추가한 메시지 제거
+          setMessages((prev) => prev.filter((msg) => msg.id !== tempId))
           setError('메시지 전송에 실패했습니다')
           return false
         }
 
-        // Realtime subscription이 새 메시지를 자동으로 추가하므로
-        // fetchMessages를 호출할 필요 없음
+        console.log('Message sent successfully:', data)
+
+        // 성공 시 임시 메시지를 실제 메시지로 교체
+        if (data) {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === tempId
+                ? {
+                    ...data,
+                    sender: senderProfile || {
+                      id: senderId,
+                      full_name: null,
+                      avatar_url: null,
+                    },
+                  }
+                : msg
+            )
+          )
+        }
+
         return true
       } catch (err) {
         console.error('Send error:', err)
+        // 실패 시 낙관적으로 추가한 메시지 제거
+        setMessages((prev) => prev.filter((msg) => msg.id !== tempId))
         setError('메시지 전송에 실패했습니다')
         return false
       } finally {
