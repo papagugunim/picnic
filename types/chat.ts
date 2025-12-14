@@ -28,6 +28,7 @@ export interface ChatRoomWithProfile extends ChatRoom {
     full_name: string | null
     avatar_url: string | null
     matryoshka_level?: number
+    user_role?: string | null
   }
   unread_count: number
   post?: {

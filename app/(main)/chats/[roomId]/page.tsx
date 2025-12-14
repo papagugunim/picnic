@@ -10,6 +10,7 @@ import { useMessages } from '@/lib/hooks/useMessages'
 import Link from 'next/link'
 import type { ChatRoomWithProfile } from '@/types/chat'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
+import { getMatryoshkaInfo } from '@/lib/matryoshka'
 
 export default function ChatRoomPage() {
   const params = useParams()
@@ -63,7 +64,7 @@ export default function ChatRoomPage() {
 
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, matryoshka_level')
+        .select('id, full_name, avatar_url, matryoshka_level, user_role')
         .eq('id', otherUserId)
         .single()
 
@@ -85,7 +86,8 @@ export default function ChatRoomPage() {
           id: otherUserId,
           full_name: null,
           avatar_url: null,
-          matryoshka_level: 0
+          matryoshka_level: 0,
+          user_role: null
         },
         unread_count: 0,
         post: postData,
@@ -170,11 +172,26 @@ export default function ChatRoomPage() {
             )}
             <div>
               <div className="font-semibold">{room.other_user.full_name || '익명'}</div>
-              {room.other_user.matryoshka_level && room.other_user.matryoshka_level > 0 && (
-                <div className="text-xs text-muted-foreground">
-                  마트료시카 Lv.{room.other_user.matryoshka_level}
-                </div>
-              )}
+              {(() => {
+                const level = room.other_user.matryoshka_level || 1
+                const role = room.other_user.user_role
+                const matryoshkaInfo = getMatryoshkaInfo(level, role || undefined)
+
+                let emoji = '🍞'
+                if (role === 'developer') emoji = '🍔'
+                else if (role === 'admin') emoji = '🥪'
+                else if (level === 5) emoji = '🥯'
+                else if (level === 4) emoji = '🥨'
+                else if (level === 3) emoji = '🥐'
+                else if (level === 2) emoji = '🥖'
+
+                return (
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <span>{emoji}</span>
+                    <span>{matryoshkaInfo.name}</span>
+                  </div>
+                )
+              })()}
             </div>
           </Link>
         </div>
