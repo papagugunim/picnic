@@ -216,7 +216,7 @@ export default function CommunityPage() {
     <div className="min-h-screen bg-background pb-20">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="px-4 py-4">
             <h1 className="text-2xl font-bold mb-4">동네생활</h1>
 
@@ -233,7 +233,7 @@ export default function CommunityPage() {
             </div>
 
             {/* Category Tabs */}
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
               {categories.map((category) => (
                 <button
                   key={category.id}

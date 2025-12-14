@@ -88,9 +88,35 @@ export function useMessages(roomId: string) {
             table: 'chat_messages',
             filter: `room_id=eq.${roomId}`,
           },
-          () => {
-            fetchMessages()
-            markMessagesAsRead()
+          async (payload) => {
+            // 새 메시지를 받으면 즉시 상태에 추가 (실시간 업데이트)
+            const newMessage = payload.new
+
+            // 프로필 정보 가져오기
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('id, full_name, avatar_url')
+              .eq('id', newMessage.sender_id)
+              .single()
+
+            const messageWithProfile = {
+              ...newMessage,
+              sender: profileData || {
+                id: newMessage.sender_id,
+                full_name: null,
+                avatar_url: null,
+              },
+            }
+
+            // 메시지가 이미 존재하지 않으면 추가
+            setMessages((prev) => {
+              const exists = prev.some((msg) => msg.id === newMessage.id)
+              if (exists) return prev
+              return [...prev, messageWithProfile as ChatMessageWithProfile]
+            })
+
+            // 읽음 표시
+            await markMessagesAsRead()
           }
         )
         .on(
@@ -101,8 +127,16 @@ export function useMessages(roomId: string) {
             table: 'chat_messages',
             filter: `room_id=eq.${roomId}`,
           },
-          () => {
-            fetchMessages()
+          (payload) => {
+            // 메시지 업데이트 (읽음 표시 등)
+            const updatedMessage = payload.new
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === updatedMessage.id
+                  ? { ...msg, ...updatedMessage }
+                  : msg
+              )
+            )
           }
         )
         .subscribe()
@@ -127,6 +161,7 @@ export function useMessages(roomId: string) {
         setIsSending(true)
         const supabase = createClient()
 
+        // 메시지 전송 (Realtime subscription이 자동으로 처리)
         const { error } = await supabase.from('chat_messages').insert({
           room_id: roomId,
           sender_id: senderId,
@@ -139,7 +174,8 @@ export function useMessages(roomId: string) {
           return false
         }
 
-        await fetchMessages()
+        // Realtime subscription이 새 메시지를 자동으로 추가하므로
+        // fetchMessages를 호출할 필요 없음
         return true
       } catch (err) {
         console.error('Send error:', err)
@@ -149,7 +185,7 @@ export function useMessages(roomId: string) {
         setIsSending(false)
       }
     },
-    [roomId, fetchMessages]
+    [roomId]
   )
 
   return {

@@ -172,7 +172,7 @@ export default function NewCommunityPostPage() {
             <label className="block text-sm font-medium mb-3">
               카테고리
             </label>
-            <div className="flex gap-2 overflow-x-auto pb-2">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
               {categories.map((category) => (
                 <button
                   key={category.id}

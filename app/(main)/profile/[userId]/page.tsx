@@ -448,13 +448,13 @@ export default function ProfilePage() {
       {/* 탭 */}
       <div className="border-b border-border">
         <div className="max-w-4xl mx-auto px-4">
-          <div className="flex gap-4 overflow-x-auto">
+          <div className="flex gap-4 overflow-x-auto scrollbar-hide">
             <button
               onClick={() => setActiveTab('marketplace')}
-              className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-2 px-4 py-3 transition-colors whitespace-nowrap ${
                 activeTab === 'marketplace'
-                  ? 'border-primary text-primary font-semibold'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                  ? 'text-primary font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Package className="w-5 h-5" />
@@ -462,10 +462,10 @@ export default function ProfilePage() {
             </button>
             <button
               onClick={() => setActiveTab('community')}
-              className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-2 px-4 py-3 transition-colors whitespace-nowrap ${
                 activeTab === 'community'
-                  ? 'border-primary text-primary font-semibold'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                  ? 'text-primary font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Users className="w-5 h-5" />
@@ -475,10 +475,10 @@ export default function ProfilePage() {
               <>
                 <button
                   onClick={() => setActiveTab('likes')}
-                  className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-4 py-3 transition-colors whitespace-nowrap ${
                     activeTab === 'likes'
-                      ? 'border-primary text-primary font-semibold'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                      ? 'text-primary font-semibold'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <Heart className="w-5 h-5" />
@@ -486,10 +486,10 @@ export default function ProfilePage() {
                 </button>
                 <button
                   onClick={() => setActiveTab('interests')}
-                  className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-4 py-3 transition-colors whitespace-nowrap ${
                     activeTab === 'interests'
-                      ? 'border-primary text-primary font-semibold'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                      ? 'text-primary font-semibold'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <Bookmark className="w-5 h-5" />
