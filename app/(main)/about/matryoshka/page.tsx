@@ -20,22 +20,18 @@ export default function MatryoshkaInfoPage() {
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-2xl font-bold">마트료시카 등급 시스템</h1>
+          <h1 className="text-2xl font-bold">빵 등급 시스템</h1>
         </div>
 
         {/* Introduction */}
         <div className="bg-card rounded-xl p-3 mb-4 border border-border">
           <div className="text-center mb-3">
-            <div className="mb-2 flex justify-center">
-              <img
-                src="/icons/matryoshka-1.svg"
-                alt="마트료시카"
-                className="w-16 h-16"
-              />
+            <div className="mb-2 flex justify-center text-6xl">
+              🍞
             </div>
-            <h2 className="text-xl font-bold mb-1">피크닉 신뢰 등급</h2>
+            <h2 className="text-xl font-bold mb-1">피크닉 빵 등급</h2>
             <p className="text-sm text-muted-foreground">
-              거래를 거듭할수록 더 큰 신뢰를 쌓아가세요!
+              활동할수록 더 맛있는 빵으로 성장하세요!
             </p>
           </div>
 
@@ -75,12 +71,7 @@ export default function MatryoshkaInfoPage() {
                 <div className="flex items-center gap-2">
                   <div className="flex gap-0.5">
                     {Array.from({ length: item.count }).map((_, i) => (
-                      <img
-                        key={i}
-                        src={MATRYOSHKA_LEVELS[item.count as keyof typeof MATRYOSHKA_LEVELS].icon}
-                        alt="마트료시카"
-                        className="w-5 h-5"
-                      />
+                      <span key={i} className="text-lg">🍞</span>
                     ))}
                   </div>
                   <span className="font-medium text-sm">{item.label}</span>
@@ -113,25 +104,27 @@ export default function MatryoshkaInfoPage() {
         <div className="bg-card rounded-xl p-3 mb-4 border border-border">
           <h2 className="text-lg font-bold mb-2">등급 안내</h2>
           <div className="space-y-1.5">
-            {[1, 2, 3, 4, 5].map((level) => {
-              const info = MATRYOSHKA_LEVELS[level as keyof typeof MATRYOSHKA_LEVELS]
+            {[
+              { level: 1, emoji: '🍞', name: '식빵' },
+              { level: 2, emoji: '🥖', name: '바게트' },
+              { level: 3, emoji: '🥐', name: '크로아상' },
+              { level: 4, emoji: '🥨', name: '쁘레첼' },
+              { level: 5, emoji: '🥯', name: '베이글' },
+            ].map((item, index) => {
+              const info = MATRYOSHKA_LEVELS[item.level as keyof typeof MATRYOSHKA_LEVELS]
               const scores = ['0-100', '101-300', '301-600', '601-1000', '1001+']
               return (
                 <div
-                  key={level}
+                  key={item.level}
                   className="flex items-center gap-2 p-2 rounded-lg"
                 >
                   <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xl"
                     style={{
                       backgroundColor: info.color,
                     }}
                   >
-                    <img
-                      src={info.icon}
-                      alt={info.name}
-                      className="w-5 h-5 brightness-0 invert"
-                    />
+                    {item.emoji}
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className="font-semibold text-sm" style={{ color: info.color }}>
@@ -139,7 +132,7 @@ export default function MatryoshkaInfoPage() {
                     </span>
                   </div>
                   <span className="text-xs text-muted-foreground flex-shrink-0">
-                    {scores[level - 1]}점
+                    {scores[index]}점
                   </span>
                 </div>
               )
