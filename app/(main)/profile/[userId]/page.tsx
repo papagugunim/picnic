@@ -292,71 +292,84 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-background">
       {/* 프로필 헤더 */}
-      <div className="pb-8 pt-4 bg-card border-b border-border">
+      <div className="pb-4 pt-2 bg-card border-b border-border">
         <div className="max-w-4xl mx-auto px-4">
-          {/* 설정 버튼 또는 채팅하기 버튼 */}
-          <div className="flex justify-end mb-4">
-            {isOwnProfile ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => router.push('/settings')}
-              >
-                <Settings className="w-4 h-4" />
-                설정
-              </Button>
-            ) : (
-              <Button
-                variant="default"
-                size="sm"
-                className="gap-2"
-                onClick={startChat}
-                disabled={isStartingChat}
-              >
-                <MessageCircle className="w-4 h-4" />
-                {isStartingChat ? getRandomLoadingMessage() : '채팅하기'}
-              </Button>
-            )}
-          </div>
 
           {/* 프로필 정보 */}
-          <div className="flex items-start gap-6">
+          <div className="flex items-start gap-4">
             {/* 아바타 */}
             <div className="flex-shrink-0">
-              {profile.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt={profile.full_name || '프로필'}
-                  className="w-24 h-24 rounded-full object-cover border-4 border-border shadow-lg"
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-3xl font-bold border-4 border-border shadow-lg">
-                  {profile.full_name?.charAt(0).toUpperCase() || '?'}
-                </div>
-              )}
+              {(() => {
+                const matryoshkaInfo = getMatryoshkaInfo(
+                  profile.matryoshka_level || 1,
+                  profile.user_role || undefined
+                )
+                return profile.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt={profile.full_name || '프로필'}
+                    className="w-20 h-20 rounded-full object-cover border-2 border-border"
+                  />
+                ) : (
+                  <div
+                    className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold border-2 border-border"
+                    style={{
+                      backgroundColor: matryoshkaInfo.color,
+                      color: profile.user_role === 'developer' || profile.user_role === 'admin'
+                        ? '#FFFFFF'
+                        : '#1F2937'
+                    }}
+                  >
+                    {profile.full_name?.charAt(0).toUpperCase() || '?'}
+                  </div>
+                )
+              })()}
             </div>
 
             {/* 정보 */}
             <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
-                <h1 className="text-3xl font-bold">
+              <div className="flex items-center justify-between mb-1">
+                <h1 className="text-2xl font-bold">
                   {profile.full_name || '이름 없음'}
                 </h1>
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>{formatDate(profile.created_at)}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>{getCityLabel(profile.city)}</span>
-                  </div>
+                {/* 설정 버튼 또는 채팅하기 버튼 */}
+                {isOwnProfile ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 flex-shrink-0"
+                    onClick={() => router.push('/settings')}
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                    <span className="text-xs">설정</span>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="gap-1.5 flex-shrink-0"
+                    onClick={startChat}
+                    disabled={isStartingChat}
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span className="text-xs">{isStartingChat ? '로딩중' : '채팅'}</span>
+                  </Button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  <span>{formatDate(profile.created_at)}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  <span>{getCityLabel(profile.city)}</span>
                 </div>
               </div>
 
               {/* Matryoshka Level Badge */}
-              <div className="mb-3">
+              <div className="mb-2">
                 {(() => {
                   const matryoshkaInfo = getMatryoshkaInfo(
                     profile.matryoshka_level || 1,
@@ -369,13 +382,13 @@ export default function ProfilePage() {
                   return (
                     <Link href="/about/matryoshka">
                       <div
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold cursor-pointer hover:scale-105 transition-transform"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer hover:scale-105 transition-transform"
                         style={{
                           backgroundColor: matryoshkaInfo.color,
                         }}
                       >
                         <div
-                          className="w-5 h-5 flex items-center justify-center text-base"
+                          className="w-4 h-4 flex items-center justify-center text-sm"
                         >
                           {/* Use emoji based on level */}
                           {profile.user_role === 'developer' ? '🍔' :
@@ -400,9 +413,9 @@ export default function ProfilePage() {
                 })()}
               </div>
 
-              <div className="flex items-start gap-2">
-                <Train className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                <div className="flex flex-wrap gap-2">
+              <div className="flex items-start gap-1.5">
+                <Train className="w-3.5 h-3.5 mt-0.5 text-muted-foreground" />
+                <div className="flex flex-wrap gap-1.5">
                   {profile.preferred_metro_stations && profile.preferred_metro_stations.length > 0 ? (
                     profile.preferred_metro_stations.map((stationValue) => {
                       const station = getStationInfo(stationValue)
@@ -410,7 +423,7 @@ export default function ProfilePage() {
                       return (
                         <span
                           key={stationValue}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs"
                           style={{
                             backgroundColor: `${station.lineColor}20`,
                             border: `1px solid ${station.lineColor}`,
@@ -418,7 +431,7 @@ export default function ProfilePage() {
                           }}
                         >
                           <span
-                            className="w-2 h-2 rounded-full"
+                            className="w-1.5 h-1.5 rounded-full"
                             style={{ backgroundColor: station.lineColor }}
                           />
                           {formatStationName(station.label)}
