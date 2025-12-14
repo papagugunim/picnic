@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { MOSCOW_METRO_STATIONS, SPB_METRO_STATIONS } from '@/lib/constants'
+import { getMatryoshkaInfo } from '@/lib/matryoshka'
 
 interface Post {
   id: string
@@ -20,6 +21,8 @@ interface Post {
   status: string
   profiles: {
     full_name: string | null
+    matryoshka_level: number
+    user_role: string | null
   }
   likes_count: number
   interests_count: number
@@ -78,7 +81,9 @@ export default function FeedPage() {
           images,
           status,
           profiles:author_id (
-            full_name
+            full_name,
+            matryoshka_level,
+            user_role
           )
         `)
         .eq('status', 'active')
@@ -373,9 +378,30 @@ export default function FeedPage() {
                 {/* 내용 */}
                 <div className="flex-1 flex flex-col justify-between min-w-0">
                   <div>
-                    <h3 className="text-base font-normal line-clamp-2 mb-1">
-                      {post.title}
-                    </h3>
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h3 className="text-base font-normal line-clamp-2 flex-1">
+                        {post.title}
+                      </h3>
+                      {/* 빵 등급 이모지 */}
+                      {(() => {
+                        const level = post.profiles?.matryoshka_level || 1
+                        const role = post.profiles?.user_role
+                        let emoji = '🍞'
+
+                        if (role === 'developer') emoji = '🍔'
+                        else if (role === 'admin') emoji = '🥪'
+                        else if (level === 5) emoji = '🥯'
+                        else if (level === 4) emoji = '🥨'
+                        else if (level === 3) emoji = '🥐'
+                        else if (level === 2) emoji = '🥖'
+
+                        return (
+                          <span className="text-lg flex-shrink-0" title={`Lv.${level}`}>
+                            {emoji}
+                          </span>
+                        )
+                      })()}
+                    </div>
                     <div className="text-sm text-muted-foreground mb-1">
                       <span>{getCityNameInKorean(post.city)}</span>
                       <span> · </span>
