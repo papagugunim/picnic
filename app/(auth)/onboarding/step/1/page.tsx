@@ -89,7 +89,7 @@ export default function OnboardingStep1() {
 
         {/* CTA 버튼 */}
         <Button
-          onClick={() => router.push('/onboarding/step/2')}
+          onClick={() => router.push('/onboarding/bread-level')}
           className="w-full h-14 text-lg font-semibold"
           size="lg"
         >
