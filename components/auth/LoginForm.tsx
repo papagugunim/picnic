@@ -89,6 +89,16 @@ export default function LoginForm() {
       if (!response.ok) {
         const errorMessage = result.error || '로그인 중 오류가 발생했습니다'
 
+        // 탈퇴한 계정인 경우
+        if (response.status === 403 || errorMessage.includes('탈퇴한 계정')) {
+          setError(errorMessage)
+          // 3초 후 회원가입 페이지로 이동
+          setTimeout(() => {
+            router.push('/signup')
+          }, 3000)
+          return
+        }
+
         // 이메일 확인이 안 된 경우
         if (errorMessage.includes('Email not confirmed')) {
           setError('이메일 인증이 완료되지 않았습니다. 이메일을 확인해주세요.')

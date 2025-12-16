@@ -18,6 +18,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 탈퇴한 회원인지 확인
+    if (data.user) {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('deleted_at')
+        .eq('id', data.user.id)
+        .single()
+
+      if (!profileError && profile?.deleted_at) {
+        // 탈퇴한 계정이면 로그아웃 처리
+        await supabase.auth.signOut()
+
+        return NextResponse.json(
+          { error: '탈퇴한 계정입니다. 회원가입을 통해 다시 가입해주세요.' },
+          { status: 403 }
+        )
+      }
+    }
+
     // 세션 쿠키 설정
     const response = NextResponse.json({ data })
 
