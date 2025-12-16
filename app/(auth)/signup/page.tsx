@@ -18,7 +18,7 @@ export default function SignupPage() {
             <h1 className="text-5xl font-bold gradient-text">picnic</h1>
           </Link>
           <p className="text-muted-foreground text-lg">
-            러시아 한인 커뮤니티
+            피크닉에 오신 것을 환영합니다
           </p>
         </div>
 
