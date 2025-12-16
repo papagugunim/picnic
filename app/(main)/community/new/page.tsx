@@ -278,7 +278,7 @@ export default function NewCommunityPostPage() {
               <li>• 명확하고 구체적인 제목을 작성하세요</li>
               <li>• 이웃들에게 유용한 정보를 공유하세요</li>
               <li>• 사진을 첨부하면 더 이해하기 쉬워요</li>
-              <li>• 좋아요를 많이 받으면 마트료시카 점수가 올라가요!</li>
+              <li>• 좋아요를 많이 받으면 빵 굽기 점수가 올라가요!</li>
             </ul>
           </div>
         </form>
