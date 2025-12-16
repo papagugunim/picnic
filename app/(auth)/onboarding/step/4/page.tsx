@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Heart,
   Laptop,
   Sofa,
   Shirt,
@@ -16,10 +15,8 @@ import {
   Home,
   Briefcase,
   Package,
-  ChevronLeft,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import ProgressBar from '@/components/onboarding/ProgressBar'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES } from '@/lib/constants'
 
@@ -161,41 +158,21 @@ export default function OnboardingStep4() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8">
-      <div className="max-w-2xl mx-auto px-4">
-        {/* 프로그레스 바 */}
-        <div className="mb-12">
-          <ProgressBar currentStep={4} totalSteps={4} />
-        </div>
-
-        {/* 메인 콘텐츠 */}
-        <div className="text-center mb-12">
-          <div className="inline-block mb-6">
-            <div className="w-24 h-24 bg-gradient-to-br from-orange-400 to-pink-500 rounded-full flex items-center justify-center">
-              <Heart className="w-12 h-12 text-white" />
-            </div>
-          </div>
-
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            어떤 물건에 관심이 있으세요?
-          </h1>
-
-          <p className="text-lg text-muted-foreground mb-8">
-            관심 카테고리를 선택하시면
-            <br />
-            원하는 물건을 더 쉽게 찾을 수 있어요 (최대 5개)
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <div className="w-full max-w-md">
+        <div className="text-center space-y-3 mb-8">
+          <h1 className="text-4xl font-bold gradient-text">picnic</h1>
+          <p className="text-muted-foreground">
+            관심 카테고리 (최대 5개)
           </p>
-
-          {/* 선택 개수 표시 */}
           {selectedCategories.length > 0 && (
-            <div className="inline-block px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-semibold mb-4">
-              {selectedCategories.length}/5 선택됨
+            <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
+              {selectedCategories.length}/5
             </div>
           )}
         </div>
 
-        {/* 카테고리 그리드 */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-3 mb-6">
           {CATEGORIES.map((category) => {
             const isSelected = selectedCategories.includes(category.value)
             const Icon = categoryIcons[category.value as keyof typeof categoryIcons]
@@ -204,102 +181,40 @@ export default function OnboardingStep4() {
               <button
                 key={category.value}
                 onClick={() => handleCategoryToggle(category.value)}
-                className={`
-                  glass-strong rounded-2xl p-6 text-center
-                  transition-all duration-300
-                  hover:scale-105 hover:shadow-lg
-                  ${
-                    isSelected
-                      ? 'ring-4 ring-primary/50 bg-primary/10'
-                      : ''
-                  }
-                `}
+                className={`h-auto py-4 px-2 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
+                  isSelected
+                    ? 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/50'
+                    : 'border-border hover:border-primary/50 hover:bg-primary/5'
+                }`}
               >
-                <div
-                  className={`
-                    w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3
-                    transition-colors duration-300
-                    ${
-                      isSelected
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-gradient-to-br from-orange-400 to-pink-500 text-white'
-                    }
-                  `}
-                >
-                  <Icon className="w-8 h-8" />
-                </div>
-                <h3 className="font-semibold text-sm">{category.label}</h3>
-                {isSelected && (
-                  <div className="mt-2 text-xs text-primary font-medium">
-                    ✓ 선택됨
-                  </div>
-                )}
+                <Icon className="w-5 h-5" />
+                <span className="text-xs font-medium text-center leading-tight">{category.label}</span>
               </button>
             )
           })}
         </div>
 
-        {/* 에러 메시지 */}
         {error && (
-          <div className="mb-8 glass-strong rounded-lg p-4 text-center text-sm text-destructive">
+          <div className="mb-4 glass-strong rounded-lg p-3 text-center text-sm text-destructive">
             {error}
           </div>
         )}
 
-        {/* 안내 메시지 */}
-        <div className="glass-strong rounded-2xl p-6 mb-8">
-          <p className="text-center text-sm text-muted-foreground">
-            {selectedCategories.length > 0 ? (
-              <>
-                💡 {selectedCategories.length}개의 카테고리를 선택했어요!
-                {selectedCategories.length < 5 && (
-                  <>
-                    {' '}(최대 {5 - selectedCategories.length}개 더 선택 가능)
-                  </>
-                )}
-                <br />
-                나중에 설정에서 언제든지 변경할 수 있어요
-              </>
-            ) : (
-              <>
-                💡 관심 있는 카테고리를 최대 5개까지 선택하세요
-                <br />
-                나중에 설정에서 언제든지 추가할 수 있어요
-              </>
-            )}
-          </p>
-        </div>
+        <Button
+          onClick={handleNext}
+          className="w-full mb-4"
+          disabled={isLoading}
+        >
+          {isLoading ? '저장 중...' : '완료'}
+        </Button>
 
-        {/* 버튼 그룹 */}
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-3">
-            <Button
-              onClick={() => router.push('/onboarding/step/3')}
-              variant="outline"
-              className="flex-1 h-14 text-base"
-              disabled={isLoading}
-            >
-              <ChevronLeft className="w-4 h-4 mr-1" />
-              이전
-            </Button>
-            <Button
-              onClick={handleNext}
-              className="flex-1 h-14 text-base font-semibold"
-              disabled={isLoading}
-            >
-              {isLoading ? '저장 중...' : '완료하기'}
-            </Button>
-          </div>
-
-          {/* 건너뛰기 버튼 */}
-          <button
-            onClick={handleSkip}
-            className="w-full mt-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            disabled={isLoading}
-          >
-            건너뛰기
-          </button>
-        </div>
+        <button
+          onClick={handleSkip}
+          className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+          disabled={isLoading}
+        >
+          건너뛰기
+        </button>
       </div>
     </div>
   )

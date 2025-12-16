@@ -2,9 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { MapPin, Building2, ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import ProgressBar from '@/components/onboarding/ProgressBar'
 import { createClient } from '@/lib/supabase/client'
 
 export default function OnboardingStep2() {
@@ -70,129 +68,68 @@ export default function OnboardingStep2() {
   const canProceed = selectedCity
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8">
-      <div className="max-w-2xl mx-auto px-4">
-        {/* 프로그레스 바 */}
-        <div className="mb-12">
-          <ProgressBar currentStep={2} totalSteps={4} />
-        </div>
-
-        {/* 메인 콘텐츠 */}
-        <div className="text-center mb-12">
-          <div className="inline-block mb-6">
-            <div className="w-24 h-24 bg-gradient-to-br from-orange-400 to-pink-500 rounded-full flex items-center justify-center">
-              <MapPin className="w-12 h-12 text-white" />
-            </div>
-          </div>
-
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <div className="w-full max-w-md">
+        <div className="text-center space-y-3 mb-8">
+          <h1 className="text-4xl font-bold gradient-text">picnic</h1>
+          <p className="text-muted-foreground">
             어디에서 생활하고 계신가요?
-          </h1>
-
-          <p className="text-lg text-muted-foreground mb-8">
-            거주 도시를 알려주시면
-            <br />
-            해당 지역의 거래와 소식을 보여드릴게요
           </p>
         </div>
 
-        {/* 도시 선택 */}
-        <div className="mb-8">
-          <label className="block text-lg font-semibold mb-4">
-            도시를 선택해주세요
-          </label>
-          <div className="grid md:grid-cols-2 gap-4">
-            {/* Moscow 카드 */}
-            <button
-              onClick={() => handleCitySelect('Moscow')}
-              className={`
-                glass-strong rounded-2xl p-6 text-center
-                transition-all duration-300
-                hover:scale-105 hover:shadow-lg
-                ${
-                  selectedCity === 'Moscow'
-                    ? 'ring-4 ring-primary/50 bg-primary/10'
-                    : ''
-                }
-              `}
-            >
-              <div className="mb-3 flex justify-center">
-                <div className="text-6xl">🏛️</div>
-              </div>
-              <h3 className="text-xl font-bold mb-2">Moscow</h3>
-              <p className="text-sm text-muted-foreground">모스크바</p>
-            </button>
+        <div className="space-y-4 mb-6">
+          <button
+            onClick={() => handleCitySelect('Moscow')}
+            className={`w-full h-auto py-6 px-4 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
+              selectedCity === 'Moscow'
+                ? 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/50'
+                : 'border-border hover:border-primary/50 hover:bg-primary/5'
+            }`}
+          >
+            <div className="text-4xl">🏛️</div>
+            <div className="text-center">
+              <div className="font-semibold">Moscow</div>
+              <div className={`text-sm ${selectedCity === 'Moscow' ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>모스크바</div>
+            </div>
+          </button>
 
-            {/* Saint Petersburg 카드 */}
-            <button
-              onClick={() => handleCitySelect('Saint Petersburg')}
-              className={`
-                glass-strong rounded-2xl p-6 text-center
-                transition-all duration-300
-                hover:scale-105 hover:shadow-lg
-                ${
-                  selectedCity === 'Saint Petersburg'
-                    ? 'ring-4 ring-primary/50 bg-primary/10'
-                    : ''
-                }
-              `}
-            >
-              <div className="mb-3 flex justify-center">
-                <div className="text-6xl">⛲</div>
-              </div>
-              <h3 className="text-xl font-bold mb-2">Saint Petersburg</h3>
-              <p className="text-sm text-muted-foreground">상트페테르부르크</p>
-            </button>
-          </div>
+          <button
+            onClick={() => handleCitySelect('Saint Petersburg')}
+            className={`w-full h-auto py-6 px-4 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
+              selectedCity === 'Saint Petersburg'
+                ? 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/50'
+                : 'border-border hover:border-primary/50 hover:bg-primary/5'
+            }`}
+          >
+            <div className="text-4xl">⛲</div>
+            <div className="text-center">
+              <div className="font-semibold">Saint Petersburg</div>
+              <div className={`text-sm ${selectedCity === 'Saint Petersburg' ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>상트페테르부르크</div>
+            </div>
+          </button>
         </div>
 
-        {/* 에러 메시지 */}
         {error && (
-          <div className="mb-8 glass-strong rounded-lg p-4 text-center text-sm text-destructive">
+          <div className="mb-6 glass-strong rounded-lg p-3 text-center text-sm text-destructive">
             {error}
           </div>
         )}
 
-        {/* 안내 메시지 */}
-        {canProceed && (
-          <div className="glass-strong rounded-2xl p-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <p className="text-center text-sm text-muted-foreground">
-              <Building2 className="inline w-4 h-4 mr-1" />
-              {selectedCity === 'Moscow' ? '모스크바' : '상트페테르부르크'}에서의 거래를 확인하실 수 있어요!
-            </p>
-          </div>
-        )}
+        <Button
+          onClick={handleNext}
+          className="w-full mb-4"
+          disabled={!canProceed || isLoading}
+        >
+          {isLoading ? '저장 중...' : '다음'}
+        </Button>
 
-        {/* 버튼 그룹 */}
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-3">
-            <Button
-              onClick={() => router.push('/onboarding/step/1')}
-              variant="outline"
-              className="flex-1 h-14 text-base"
-              disabled={isLoading}
-            >
-              <ChevronLeft className="w-4 h-4 mr-1" />
-              이전
-            </Button>
-            <Button
-              onClick={handleNext}
-              className="flex-1 h-14 text-base font-semibold"
-              disabled={!canProceed || isLoading}
-            >
-              {isLoading ? '저장 중...' : '다음'}
-            </Button>
-          </div>
-
-          {/* 건너뛰기 버튼 */}
-          <button
-            onClick={() => router.push('/feed')}
-            className="w-full mt-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            disabled={isLoading}
-          >
-            나중에 하기
-          </button>
-        </div>
+        <button
+          onClick={() => router.push('/feed')}
+          className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+          disabled={isLoading}
+        >
+          건너뛰기
+        </button>
       </div>
     </div>
   )
