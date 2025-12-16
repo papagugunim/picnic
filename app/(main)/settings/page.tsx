@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, ChevronLeft, X, Search, Sun, Moon, Monitor } from 'lucide-react'
+import { Camera, ChevronLeft, X, Search, Sun, Moon, Monitor, AlertTriangle } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
 import {
   MOSCOW_METRO_STATIONS,
   SPB_METRO_STATIONS,
@@ -451,6 +452,19 @@ export default function SettingsPage() {
               {error}
             </div>
           )}
+
+          {/* 회원 탈퇴 */}
+          <div className="mt-12 pt-6 border-t border-border">
+            <Link href="/settings/delete-account">
+              <Button
+                variant="ghost"
+                className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <AlertTriangle className="w-4 h-4 mr-2" />
+                회원 탈퇴
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     </div>
