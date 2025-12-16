@@ -223,8 +223,8 @@ export default function SignupForm() {
                       type="button"
                       className={`h-auto py-6 px-4 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
                         field.value === 'moscow'
-                          ? 'border-primary bg-primary/10'
-                          : 'border-border hover:border-primary/50'
+                          ? 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/50'
+                          : 'border-border hover:border-primary/50 hover:bg-primary/5'
                       }`}
                       onClick={() => field.onChange('moscow')}
                       disabled={isLoading}
@@ -234,7 +234,7 @@ export default function SignupForm() {
                       </svg>
                       <div className="text-center">
                         <div className="font-semibold">Moscow</div>
-                        <div className="text-xs text-muted-foreground">모스크바</div>
+                        <div className={`text-xs ${field.value === 'moscow' ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>모스크바</div>
                       </div>
                     </button>
 
@@ -242,8 +242,8 @@ export default function SignupForm() {
                       type="button"
                       className={`h-auto py-6 px-4 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
                         field.value === 'saint_petersburg'
-                          ? 'border-primary bg-primary/10'
-                          : 'border-border hover:border-primary/50'
+                          ? 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/50'
+                          : 'border-border hover:border-primary/50 hover:bg-primary/5'
                       }`}
                       onClick={() => field.onChange('saint_petersburg')}
                       disabled={isLoading}
@@ -254,7 +254,7 @@ export default function SignupForm() {
                       </svg>
                       <div className="text-center">
                         <div className="font-semibold">Saint Petersburg</div>
-                        <div className="text-xs text-muted-foreground">상트페테르부르크</div>
+                        <div className={`text-xs ${field.value === 'saint_petersburg' ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>상트페테르부르크</div>
                       </div>
                     </button>
                   </div>
