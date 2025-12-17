@@ -233,13 +233,22 @@ export default function TodayPage() {
     return CITY_NAMES_KR[userCity] || userCity
   }
 
+  // 숫자 포맷팅 함수 (천 단위 쉼표)
+  const formatNumber = (value: string): string => {
+    const num = value.replace(/,/g, '')
+    if (!num || isNaN(Number(num))) return value
+    return Number(num).toLocaleString('ko-KR')
+  }
+
   // 환율 계산 함수
   const handleRubChange = (value: string) => {
-    setRubAmount(value)
+    // 쉼표 제거하고 숫자만 추출
+    const numericValue = value.replace(/,/g, '')
+    setRubAmount(numericValue)
     setLastEdited('rub')
 
-    if (value && exchangeRates) {
-      const rub = parseFloat(value)
+    if (numericValue && exchangeRates) {
+      const rub = parseFloat(numericValue)
       if (!isNaN(rub)) {
         const krw = rub / exchangeRates.krwToRub
         setKrwAmount(krw.toFixed(0))
@@ -252,11 +261,13 @@ export default function TodayPage() {
   }
 
   const handleKrwChange = (value: string) => {
-    setKrwAmount(value)
+    // 쉼표 제거하고 숫자만 추출
+    const numericValue = value.replace(/,/g, '')
+    setKrwAmount(numericValue)
     setLastEdited('krw')
 
-    if (value && exchangeRates) {
-      const krw = parseFloat(value)
+    if (numericValue && exchangeRates) {
+      const krw = parseFloat(numericValue)
       if (!isNaN(krw)) {
         const rub = krw * exchangeRates.krwToRub
         setRubAmount(rub.toFixed(2))
@@ -372,13 +383,14 @@ export default function TodayPage() {
                 <h2 className="font-bold">환율 계산기</h2>
               </div>
 
-              <div className="space-y-3">
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
                 <div className="space-y-2">
                   <label className="text-xs text-muted-foreground">루블 (₽)</label>
                   <div className="relative">
                     <input
-                      type="number"
-                      value={rubAmount}
+                      type="text"
+                      inputMode="decimal"
+                      value={formatNumber(rubAmount)}
                       onChange={(e) => handleRubChange(e.target.value)}
                       placeholder="0"
                       className="w-full p-3 pr-8 bg-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
@@ -387,16 +399,17 @@ export default function TodayPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-center">
-                  <div className="text-muted-foreground">⇅</div>
+                <div className="flex items-center justify-center pt-6">
+                  <div className="text-muted-foreground text-lg">⇄</div>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-xs text-muted-foreground">원화 (₩)</label>
                   <div className="relative">
                     <input
-                      type="number"
-                      value={krwAmount}
+                      type="text"
+                      inputMode="decimal"
+                      value={formatNumber(krwAmount)}
                       onChange={(e) => handleKrwChange(e.target.value)}
                       placeholder="0"
                       className="w-full p-3 pr-8 bg-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
