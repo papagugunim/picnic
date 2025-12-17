@@ -71,7 +71,7 @@ export default function TodayPage() {
   // 환율 그래프 모달 상태
   const [showChart, setShowChart] = useState(false)
   const [chartType, setChartType] = useState<'rub' | 'usd'>('rub')
-  const [chartPeriod, setChartPeriod] = useState<'week' | 'month' | 'year'>('week')
+  const [chartPeriod, setChartPeriod] = useState<'week' | 'month' | 'quarter'>('week')
 
   useEffect(() => {
     const fetchUserCity = async () => {
@@ -248,9 +248,9 @@ export default function TodayPage() {
   }
 
   // 환율 그래프 데이터 생성 (임시 - 실제로는 API에서 가져와야 함)
-  const generateChartData = (type: 'rub' | 'usd', period: 'week' | 'month' | 'year') => {
+  const generateChartData = (type: 'rub' | 'usd', period: 'week' | 'month' | 'quarter') => {
     const currentRate = type === 'rub' ? (exchangeRates ? 1 / exchangeRates.krwToRub : 18) : (exchangeRates ? 1 / exchangeRates.rubToUsd : 90)
-    const dataPoints = period === 'week' ? 7 : period === 'month' ? 30 : 365
+    const dataPoints = period === 'week' ? 7 : period === 'month' ? 30 : 90
     const data = []
 
     for (let i = dataPoints - 1; i >= 0; i--) {
@@ -542,14 +542,14 @@ export default function TodayPage() {
                     1개월
                   </button>
                   <button
-                    onClick={() => setChartPeriod('year')}
+                    onClick={() => setChartPeriod('quarter')}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      chartPeriod === 'year'
+                      chartPeriod === 'quarter'
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-background hover:bg-muted'
                     }`}
                   >
-                    1년
+                    1분기
                   </button>
                 </div>
 
