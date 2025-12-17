@@ -22,7 +22,58 @@ export async function GET() {
       })
     }
 
-    // 1. 한국 수출입은행 환율 API 시도 (가장 정확)
+    // 1. 네이버 금융 시도 (1순위 - 24시간 업데이트, 가장 신뢰)
+    try {
+      const [rubResponse, usdResponse] = await Promise.all([
+        fetch('https://finance.naver.com/marketindex/exchangeDetail.naver?marketindexCd=FX_RURKRW', {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          },
+          next: { revalidate: 600 }
+        }),
+        fetch('https://finance.naver.com/marketindex/exchangeDetail.naver?marketindexCd=FX_USDRUB', {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          },
+          next: { revalidate: 600 }
+        })
+      ])
+
+      if (rubResponse.ok && usdResponse.ok) {
+        const [rubHtml, usdHtml] = await Promise.all([
+          rubResponse.text(),
+          usdResponse.text()
+        ])
+
+        // HTML에서 환율 정보 추출
+        const extractRate = (html: string): number | null => {
+          const match = html.match(/<span class="value">([0-9,.]+)<\/span>/)
+          if (match && match[1]) {
+            return parseFloat(match[1].replace(/,/g, ''))
+          }
+          return null
+        }
+
+        const krwToRub = extractRate(rubHtml)
+        const rubToUsd = extractRate(usdHtml)
+
+        if (krwToRub && rubToUsd) {
+          cachedData = {
+            krwToRub: parseFloat(krwToRub.toFixed(4)),
+            rubToUsd: parseFloat(rubToUsd.toFixed(4)),
+            lastUpdated: new Date().toISOString(),
+            source: 'naver'
+          }
+          lastFetchTime = now
+
+          return NextResponse.json(cachedData)
+        }
+      }
+    } catch (naverError) {
+      console.warn('네이버 환율 실패, 한국수출입은행 시도:', naverError)
+    }
+
+    // 2. 한국 수출입은행 환율 API 시도 (2순위)
     try {
       const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
       const koeximbankUrl = `https://www.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey=&searchdate=${today}&data=AP01`
@@ -58,10 +109,10 @@ export async function GET() {
         }
       }
     } catch (koeximbankError) {
-      console.warn('한국수출입은행 API 실패:', koeximbankError)
+      console.warn('한국수출입은행 API 실패, ExchangeRate-API 시도:', koeximbankError)
     }
 
-    // 2. ExchangeRate-API 시도 (대체)
+    // 3. ExchangeRate-API 시도 (3순위 대체)
     try {
       const fallbackResponse = await fetch('https://api.exchangerate-api.com/v4/latest/KRW', {
         next: { revalidate: 600 }
@@ -83,59 +134,11 @@ export async function GET() {
         return NextResponse.json(cachedData)
       }
     } catch (apiError) {
-      console.warn('ExchangeRate API 실패, 네이버 시도:', apiError)
+      console.warn('모든 환율 API 실패:', apiError)
     }
 
-    // 대체 API 실패 시 네이버 시도
-    const [rubResponse, usdResponse] = await Promise.all([
-      fetch('https://finance.naver.com/marketindex/exchangeDetail.naver?marketindexCd=FX_RURKRW', {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        },
-        next: { revalidate: 600 }
-      }),
-      fetch('https://finance.naver.com/marketindex/exchangeDetail.naver?marketindexCd=FX_USDRUB', {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        },
-        next: { revalidate: 600 }
-      })
-    ])
-
-    if (!rubResponse.ok || !usdResponse.ok) {
-      throw new Error('네이버 환율 정보를 가져올 수 없습니다')
-    }
-
-    const [rubHtml, usdHtml] = await Promise.all([
-      rubResponse.text(),
-      usdResponse.text()
-    ])
-
-    // HTML에서 환율 정보 추출
-    const extractRate = (html: string): number | null => {
-      const match = html.match(/<span class="value">([0-9,.]+)<\/span>/)
-      if (match && match[1]) {
-        return parseFloat(match[1].replace(/,/g, ''))
-      }
-      return null
-    }
-
-    const krwToRub = extractRate(rubHtml)
-    const rubToUsd = extractRate(usdHtml)
-
-    if (!krwToRub || !rubToUsd) {
-      throw new Error('네이버에서 환율 추출 실패')
-    }
-
-    cachedData = {
-      krwToRub: parseFloat(krwToRub.toFixed(4)),
-      rubToUsd: parseFloat(rubToUsd.toFixed(4)),
-      lastUpdated: new Date().toISOString(),
-      source: 'naver'
-    }
-    lastFetchTime = now
-
-    return NextResponse.json(cachedData)
+    // 모든 API 실패 시 에러
+    throw new Error('모든 환율 소스에서 데이터를 가져올 수 없습니다')
 
   } catch (error) {
     console.error('환율 정보 가져오기 실패:', error)
