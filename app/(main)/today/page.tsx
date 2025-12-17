@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TrendingUp, Newspaper, Cloud, Calendar as CalendarIcon, MapPin, Calculator } from 'lucide-react'
+import { TrendingUp, Newspaper, Cloud, Calendar as CalendarIcon, MapPin, Calculator, X } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { createClient } from '@/lib/supabase/client'
 
 // 도시별 타임존 매핑
@@ -66,6 +67,11 @@ export default function TodayPage() {
   const [krwAmount, setKrwAmount] = useState<string>('')
   const [lastEdited, setLastEdited] = useState<'rub' | 'krw'>('rub')
   const [showCalculator, setShowCalculator] = useState(false)
+
+  // 환율 그래프 모달 상태
+  const [showChart, setShowChart] = useState(false)
+  const [chartType, setChartType] = useState<'rub' | 'usd'>('rub')
+  const [chartPeriod, setChartPeriod] = useState<'week' | 'month' | 'year'>('week')
 
   useEffect(() => {
     const fetchUserCity = async () => {
@@ -241,6 +247,29 @@ export default function TodayPage() {
     return Number(num).toLocaleString('ko-KR')
   }
 
+  // 환율 그래프 데이터 생성 (임시 - 실제로는 API에서 가져와야 함)
+  const generateChartData = (type: 'rub' | 'usd', period: 'week' | 'month' | 'year') => {
+    const currentRate = type === 'rub' ? (exchangeRates ? 1 / exchangeRates.krwToRub : 18) : (exchangeRates ? 1 / exchangeRates.rubToUsd : 90)
+    const dataPoints = period === 'week' ? 7 : period === 'month' ? 30 : 365
+    const data = []
+
+    for (let i = dataPoints - 1; i >= 0; i--) {
+      const date = new Date()
+      date.setDate(date.getDate() - i)
+
+      // 임시 변동 생성 (실제로는 API 데이터 사용)
+      const variation = (Math.random() - 0.5) * (currentRate * 0.05)
+      const rate = currentRate + variation
+
+      data.push({
+        date: date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
+        rate: parseFloat(rate.toFixed(2))
+      })
+    }
+
+    return data
+  }
+
   // 환율 계산 함수
   const handleRubChange = (value: string) => {
     // 쉼표 제거하고 숫자만 추출
@@ -345,7 +374,13 @@ export default function TodayPage() {
             {exchangeRates ? (
               <>
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+                  <button
+                    onClick={() => {
+                      setChartType('rub')
+                      setShowChart(true)
+                    }}
+                    className="w-full flex items-center justify-between p-3 bg-background rounded-lg border border-border hover:border-primary transition-colors cursor-pointer"
+                  >
                     <div className="flex items-center gap-2">
                       <div className="text-lg">₽</div>
                       <div className="text-sm font-medium">1 루블</div>
@@ -354,9 +389,15 @@ export default function TodayPage() {
                       <div className="font-bold">{(1 / exchangeRates.krwToRub).toFixed(2)}원</div>
                       <div className="text-xs text-muted-foreground">1,000원 = {(exchangeRates.krwToRub * 1000).toFixed(2)}₽</div>
                     </div>
-                  </div>
+                  </button>
 
-                  <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+                  <button
+                    onClick={() => {
+                      setChartType('usd')
+                      setShowChart(true)
+                    }}
+                    className="w-full flex items-center justify-between p-3 bg-background rounded-lg border border-border hover:border-primary transition-colors cursor-pointer"
+                  >
                     <div className="flex items-center gap-2">
                       <div className="text-lg">$</div>
                       <div className="text-sm font-medium">1 달러</div>
@@ -365,7 +406,7 @@ export default function TodayPage() {
                       <div className="font-bold">{(1 / exchangeRates.rubToUsd).toFixed(2)}₽</div>
                       <div className="text-xs text-muted-foreground">1₽ = ${exchangeRates.rubToUsd}</div>
                     </div>
-                  </div>
+                  </button>
                 </div>
 
                 <div className="mt-3 text-xs text-muted-foreground text-center space-y-0.5">
@@ -405,7 +446,7 @@ export default function TodayPage() {
                     className="p-2 hover:bg-background rounded-lg transition-colors"
                     aria-label="닫기"
                   >
-                    <span className="text-xl text-muted-foreground">×</span>
+                    <X className="w-5 h-5 text-muted-foreground" />
                   </button>
                 </div>
 
@@ -447,6 +488,108 @@ export default function TodayPage() {
 
                 <div className="mt-4 text-xs text-muted-foreground text-center">
                   현재 환율: 1₽ = {(1 / exchangeRates.krwToRub).toFixed(2)}원
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 환율 그래프 모달 */}
+          {showChart && exchangeRates && (
+            <div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              onClick={() => setShowChart(false)}
+            >
+              <div
+                className="glass-strong rounded-xl p-6 max-w-2xl w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    <h2 className="text-lg font-bold">
+                      {chartType === 'rub' ? '루블 환율 추이' : '달러(대 루블) 환율 추이'}
+                    </h2>
+                  </div>
+                  <button
+                    onClick={() => setShowChart(false)}
+                    className="p-2 hover:bg-background rounded-lg transition-colors"
+                    aria-label="닫기"
+                  >
+                    <X className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </div>
+
+                {/* 기간 선택 */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setChartPeriod('week')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      chartPeriod === 'week'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background hover:bg-muted'
+                    }`}
+                  >
+                    1주일
+                  </button>
+                  <button
+                    onClick={() => setChartPeriod('month')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      chartPeriod === 'month'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background hover:bg-muted'
+                    }`}
+                  >
+                    1개월
+                  </button>
+                  <button
+                    onClick={() => setChartPeriod('year')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      chartPeriod === 'year'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background hover:bg-muted'
+                    }`}
+                  >
+                    1년
+                  </button>
+                </div>
+
+                {/* 그래프 */}
+                <div className="h-64 mb-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={generateChartData(chartType, chartPeriod)}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 12 }}
+                        stroke="#888"
+                      />
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        stroke="#888"
+                        domain={['dataMin - 1', 'dataMax + 1']}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                          border: '1px solid #333',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="rate"
+                        stroke="#22c55e"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="text-xs text-muted-foreground text-center">
+                  {chartType === 'rub' ? '1루블당 원화 환율' : '1달러당 루블 환율'}
+                  <br />
+                  <span className="text-xs opacity-70">※ 임시 데이터입니다. 실제 데이터는 API 연동 후 제공됩니다.</span>
                 </div>
               </div>
             </div>
