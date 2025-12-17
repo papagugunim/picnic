@@ -65,6 +65,7 @@ export default function TodayPage() {
   const [rubAmount, setRubAmount] = useState<string>('')
   const [krwAmount, setKrwAmount] = useState<string>('')
   const [lastEdited, setLastEdited] = useState<'rub' | 'krw'>('rub')
+  const [showCalculator, setShowCalculator] = useState(false)
 
   useEffect(() => {
     const fetchUserCity = async () => {
@@ -327,9 +328,18 @@ export default function TodayPage() {
         <div className="p-4 space-y-3">
           {/* 환율 정보 */}
           <div className="glass-strong rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
-              <h2 className="font-bold">환율</h2>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <h2 className="font-bold">환율</h2>
+              </div>
+              <button
+                onClick={() => setShowCalculator(true)}
+                className="p-2 hover:bg-background rounded-lg transition-colors"
+                aria-label="환율 계산기"
+              >
+                <Calculator className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </button>
             </div>
 
             {exchangeRates ? (
@@ -375,47 +385,68 @@ export default function TodayPage() {
             )}
           </div>
 
-          {/* 환율 계산기 */}
-          {exchangeRates && (
-            <div className="glass-strong rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Calculator className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <h2 className="font-bold">환율 계산기</h2>
-              </div>
+          {/* 환율 계산기 모달 */}
+          {showCalculator && exchangeRates && (
+            <div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              onClick={() => setShowCalculator(false)}
+            >
+              <div
+                className="glass-strong rounded-xl p-6 max-w-md w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Calculator className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <h2 className="text-lg font-bold">환율 계산기</h2>
+                  </div>
+                  <button
+                    onClick={() => setShowCalculator(false)}
+                    className="p-2 hover:bg-background rounded-lg transition-colors"
+                    aria-label="닫기"
+                  >
+                    <span className="text-xl text-muted-foreground">×</span>
+                  </button>
+                </div>
 
-              <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
-                <div className="space-y-2">
-                  <label className="text-xs text-muted-foreground">루블 (₽)</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={formatNumber(rubAmount)}
-                      onChange={(e) => handleRubChange(e.target.value)}
-                      placeholder="0"
-                      className="w-full p-3 pr-8 bg-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₽</span>
+                <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">루블 (₽)</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={formatNumber(rubAmount)}
+                        onChange={(e) => handleRubChange(e.target.value)}
+                        placeholder="0"
+                        className="w-full p-3 pr-8 bg-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₽</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-center pt-6">
+                    <div className="text-muted-foreground text-lg">⇄</div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">원화 (₩)</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={formatNumber(krwAmount)}
+                        onChange={(e) => handleKrwChange(e.target.value)}
+                        placeholder="0"
+                        className="w-full p-3 pr-8 bg-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₩</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center pt-6">
-                  <div className="text-muted-foreground text-lg">⇄</div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs text-muted-foreground">원화 (₩)</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={formatNumber(krwAmount)}
-                      onChange={(e) => handleKrwChange(e.target.value)}
-                      placeholder="0"
-                      className="w-full p-3 pr-8 bg-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₩</span>
-                  </div>
+                <div className="mt-4 text-xs text-muted-foreground text-center">
+                  현재 환율: 1₽ = {(1 / exchangeRates.krwToRub).toFixed(2)}원
                 </div>
               </div>
             </div>
