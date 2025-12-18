@@ -1,7 +1,17 @@
 import { createBrowserClient } from '@supabase/ssr'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+// 싱글톤 인스턴스
+let client: SupabaseClient | null = null
 
 export function createClient() {
-  return createBrowserClient(
+  // 이미 생성된 클라이언트가 있으면 재사용
+  if (client) {
+    return client
+  }
+
+  // 새로운 클라이언트 생성 및 캐싱
+  client = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -31,4 +41,6 @@ export function createClient() {
       },
     }
   )
+
+  return client
 }

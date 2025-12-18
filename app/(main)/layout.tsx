@@ -1,5 +1,6 @@
 import TopBar from '@/components/layout/TopBar'
 import BottomNav from '@/components/layout/BottomNav'
+import { UserProvider } from '@/lib/contexts/UserContext'
 
 export default function MainLayout({
   children,
@@ -7,14 +8,16 @@ export default function MainLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-background">
-      <TopBar />
+    <UserProvider>
+      <div className="min-h-screen bg-background">
+        <TopBar />
 
-      <main className="pb-20 max-w-screen-xl mx-auto">
-        {children}
-      </main>
+        <main className="pb-20 max-w-screen-xl mx-auto">
+          {children}
+        </main>
 
-      <BottomNav />
-    </div>
+        <BottomNav />
+      </div>
+    </UserProvider>
   )
 }

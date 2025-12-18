@@ -47,24 +47,27 @@ export default function FeedPage() {
       setIsLoading(true)
       const supabase = createClient()
 
-      // 현재 사용자의 도시 가져오기
+      // UserContext에서 사용자 정보 가져오기
       const { data: { user } } = await supabase.auth.getUser()
-      let cityFilter = null
 
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('city')
-          .eq('id', user.id)
-          .single()
-
-        if (profile?.city) {
-          cityFilter = profile.city
-          setUserCity(profile.city)
-        }
+      if (!user) {
+        setIsLoading(false)
+        return
       }
 
-      // 도시별로 필터링된 게시글 가져오기
+      // 프로필 정보 가져오기
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('city')
+        .eq('id', user.id)
+        .single()
+
+      const cityFilter = profile?.city
+      if (cityFilter) {
+        setUserCity(cityFilter)
+      }
+
+      // 최적화: 단일 쿼리로 게시글과 좋아요/관심 정보를 함께 가져오기
       let query = supabase
         .from('posts')
         .select(`
@@ -83,7 +86,6 @@ export default function FeedPage() {
         `)
         .eq('status', 'active')
 
-      // 도시 필터 적용
       if (cityFilter) {
         query = query.eq('city', cityFilter)
       }
@@ -92,51 +94,58 @@ export default function FeedPage() {
         .order('created_at', { ascending: false })
         .limit(20)
 
-      if (error) {
+      if (error || !postsData) {
         console.error('Posts fetch error:', error)
+        setIsLoading(false)
         return
       }
 
-      // 좋아요 및 관심 정보 가져오기
-      const postIds = postsData?.map((p: any) => p.id) || []
+      const postIds = postsData.map((p: any) => p.id)
 
-      // 각 게시글의 좋아요 수
-      const { data: likesData } = await supabase
-        .from('post_likes')
-        .select('post_id')
-        .in('post_id', postIds)
+      // 병렬로 모든 반응 데이터 가져오기 (2개 쿼리로 통합)
+      const [likesResult, interestsResult] = await Promise.all([
+        // 좋아요 데이터 (모든 게시글 + 사용자 좋아요 포함)
+        supabase
+          .from('post_likes')
+          .select('post_id, user_id')
+          .in('post_id', postIds),
+        // 관심 데이터 (모든 게시글 + 사용자 관심 포함)
+        supabase
+          .from('post_interests')
+          .select('post_id, user_id')
+          .in('post_id', postIds)
+      ])
 
-      // 각 게시글의 관심 수
-      const { data: interestsData } = await supabase
-        .from('post_interests')
-        .select('post_id')
-        .in('post_id', postIds)
+      const likesData = likesResult.data || []
+      const interestsData = interestsResult.data || []
 
-      // 현재 사용자의 좋아요 목록
-      const { data: userLikes } = user
-        ? await supabase
-            .from('post_likes')
-            .select('post_id')
-            .eq('user_id', user.id)
-            .in('post_id', postIds)
-        : { data: [] }
+      // Map으로 count 계산 최적화
+      const likesCountMap = new Map<string, number>()
+      const interestsCountMap = new Map<string, number>()
+      const userLikesSet = new Set<string>()
+      const userInterestsSet = new Set<string>()
 
-      // 현재 사용자의 관심 목록
-      const { data: userInterests } = user
-        ? await supabase
-            .from('post_interests')
-            .select('post_id')
-            .eq('user_id', user.id)
-            .in('post_id', postIds)
-        : { data: [] }
+      likesData.forEach(like => {
+        likesCountMap.set(like.post_id, (likesCountMap.get(like.post_id) || 0) + 1)
+        if (like.user_id === user.id) {
+          userLikesSet.add(like.post_id)
+        }
+      })
 
-      // 데이터 매핑
-      const postsWithReactions = postsData?.map((post: any) => ({
+      interestsData.forEach(interest => {
+        interestsCountMap.set(interest.post_id, (interestsCountMap.get(interest.post_id) || 0) + 1)
+        if (interest.user_id === user.id) {
+          userInterestsSet.add(interest.post_id)
+        }
+      })
+
+      // 데이터 매핑 (O(n) 복잡도)
+      const postsWithReactions = postsData.map((post: any) => ({
         ...post,
-        likes_count: likesData?.filter((l) => l.post_id === post.id).length || 0,
-        interests_count: interestsData?.filter((i) => i.post_id === post.id).length || 0,
-        user_liked: userLikes?.some((l) => l.post_id === post.id) || false,
-        user_interested: userInterests?.some((i) => i.post_id === post.id) || false,
+        likes_count: likesCountMap.get(post.id) || 0,
+        interests_count: interestsCountMap.get(post.id) || 0,
+        user_liked: userLikesSet.has(post.id),
+        user_interested: userInterestsSet.has(post.id),
       }))
 
       setPosts(postsWithReactions as Post[])
