@@ -111,43 +111,57 @@ export default function CommunityPage() {
           })
         : postsData
 
-      // For each post, get likes count, comments count, and check if user liked
-      const postsWithCounts = await Promise.all(
-        (filteredByCity || []).map(async (post) => {
-          // Get likes count
-          const { count: likesCount } = await supabase
-            .from('community_likes')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id)
+      // 최적화: 배치 쿼리로 N+1 문제 해결
+      const postIds = (filteredByCity || []).map(p => p.id)
 
-          // Get comments count
-          const { count: commentsCount } = await supabase
-            .from('community_comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id)
+      // 병렬로 모든 데이터 가져오기 (2개 쿼리)
+      const [likesResult, commentsResult] = await Promise.all([
+        // 1. 모든 좋아요 데이터 (count + 사용자 좋아요 포함)
+        supabase
+          .from('community_likes')
+          .select('post_id, user_id')
+          .in('post_id', postIds),
 
-          // Check if current user liked this post
-          const { data: userLike } = await supabase
-            .from('community_likes')
-            .select('id')
-            .eq('post_id', post.id)
-            .eq('user_id', user.id)
-            .single()
+        // 2. 모든 댓글 count
+        supabase
+          .from('community_comments')
+          .select('post_id')
+          .in('post_id', postIds)
+      ])
 
-          // Extract author profile (Supabase returns it as array)
-          const postAuthor = Array.isArray(post.profiles)
-            ? post.profiles[0]
-            : post.profiles
+      const likesData = likesResult.data || []
+      const commentsData = commentsResult.data || []
 
-          return {
-            ...post,
-            profiles: postAuthor,
-            likes_count: likesCount || 0,
-            comments_count: commentsCount || 0,
-            is_liked: !!userLike,
-          }
-        })
-      )
+      // Map으로 빠른 계산
+      const likesCountMap = new Map<string, number>()
+      const userLikesSet = new Set<string>()
+
+      likesData.forEach(like => {
+        likesCountMap.set(like.post_id, (likesCountMap.get(like.post_id) || 0) + 1)
+        if (like.user_id === user.id) {
+          userLikesSet.add(like.post_id)
+        }
+      })
+
+      const commentsCountMap = new Map<string, number>()
+      commentsData.forEach(comment => {
+        commentsCountMap.set(comment.post_id, (commentsCountMap.get(comment.post_id) || 0) + 1)
+      })
+
+      // 데이터 매핑 (O(n) 복잡도)
+      const postsWithCounts = (filteredByCity || []).map(post => {
+        const postAuthor = Array.isArray(post.profiles)
+          ? post.profiles[0]
+          : post.profiles
+
+        return {
+          ...post,
+          profiles: postAuthor,
+          likes_count: likesCountMap.get(post.id) || 0,
+          comments_count: commentsCountMap.get(post.id) || 0,
+          is_liked: userLikesSet.has(post.id),
+        }
+      })
 
       setPosts(postsWithCounts as CommunityPost[])
     } catch (err) {

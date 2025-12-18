@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Users, Calendar, MessageCircle, User } from 'lucide-react'
@@ -34,7 +35,7 @@ const navItems = [
   },
 ]
 
-export default function BottomNav() {
+function BottomNav() {
   const pathname = usePathname()
   const { unreadCount } = useUnreadCount()
 
@@ -84,3 +85,5 @@ export default function BottomNav() {
     </nav>
   )
 }
+
+export default memo(BottomNav)

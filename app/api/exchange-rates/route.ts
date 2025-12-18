@@ -11,6 +11,9 @@ let cachedData: {
 let lastFetchTime = 0
 const CACHE_DURATION = 10 * 60 * 1000 // 10분 캐시
 
+// 요청 중복 방지 (동시 요청 시 하나만 실행)
+let fetchPromise: Promise<NextResponse> | null = null
+
 export async function GET() {
   try {
     // 캐시된 데이터가 있고 10분 이내면 캐시 반환
@@ -19,7 +22,16 @@ export async function GET() {
       return NextResponse.json({
         ...cachedData,
         cached: true
+      }, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=300'
+        }
       })
+    }
+
+    // 동시 요청 방지 - 이미 fetch 중이면 기다림
+    if (fetchPromise) {
+      return fetchPromise
     }
 
     // 1. 네이버 금융 시도 (1순위 - 24시간 업데이트, 가장 신뢰)
@@ -65,8 +77,13 @@ export async function GET() {
             source: 'naver'
           }
           lastFetchTime = now
+          fetchPromise = null
 
-          return NextResponse.json(cachedData)
+          return NextResponse.json(cachedData, {
+            headers: {
+              'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=300'
+            }
+          })
         }
       }
     } catch (naverError) {
