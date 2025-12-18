@@ -315,39 +315,45 @@ export default function TodayPage() {
         {/* Header */}
         <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
           <div className="px-4 py-4">
-            <h1 className="text-2xl font-bold mb-2">오늘의 피크닉</h1>
-
             {loading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CalendarIcon className="w-4 h-4 animate-pulse" />
-                <span>로딩 중...</span>
-              </div>
+              <>
+                <h1 className="text-2xl font-bold mb-2">오늘의 피크닉</h1>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CalendarIcon className="w-4 h-4 animate-pulse" />
+                  <span>로딩 중...</span>
+                </div>
+              </>
             ) : (
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="w-4 h-4" />
-                  <span className="font-medium">{getCityName()}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <CalendarIcon className="w-4 h-4" />
-                  <span>{formatDate()}</span>
-                </div>
-                {weather && (
-                  <div className="flex items-center gap-3 pt-1">
-                    <div className="text-2xl">{weather.icon}</div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {WEATHER_NAMES[weather.condition]}
-                      </span>
-                      <span className="text-lg font-bold">
-                        {weather.temp > 0 ? '+' : ''}{weather.temp}°C
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        (체감 {weather.feelsLike > 0 ? '+' : ''}{weather.feelsLike}°C)
-                      </span>
-                    </div>
+                <div className="flex items-center justify-between">
+                  <h1 className="text-2xl font-bold">오늘의 피크닉</h1>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CalendarIcon className="w-4 h-4" />
+                    <span>{formatDate()}</span>
                   </div>
-                )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4" />
+                    <span className="font-medium">{getCityName()}</span>
+                  </div>
+                  {weather && (
+                    <div className="flex items-center gap-2">
+                      <div className="text-xl">{weather.icon}</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground">
+                          {WEATHER_NAMES[weather.condition]}
+                        </span>
+                        <span className="text-sm font-bold">
+                          {weather.temp > 0 ? '+' : ''}{weather.temp}°C
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          (체감 {weather.feelsLike > 0 ? '+' : ''}{weather.feelsLike}°C)
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
