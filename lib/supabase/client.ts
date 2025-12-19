@@ -39,6 +39,16 @@ export function createClient() {
           document.cookie = `${name}=; path=/; max-age=0`
         },
       },
+      realtime: {
+        params: {
+          eventsPerSecond: 10, // 초당 최대 10개 이벤트
+        },
+      },
+      global: {
+        headers: {
+          'x-client-info': 'picnic-web@1.0.0',
+        },
+      },
     }
   )
 
