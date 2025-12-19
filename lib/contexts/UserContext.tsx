@@ -6,10 +6,11 @@ import type { User } from '@supabase/supabase-js'
 
 interface UserProfile {
   id: string
-  name: string
+  full_name: string
   city: string
   avatar_url?: string
-  bio?: string
+  preferred_metro_stations?: string[]
+  matryoshka_level?: number
 }
 
 interface UserContextType {
@@ -37,7 +38,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('id, name, city, avatar_url, bio')
+          .select('id, full_name, city, avatar_url, preferred_metro_stations, matryoshka_level')
           .eq('id', userData.id)
           .single()
 
