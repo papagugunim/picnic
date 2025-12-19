@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,

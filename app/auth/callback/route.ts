@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const next = requestUrl.searchParams.get('next')
   const origin = requestUrl.origin
 
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
 
   // 이메일 확인 플로우 (token_hash + type)
   if (token_hash && type) {
