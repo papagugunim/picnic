@@ -22,12 +22,16 @@ interface UserContextType {
 
 const UserContext = createContext<UserContextType | undefined>(undefined)
 
+// 프로필 캐시 (메모리)
+const profileCache = new Map<string, { data: UserProfile; timestamp: number }>()
+const CACHE_TTL = 5 * 60 * 1000 // 5분
+
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchUserAndProfile = async () => {
+  const fetchUserAndProfile = async (forceRefresh = false) => {
     try {
       const supabase = createClient()
 
@@ -36,14 +40,30 @@ export function UserProvider({ children }: { children: ReactNode }) {
       if (userData) {
         setUser(userData)
 
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('id, full_name, city, avatar_url, preferred_metro_stations, matryoshka_level')
-          .eq('id', userData.id)
-          .single()
+        // 캐시 확인
+        const cached = profileCache.get(userData.id)
+        const now = Date.now()
 
-        if (profileData) {
-          setProfile(profileData)
+        if (!forceRefresh && cached && (now - cached.timestamp) < CACHE_TTL) {
+          console.log('[UserContext] Using cached profile')
+          setProfile(cached.data)
+        } else {
+          // 캐시 미스 또는 강제 새로고침 - DB에서 가져오기
+          console.log('[UserContext] Fetching profile from database')
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('id, full_name, city, avatar_url, preferred_metro_stations, matryoshka_level')
+            .eq('id', userData.id)
+            .single()
+
+          if (profileData) {
+            setProfile(profileData)
+            // 캐시에 저장
+            profileCache.set(userData.id, {
+              data: profileData,
+              timestamp: now
+            })
+          }
         }
       } else {
         setUser(null)
@@ -82,7 +102,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refreshProfile = async () => {
-    await fetchUserAndProfile()
+    // 강제 새로고침 (캐시 무시)
+    await fetchUserAndProfile(true)
   }
 
   return (
