@@ -19,6 +19,13 @@ export const metadata: Metadata = {
   description: "러시아 거주 한인을 위한 중고거래 및 커뮤니티 플랫폼",
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

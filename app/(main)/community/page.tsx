@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
+import { getBreadEmoji } from '@/lib/bread'
 
 interface CommunityPost {
   id: string
@@ -22,6 +23,7 @@ interface CommunityPost {
     avatar_url: string | null
     matryoshka_level: number
     city: string | null
+    user_role: string | null
   }
   likes_count: number
   comments_count: number
@@ -86,7 +88,8 @@ export default function CommunityPage() {
             full_name,
             avatar_url,
             matryoshka_level,
-            city
+            city,
+            user_role
           )
         `)
         .order('created_at', { ascending: false })
@@ -313,9 +316,10 @@ export default function CommunityPage() {
                         <div className="flex items-center gap-2">
                           <Link
                             href={`/profile/${post.user_id}`}
-                            className="font-medium hover:underline"
+                            className="font-medium hover:underline flex items-center gap-1"
                           >
-                            {post.profiles.full_name || '익명'}
+                            <span>{post.profiles.full_name || '익명'}</span>
+                            <span className="text-base">{getBreadEmoji(post.profiles.matryoshka_level, post.profiles.user_role || undefined)}</span>
                           </Link>
                           <span className="text-xs px-2 py-0.5 bg-secondary rounded-full">
                             {getCategoryEmoji(post.category)} {getCategoryName(post.category)}

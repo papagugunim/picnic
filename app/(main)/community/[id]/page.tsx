@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, Heart, MessageCircle, Send, MoreVertical } from 'lucide-react'
+import { ChevronLeft, Heart, MessageCircle, Send, MoreVertical, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
+import { getBreadEmoji } from '@/lib/bread'
 
 interface CommunityPost {
   id: string
@@ -21,6 +22,7 @@ interface CommunityPost {
     full_name: string | null
     avatar_url: string | null
     matryoshka_level: number
+    user_role: string | null
   }
   likes_count: number
   comments_count: number
@@ -36,6 +38,7 @@ interface Comment {
     full_name: string | null
     avatar_url: string | null
     matryoshka_level: number
+    user_role: string | null
   }
   likes_count: number
   is_liked: boolean
@@ -92,7 +95,8 @@ export default function CommunityPostDetailPage() {
           profiles!community_posts_user_id_fkey (
             full_name,
             avatar_url,
-            matryoshka_level
+            matryoshka_level,
+            user_role
           )
         `)
         .eq('id', postId)
@@ -146,7 +150,8 @@ export default function CommunityPostDetailPage() {
           profiles!community_comments_user_id_fkey (
             full_name,
             avatar_url,
-            matryoshka_level
+            matryoshka_level,
+            user_role
           )
         `)
         .eq('post_id', postId)
@@ -269,6 +274,30 @@ export default function CommunityPostDetailPage() {
     }
   }
 
+  async function deleteComment(commentId: string) {
+    if (!confirm('정말로 이 댓글을 삭제하시겠습니까?')) return
+
+    try {
+      const supabase = createClient()
+
+      const { error } = await supabase
+        .from('community_comments')
+        .delete()
+        .eq('id', commentId)
+
+      if (error) {
+        console.error('Comment delete error:', error)
+        alert('댓글 삭제 중 오류가 발생했습니다')
+        return
+      }
+
+      fetchPostAndComments()
+    } catch (err) {
+      console.error('Delete error:', err)
+      alert('댓글 삭제 중 오류가 발생했습니다')
+    }
+  }
+
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString)
     const now = new Date()
@@ -346,9 +375,10 @@ export default function CommunityPostDetailPage() {
               <div className="flex items-center gap-2">
                 <Link
                   href={`/profile/${post.user_id}`}
-                  className="font-semibold hover:underline"
+                  className="font-semibold hover:underline flex items-center gap-1"
                 >
-                  {post.profiles.full_name || '익명'}
+                  <span>{post.profiles.full_name || '익명'}</span>
+                  <span className="text-base">{getBreadEmoji(post.profiles.matryoshka_level, post.profiles.user_role || undefined)}</span>
                 </Link>
                 <span className="text-xs px-2 py-0.5 bg-secondary rounded-full">
                   {category.emoji} {category.name}
@@ -439,9 +469,10 @@ export default function CommunityPostDetailPage() {
                     <div className="bg-secondary rounded-lg p-3">
                       <Link
                         href={`/profile/${comment.user_id}`}
-                        className="font-semibold text-sm hover:underline"
+                        className="font-semibold text-sm hover:underline flex items-center gap-1 inline-flex"
                       >
-                        {comment.profiles.full_name || '익명'}
+                        <span>{comment.profiles.full_name || '익명'}</span>
+                        <span className="text-sm">{getBreadEmoji(comment.profiles.matryoshka_level, comment.profiles.user_role || undefined)}</span>
                       </Link>
                       <p className="text-sm mt-1 whitespace-pre-wrap">{comment.content}</p>
                     </div>
@@ -466,6 +497,17 @@ export default function CommunityPostDetailPage() {
                       <span className="text-xs text-muted-foreground">
                         {formatTimeAgo(comment.created_at)}
                       </span>
+
+                      {/* 삭제 버튼 - 본인 댓글인 경우에만 표시 */}
+                      {currentUserId === comment.user_id && (
+                        <button
+                          onClick={() => deleteComment(comment.id)}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors ml-auto"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>삭제</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

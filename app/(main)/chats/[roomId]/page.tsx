@@ -10,7 +10,7 @@ import { useMessages } from '@/lib/hooks/useMessages'
 import Link from 'next/link'
 import type { ChatRoomWithProfile } from '@/types/chat'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
-import { getMatryoshkaInfo } from '@/lib/matryoshka'
+import { getBreadInfo, getBreadEmoji } from '@/lib/bread'
 
 export default function ChatRoomPage() {
   const params = useParams()
@@ -171,27 +171,15 @@ export default function ChatRoomPage() {
               </div>
             )}
             <div>
-              <div className="font-semibold">{room.other_user.full_name || '익명'}</div>
-              {(() => {
-                const level = room.other_user.matryoshka_level || 1
-                const role = room.other_user.user_role
-                const matryoshkaInfo = getMatryoshkaInfo(level, role || undefined)
-
-                let emoji = '🍞'
-                if (role === 'developer') emoji = '🍔'
-                else if (role === 'admin') emoji = '🥪'
-                else if (level === 5) emoji = '🥯'
-                else if (level === 4) emoji = '🥨'
-                else if (level === 3) emoji = '🥐'
-                else if (level === 2) emoji = '🥖'
-
-                return (
-                  <div className="text-xs text-muted-foreground flex items-center gap-1">
-                    <span>{emoji}</span>
-                    <span>{matryoshkaInfo.name}</span>
-                  </div>
-                )
-              })()}
+              <div className="font-semibold flex items-center gap-1">
+                {room.other_user.full_name || '익명'}
+                <span className="text-base">
+                  {getBreadEmoji(room.other_user.matryoshka_level || 1, room.other_user.user_role || undefined)}
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {getBreadInfo(room.other_user.matryoshka_level || 1, room.other_user.user_role || undefined).name}
+              </div>
             </div>
           </Link>
         </div>

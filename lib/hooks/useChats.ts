@@ -56,7 +56,7 @@ export function useChats() {
           // 1. 모든 사용자 프로필 한번에 조회
           supabase
             .from('profiles')
-            .select('id, full_name, avatar_url, matryoshka_level')
+            .select('id, full_name, avatar_url, matryoshka_level, user_role')
             .in('id', otherUserIds),
 
           // 2. 모든 unread 메시지 한번에 조회

@@ -11,7 +11,7 @@ import {
   MOSCOW_METRO_STATIONS,
   SPB_METRO_STATIONS,
 } from '@/lib/constants'
-import { getMatryoshkaInfo, getMatryoshkaDescription } from '@/lib/matryoshka'
+import { getBreadInfo, getBreadDescription, getBreadEmoji } from '@/lib/bread'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 interface Profile {
@@ -300,7 +300,7 @@ export default function ProfilePage() {
             {/* 아바타 */}
             <div className="flex-shrink-0">
               {(() => {
-                const matryoshkaInfo = getMatryoshkaInfo(
+                const breadInfo = getBreadInfo(
                   profile.matryoshka_level || 1,
                   profile.user_role || undefined
                 )
@@ -314,7 +314,7 @@ export default function ProfilePage() {
                   <div
                     className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold border-2 border-border"
                     style={{
-                      backgroundColor: matryoshkaInfo.color,
+                      backgroundColor: breadInfo.color,
                       color: profile.user_role === 'developer' || profile.user_role === 'admin'
                         ? '#FFFFFF'
                         : '#1F2937'
@@ -368,47 +368,41 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Matryoshka Level Badge */}
+              {/* Bread Level Badge */}
               <div className="mb-2">
                 {(() => {
-                  const matryoshkaInfo = getMatryoshkaInfo(
+                  const breadInfo = getBreadInfo(
                     profile.matryoshka_level || 1,
                     profile.user_role || undefined
                   )
-                  const description = getMatryoshkaDescription(
+                  const description = getBreadDescription(
+                    profile.matryoshka_level || 1,
+                    profile.user_role || undefined
+                  )
+                  const emoji = getBreadEmoji(
                     profile.matryoshka_level || 1,
                     profile.user_role || undefined
                   )
                   return (
-                    <Link href="/about/matryoshka">
-                      <div
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer hover:scale-105 transition-transform"
+                    <div
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+                      style={{
+                        backgroundColor: breadInfo.color,
+                      }}
+                    >
+                      <div className="w-4 h-4 flex items-center justify-center text-sm">
+                        {emoji}
+                      </div>
+                      <span
                         style={{
-                          backgroundColor: matryoshkaInfo.color,
+                          color: profile.user_role === 'developer' || profile.user_role === 'admin'
+                            ? '#FFFFFF'
+                            : '#1F2937'
                         }}
                       >
-                        <div
-                          className="w-4 h-4 flex items-center justify-center text-sm"
-                        >
-                          {/* Use emoji based on level */}
-                          {profile.user_role === 'developer' ? '🍔' :
-                           profile.user_role === 'admin' ? '🥪' :
-                           profile.matryoshka_level === 5 ? '🥯' :
-                           profile.matryoshka_level === 4 ? '🥨' :
-                           profile.matryoshka_level === 3 ? '🥐' :
-                           profile.matryoshka_level === 2 ? '🥖' : '🍞'}
-                        </div>
-                        <span
-                          style={{
-                            color: profile.user_role === 'developer' || profile.user_role === 'admin'
-                              ? '#FFFFFF'
-                              : '#1F2937'
-                          }}
-                        >
-                          {matryoshkaInfo.name} · {description}
-                        </span>
-                      </div>
-                    </Link>
+                        {breadInfo.name} · {description}
+                      </span>
+                    </div>
                   )
                 })()}
               </div>

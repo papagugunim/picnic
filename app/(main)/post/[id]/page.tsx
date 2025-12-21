@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
-import { getMatryoshkaInfo } from '@/lib/matryoshka'
+import { getBreadInfo, getBreadEmoji } from '@/lib/bread'
 
 interface Post {
   id: string
@@ -35,6 +35,7 @@ interface Post {
     full_name: string | null
     avatar_url: string | null
     matryoshka_level: number
+    user_role: string | null
   }
   likes_count: number
   interests_count: number
@@ -93,7 +94,8 @@ export default function PostDetailPage() {
           profiles!posts_author_id_fkey (
             full_name,
             avatar_url,
-            matryoshka_level
+            matryoshka_level,
+            user_role
           )
         `)
         .eq('id', postId)
@@ -592,11 +594,9 @@ export default function PostDetailPage() {
                 <span className="font-semibold">
                   {post.profiles.full_name || '익명'}
                 </span>
-                <img
-                  src={getMatryoshkaInfo(post.profiles.matryoshka_level).icon}
-                  alt={getMatryoshkaInfo(post.profiles.matryoshka_level).name}
-                  className="w-5 h-5"
-                />
+                <span className="text-lg">
+                  {getBreadEmoji(post.profiles.matryoshka_level, post.profiles.user_role || undefined)}
+                </span>
               </div>
               <div className="text-sm text-muted-foreground">
                 {getCityNameInKorean(post.city)} · {formatTimeAgo(post.created_at)}
