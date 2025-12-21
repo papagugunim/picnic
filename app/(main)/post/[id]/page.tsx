@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, MapPin, Clock, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MapPin, Clock, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -13,6 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadInfo, getBreadEmoji } from '@/lib/bread'
@@ -31,6 +32,9 @@ interface Post {
   trade_method: string[]
   status: string
   created_at: string
+  is_hidden: boolean
+  hidden_at: string | null
+  hidden_by: string | null
   profiles: {
     full_name: string | null
     avatar_url: string | null
@@ -51,6 +55,7 @@ export default function PostDetailPage() {
   const [post, setPost] = useState<Post | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
   const [isStartingChat, setIsStartingChat] = useState(false)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -74,6 +79,15 @@ export default function PostDetailPage() {
       }
       setCurrentUserId(user.id)
 
+      // Get current user's role
+      const { data: currentUserProfile } = await supabase
+        .from('profiles')
+        .select('user_role')
+        .eq('id', user.id)
+        .single()
+
+      setCurrentUserRole(currentUserProfile?.user_role || null)
+
       // Get post
       const { data: postData, error: postError } = await supabase
         .from('posts')
@@ -91,6 +105,9 @@ export default function PostDetailPage() {
           trade_method,
           status,
           created_at,
+          is_hidden,
+          hidden_at,
+          hidden_by,
           profiles!posts_author_id_fkey (
             full_name,
             avatar_url,
@@ -233,6 +250,42 @@ export default function PostDetailPage() {
       alert('게시글 삭제 중 오류가 발생했습니다')
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  async function toggleHidden() {
+    if (!post || !currentUserId) return
+
+    const willHide = !post.is_hidden
+    const confirmMessage = willHide
+      ? '이 게시글을 숨기시겠습니까? 숨긴 게시글은 관리자만 볼 수 있습니다.'
+      : '이 게시글을 다시 표시하시겠습니까?'
+
+    if (!confirm(confirmMessage)) return
+
+    try {
+      const supabase = createClient()
+
+      const { error } = await supabase
+        .from('posts')
+        .update({
+          is_hidden: willHide,
+          hidden_at: willHide ? new Date().toISOString() : null,
+          hidden_by: willHide ? currentUserId : null,
+        })
+        .eq('id', postId)
+
+      if (error) {
+        console.error('Toggle hidden error:', error)
+        alert('게시글 숨김 처리 중 오류가 발생했습니다')
+        return
+      }
+
+      // Refresh post data
+      fetchPost()
+    } catch (err) {
+      console.error('Toggle hidden error:', err)
+      alert('게시글 숨김 처리 중 오류가 발생했습니다')
     }
   }
 
@@ -456,6 +509,8 @@ export default function PostDetailPage() {
   }
 
   const isAuthor = currentUserId === post.author_id
+  const isAdmin = currentUserRole === 'admin' || currentUserRole === 'developer'
+  const canManage = isAuthor || isAdmin
 
   return (
     <div className="min-h-screen bg-background pb-32">
@@ -471,7 +526,7 @@ export default function PostDetailPage() {
               <ChevronLeft className="w-5 h-5" />
             </Button>
             <h1 className="text-lg font-semibold">중고거래</h1>
-            {isAuthor ? (
+            {canManage ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">
@@ -479,18 +534,50 @@ export default function PostDetailPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => router.push(`/post/edit/${postId}`)}>
-                    <Edit className="w-4 h-4 mr-2" />
-                    수정
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={deletePost}
-                    disabled={isDeleting}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    {isDeleting ? '삭제 중...' : '삭제'}
-                  </DropdownMenuItem>
+                  {isAuthor && (
+                    <>
+                      <DropdownMenuItem onClick={() => router.push(`/post/edit/${postId}`)}>
+                        <Edit className="w-4 h-4 mr-2" />
+                        수정
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={deletePost}
+                        disabled={isDeleting}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        {isDeleting ? '삭제 중...' : '삭제'}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {isAdmin && (
+                    <>
+                      {isAuthor && <DropdownMenuSeparator />}
+                      <DropdownMenuItem onClick={toggleHidden}>
+                        {post.is_hidden ? (
+                          <>
+                            <Eye className="w-4 h-4 mr-2" />
+                            게시글 표시
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff className="w-4 h-4 mr-2" />
+                            게시글 숨김
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                      {!isAuthor && (
+                        <DropdownMenuItem
+                          onClick={deletePost}
+                          disabled={isDeleting}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          {isDeleting ? '삭제 중...' : '관리자 삭제'}
+                        </DropdownMenuItem>
+                      )}
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
@@ -615,11 +702,19 @@ export default function PostDetailPage() {
           </div>
 
           {/* Status Badge */}
-          {post.status === 'sold' && (
-            <div className="inline-block px-3 py-1 bg-muted text-muted-foreground rounded-full text-sm font-medium mb-4">
-              판매완료
-            </div>
-          )}
+          <div className="flex gap-2 mb-4">
+            {post.status === 'sold' && (
+              <div className="inline-block px-3 py-1 bg-muted text-muted-foreground rounded-full text-sm font-medium">
+                판매완료
+              </div>
+            )}
+            {post.is_hidden && isAdmin && (
+              <div className="inline-block px-3 py-1 bg-destructive/10 text-destructive rounded-full text-sm font-medium flex items-center gap-1">
+                <EyeOff className="w-4 h-4" />
+                숨김 (관리자만 표시)
+              </div>
+            )}
+          </div>
 
           {/* Description */}
           <div className="prose prose-sm max-w-none mb-6 whitespace-pre-wrap border-b border-border pb-6">

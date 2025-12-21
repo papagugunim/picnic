@@ -2,13 +2,20 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, Heart, MessageCircle, Send, MoreVertical, Trash2 } from 'lucide-react'
+import { ChevronLeft, Heart, MessageCircle, Send, MoreVertical, Trash2, EyeOff, Eye, Edit } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadEmoji } from '@/lib/bread'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 
 interface CommunityPost {
   id: string
@@ -18,6 +25,9 @@ interface CommunityPost {
   category: string
   created_at: string
   user_id: string
+  is_hidden: boolean
+  hidden_at: string | null
+  hidden_by: string | null
   profiles: {
     full_name: string | null
     avatar_url: string | null
@@ -63,6 +73,8 @@ export default function CommunityPostDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     fetchPostAndComments()
@@ -81,6 +93,15 @@ export default function CommunityPostDetailPage() {
       }
       setCurrentUserId(user.id)
 
+      // Get current user's role
+      const { data: currentUserProfile } = await supabase
+        .from('profiles')
+        .select('user_role')
+        .eq('id', user.id)
+        .single()
+
+      setCurrentUserRole(currentUserProfile?.user_role || null)
+
       // Get post
       const { data: postData, error: postError } = await supabase
         .from('community_posts')
@@ -92,6 +113,9 @@ export default function CommunityPostDetailPage() {
           category,
           created_at,
           user_id,
+          is_hidden,
+          hidden_at,
+          hidden_by,
           profiles!community_posts_user_id_fkey (
             full_name,
             avatar_url,
@@ -298,6 +322,69 @@ export default function CommunityPostDetailPage() {
     }
   }
 
+  async function deletePost() {
+    if (!post || !confirm('정말로 이 게시글을 삭제하시겠습니까?')) return
+
+    try {
+      setIsDeleting(true)
+      const supabase = createClient()
+
+      const { error } = await supabase
+        .from('community_posts')
+        .delete()
+        .eq('id', postId)
+
+      if (error) {
+        console.error('Post deletion error:', error)
+        alert('게시글 삭제 중 오류가 발생했습니다')
+        return
+      }
+
+      router.push('/community')
+      router.refresh()
+    } catch (err) {
+      console.error('Delete error:', err)
+      alert('게시글 삭제 중 오류가 발생했습니다')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  async function toggleHidden() {
+    if (!post || !currentUserId) return
+
+    const willHide = !post.is_hidden
+    const confirmMessage = willHide
+      ? '이 게시글을 숨기시겠습니까? 숨긴 게시글은 관리자만 볼 수 있습니다.'
+      : '이 게시글을 다시 표시하시겠습니까?'
+
+    if (!confirm(confirmMessage)) return
+
+    try {
+      const supabase = createClient()
+
+      const { error } = await supabase
+        .from('community_posts')
+        .update({
+          is_hidden: willHide,
+          hidden_at: willHide ? new Date().toISOString() : null,
+          hidden_by: willHide ? currentUserId : null,
+        })
+        .eq('id', postId)
+
+      if (error) {
+        console.error('Toggle hidden error:', error)
+        alert('게시글 숨김 처리 중 오류가 발생했습니다')
+        return
+      }
+
+      fetchPostAndComments()
+    } catch (err) {
+      console.error('Toggle hidden error:', err)
+      alert('게시글 숨김 처리 중 오류가 발생했습니다')
+    }
+  }
+
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString)
     const now = new Date()
@@ -331,6 +418,9 @@ export default function CommunityPostDetailPage() {
     )
   }
 
+  const isAuthor = currentUserId === post.user_id
+  const isAdmin = currentUserRole === 'admin' || currentUserRole === 'developer'
+  const canManage = isAuthor || isAdmin
   const category = categories[post.category as keyof typeof categories]
 
   return (
@@ -347,9 +437,57 @@ export default function CommunityPostDetailPage() {
               <ChevronLeft className="w-5 h-5" />
             </Button>
             <h1 className="text-lg font-semibold">동네생활</h1>
-            <Button variant="ghost" size="icon">
-              <MoreVertical className="w-5 h-5" />
-            </Button>
+            {canManage ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="w-5 h-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {isAuthor && (
+                    <DropdownMenuItem
+                      onClick={deletePost}
+                      disabled={isDeleting}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      {isDeleting ? '삭제 중...' : '삭제'}
+                    </DropdownMenuItem>
+                  )}
+                  {isAdmin && (
+                    <>
+                      {isAuthor && <DropdownMenuSeparator />}
+                      <DropdownMenuItem onClick={toggleHidden}>
+                        {post.is_hidden ? (
+                          <>
+                            <Eye className="w-4 h-4 mr-2" />
+                            게시글 표시
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff className="w-4 h-4 mr-2" />
+                            게시글 숨김
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                      {!isAuthor && (
+                        <DropdownMenuItem
+                          onClick={deletePost}
+                          disabled={isDeleting}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          {isDeleting ? '삭제 중...' : '관리자 삭제'}
+                        </DropdownMenuItem>
+                      )}
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="w-10" />
+            )}
           </div>
         </div>
 
@@ -389,6 +527,14 @@ export default function CommunityPostDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* Hidden Badge */}
+          {post.is_hidden && isAdmin && (
+            <div className="inline-block px-3 py-1 bg-destructive/10 text-destructive rounded-full text-sm font-medium flex items-center gap-1 mb-4">
+              <EyeOff className="w-4 h-4" />
+              숨김 (관리자만 표시)
+            </div>
+          )}
 
           {/* Title */}
           <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
@@ -498,14 +644,14 @@ export default function CommunityPostDetailPage() {
                         {formatTimeAgo(comment.created_at)}
                       </span>
 
-                      {/* 삭제 버튼 - 본인 댓글인 경우에만 표시 */}
-                      {currentUserId === comment.user_id && (
+                      {/* 삭제 버튼 - 본인 댓글 또는 관리자인 경우 표시 */}
+                      {(currentUserId === comment.user_id || isAdmin) && (
                         <button
                           onClick={() => deleteComment(comment.id)}
                           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors ml-auto"
                         >
                           <Trash2 className="w-4 h-4" />
-                          <span>삭제</span>
+                          <span>{currentUserId === comment.user_id ? '삭제' : '관리자 삭제'}</span>
                         </button>
                       )}
                     </div>
