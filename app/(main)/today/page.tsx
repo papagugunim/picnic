@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { TrendingUp, Newspaper, Cloud, Calendar as CalendarIcon, MapPin, Calculator, X } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { TrendingUp, Newspaper, Cloud, Calendar as CalendarIcon, MapPin, Calculator, X, RefreshCw } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { createClient } from '@/lib/supabase/client'
 
@@ -61,6 +61,8 @@ export default function TodayPage() {
   const [loading, setLoading] = useState(true)
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null)
+  const [weatherLastUpdated, setWeatherLastUpdated] = useState<Date | null>(null)
+  const [isRefreshingWeather, setIsRefreshingWeather] = useState(false)
 
   // 환율 계산기 상태
   const [rubAmount, setRubAmount] = useState<string>('')
@@ -73,34 +75,8 @@ export default function TodayPage() {
   const [chartType, setChartType] = useState<'rub' | 'usd'>('rub')
   const [chartPeriod, setChartPeriod] = useState<'week' | 'month' | 'quarter'>('week')
 
-  useEffect(() => {
-    const fetchUserCity = async () => {
-      const supabase = createClient()
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-      console.log('User:', user)
-      console.log('User Error:', userError)
-
-      if (user) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('city')
-          .eq('id', user.id)
-          .single()
-
-        console.log('Profile:', profile)
-        console.log('Profile Error:', profileError)
-
-        if (profile?.city) {
-          setUserCity(profile.city)
-          // 예시 날씨 데이터 (실제로는 API 호출)
-          fetchWeatherData(profile.city)
-        }
-      }
-      setLoading(false)
-    }
-
-    const fetchWeatherData = async (city: string) => {
+  // 날씨 데이터 가져오기 함수
+  const fetchWeatherData = useCallback(async (city: string) => {
       try {
         // 도시별 좌표 (Moscow, Saint Petersburg)
         const cityCoords: Record<string, { lat: number; lon: number }> = {
@@ -142,6 +118,7 @@ export default function TodayPage() {
             feelsLike,
             icon: WEATHER_ICONS[condition]
           })
+          setWeatherLastUpdated(new Date())
           return
         }
 
@@ -176,6 +153,7 @@ export default function TodayPage() {
           feelsLike: Math.round(data.main.feels_like),
           icon: WEATHER_ICONS[condition]
         })
+        setWeatherLastUpdated(new Date())
       } catch (error) {
         console.error('날씨 정보 가져오기 실패:', error)
         // 에러 발생 시 기본 날씨 표시
@@ -185,7 +163,34 @@ export default function TodayPage() {
           feelsLike: -2,
           icon: WEATHER_ICONS['cloudy']
         })
+        setWeatherLastUpdated(new Date())
       }
+    }, [])
+
+  useEffect(() => {
+    const fetchUserCity = async () => {
+      const supabase = createClient()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+      console.log('User:', user)
+      console.log('User Error:', userError)
+
+      if (user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('city')
+          .eq('id', user.id)
+          .single()
+
+        console.log('Profile:', profile)
+        console.log('Profile Error:', profileError)
+
+        if (profile?.city) {
+          setUserCity(profile.city)
+          fetchWeatherData(profile.city)
+        }
+      }
+      setLoading(false)
     }
 
     const fetchExchangeRates = async () => {
@@ -221,7 +226,19 @@ export default function TodayPage() {
     setCurrentDate(new Date())
     fetchUserCity()
     fetchExchangeRates()
-  }, [])
+
+    // 30분마다 날씨 자동 업데이트
+    const weatherInterval = setInterval(() => {
+      if (userCity) {
+        console.log('자동 날씨 업데이트 실행')
+        fetchWeatherData(userCity)
+      }
+    }, 30 * 60 * 1000) // 30분
+
+    return () => {
+      clearInterval(weatherInterval)
+    }
+  }, [userCity, fetchWeatherData])
 
   const formatDate = () => {
     const timezone = userCity ? CITY_TIMEZONES[userCity] : undefined
@@ -238,6 +255,35 @@ export default function TodayPage() {
   const getCityName = () => {
     if (!userCity) return '위치 설정 필요'
     return CITY_NAMES_KR[userCity] || userCity
+  }
+
+  // 수동 날씨 새로고침
+  const handleRefreshWeather = async () => {
+    if (!userCity || isRefreshingWeather) return
+
+    setIsRefreshingWeather(true)
+    try {
+      await fetchWeatherData(userCity)
+    } finally {
+      setIsRefreshingWeather(false)
+    }
+  }
+
+  // 마지막 업데이트 시간 포맷팅
+  const getLastUpdatedText = () => {
+    if (!weatherLastUpdated) return ''
+
+    const now = new Date()
+    const diffMs = now.getTime() - weatherLastUpdated.getTime()
+    const diffMins = Math.floor(diffMs / (1000 * 60))
+
+    if (diffMins < 1) return '방금 전'
+    if (diffMins < 60) return `${diffMins}분 전`
+
+    const diffHours = Math.floor(diffMins / 60)
+    if (diffHours < 24) return `${diffHours}시간 전`
+
+    return weatherLastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
   }
 
   // 숫자 포맷팅 함수 (천 단위 쉼표)
@@ -351,9 +397,28 @@ export default function TodayPage() {
                           (체감 {weather.feelsLike > 0 ? '+' : ''}{weather.feelsLike}°C)
                         </span>
                       </div>
+                      <button
+                        onClick={handleRefreshWeather}
+                        disabled={isRefreshingWeather}
+                        className="p-1.5 hover:bg-muted rounded-lg transition-colors disabled:opacity-50"
+                        aria-label="날씨 새로고침"
+                      >
+                        <RefreshCw
+                          className={`w-3.5 h-3.5 text-muted-foreground ${
+                            isRefreshingWeather ? 'animate-spin' : ''
+                          }`}
+                        />
+                      </button>
                     </div>
                   )}
                 </div>
+                {weatherLastUpdated && (
+                  <div className="flex justify-end">
+                    <span className="text-xs text-muted-foreground">
+                      마지막 업데이트: {getLastUpdatedText()}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </div>
