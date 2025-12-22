@@ -76,6 +76,8 @@ export default function TodayPage() {
   const [showChart, setShowChart] = useState(false)
   const [chartType, setChartType] = useState<'rub' | 'usd'>('rub')
   const [chartPeriod, setChartPeriod] = useState<'week' | 'month' | 'quarter'>('week')
+  const [chartData, setChartData] = useState<{ date: string; rate: number }[]>([])
+  const [isLoadingChart, setIsLoadingChart] = useState(false)
 
   // 환율 데이터 가져오기 함수
   const fetchExchangeRates = useCallback(async () => {
@@ -317,28 +319,30 @@ export default function TodayPage() {
     return Number(num).toLocaleString('ko-KR')
   }
 
-  // 환율 그래프 데이터 생성 (임시 - 실제로는 API에서 가져와야 함)
-  const generateChartData = (type: 'rub' | 'usd', period: 'week' | 'month' | 'quarter') => {
-    const currentRate = type === 'rub' ? (exchangeRates ? 1 / exchangeRates.krwToRub : 18) : (exchangeRates ? 1 / exchangeRates.rubToUsd : 90)
-    const dataPoints = period === 'week' ? 7 : period === 'month' ? 30 : 90
-    const data = []
+  // 환율 그래프 데이터 로드
+  const loadChartData = useCallback(async (type: 'rub' | 'usd', period: 'week' | 'month' | 'quarter') => {
+    setIsLoadingChart(true)
+    try {
+      const response = await fetch(`/api/exchange-rates/history?currency=${type}&period=${period}`)
 
-    for (let i = dataPoints - 1; i >= 0; i--) {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
+      if (!response.ok) {
+        throw new Error('환율 히스토리 데이터를 가져올 수 없습니다')
+      }
 
-      // 임시 변동 생성 (실제로는 API 데이터 사용)
-      const variation = (Math.random() - 0.5) * (currentRate * 0.05)
-      const rate = currentRate + variation
+      const result = await response.json()
+      setChartData(result.data || [])
 
-      data.push({
-        date: date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
-        rate: parseFloat(rate.toFixed(2))
-      })
+      if (result.fallback || result.error) {
+        console.warn('환율 히스토리: 대체 데이터 사용 중')
+      }
+    } catch (error) {
+      console.error('환율 히스토리 로드 실패:', error)
+      // 에러 시 빈 배열
+      setChartData([])
+    } finally {
+      setIsLoadingChart(false)
     }
-
-    return data
-  }
+  }, [])
 
   // 환율 계산 함수
   const handleRubChange = (value: string) => {
@@ -487,6 +491,7 @@ export default function TodayPage() {
                     onClick={() => {
                       setChartType('rub')
                       setShowChart(true)
+                      loadChartData('rub', chartPeriod)
                     }}
                     className="w-full flex items-center justify-between p-3 bg-background rounded-lg border border-border hover:border-primary transition-colors cursor-pointer"
                   >
@@ -504,6 +509,7 @@ export default function TodayPage() {
                     onClick={() => {
                       setChartType('usd')
                       setShowChart(true)
+                      loadChartData('usd', chartPeriod)
                     }}
                     className="w-full flex items-center justify-between p-3 bg-background rounded-lg border border-border hover:border-primary transition-colors cursor-pointer"
                   >
@@ -633,7 +639,10 @@ export default function TodayPage() {
                 {/* 기간 선택 */}
                 <div className="flex gap-2 mb-4">
                   <button
-                    onClick={() => setChartPeriod('week')}
+                    onClick={() => {
+                      setChartPeriod('week')
+                      loadChartData(chartType, 'week')
+                    }}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                       chartPeriod === 'week'
                         ? 'bg-primary text-primary-foreground'
@@ -643,7 +652,10 @@ export default function TodayPage() {
                     1주일
                   </button>
                   <button
-                    onClick={() => setChartPeriod('month')}
+                    onClick={() => {
+                      setChartPeriod('month')
+                      loadChartData(chartType, 'month')
+                    }}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                       chartPeriod === 'month'
                         ? 'bg-primary text-primary-foreground'
@@ -653,7 +665,10 @@ export default function TodayPage() {
                     1개월
                   </button>
                   <button
-                    onClick={() => setChartPeriod('quarter')}
+                    onClick={() => {
+                      setChartPeriod('quarter')
+                      loadChartData(chartType, 'quarter')
+                    }}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                       chartPeriod === 'quarter'
                         ? 'bg-primary text-primary-foreground'
@@ -666,41 +681,56 @@ export default function TodayPage() {
 
                 {/* 그래프 */}
                 <div className="h-64 mb-4">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={generateChartData(chartType, chartPeriod)}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fontSize: 12 }}
-                        stroke="#888"
-                      />
-                      <YAxis
-                        tick={{ fontSize: 12 }}
-                        stroke="#888"
-                        domain={['dataMin - 1', 'dataMax + 1']}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                          border: '1px solid #333',
-                          borderRadius: '8px'
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="rate"
-                        stroke="#22c55e"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  {isLoadingChart ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-sm text-muted-foreground flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        환율 데이터 로딩 중...
+                      </div>
+                    </div>
+                  ) : chartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fontSize: 12 }}
+                          stroke="#888"
+                        />
+                        <YAxis
+                          tick={{ fontSize: 12 }}
+                          stroke="#888"
+                          domain={['dataMin - 1', 'dataMax + 1']}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            border: '1px solid #333',
+                            borderRadius: '8px'
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="rate"
+                          stroke="#22c55e"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-sm text-muted-foreground">
+                        데이터를 불러올 수 없습니다
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="text-xs text-muted-foreground text-center">
                   {chartType === 'rub' ? '1루블당 원화 환율' : '1달러당 루블 환율'}
                   <br />
-                  <span className="text-xs opacity-70">※ 임시 데이터입니다. 실제 데이터는 API 연동 후 제공됩니다.</span>
+                  <span className="text-xs opacity-70">출처: 한국수출입은행 환율 데이터</span>
                 </div>
               </div>
             </div>
