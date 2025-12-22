@@ -21,65 +21,87 @@ export async function GET(request: Request) {
       })
     }
 
-    // 1년치 데이터 가져오기 (성능 개선: 한 번만 로드)
+    // 1년치 데이터 가져오기 (성능 개선: 샘플링 + 병렬 처리)
     const endDate = new Date()
     const startDate = new Date()
     startDate.setDate(endDate.getDate() - 365) // 1년
 
-    // 한국수출입은행 API로 히스토리 데이터 가져오기
-    const historyData = []
+    // 데이터 포인트 생성 (주 1회 샘플링으로 52개 포인트만)
+    const datesToFetch: Date[] = []
     const currentDate = new Date(startDate)
 
-    // 날짜별로 환율 데이터 수집 (주말 제외)
     while (currentDate <= endDate) {
-      // 주말 건너뛰기
+      // 주말이 아니면 추가
       if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
-        const dateStr = formatDate(currentDate)
+        datesToFetch.push(new Date(currentDate))
+      }
+      // 7일씩 건너뛰기 (주 1회)
+      currentDate.setDate(currentDate.getDate() + 7)
+    }
 
-        try {
-          const koeximbankUrl = `https://www.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey=&searchdate=${dateStr}&data=AP01`
-          const response = await fetch(koeximbankUrl, {
-            next: { revalidate: 3600 }
-          })
+    // 최신 데이터 포인트 추가 (오늘)
+    if (endDate.getDay() !== 0 && endDate.getDay() !== 6) {
+      datesToFetch.push(new Date(endDate))
+    }
 
-          if (response.ok) {
-            const data = await response.json()
+    // 병렬로 데이터 가져오기 (10개씩 배치로 처리하여 API 부하 방지)
+    const batchSize = 10
+    const historyData = []
 
-            if (currency === 'rub') {
-              // RUB/KRW
-              const rubData = data.find((item: any) => item.cur_unit === 'RUB')
-              if (rubData) {
-                const rubRate = parseFloat(rubData.deal_bas_r.replace(/,/g, ''))
-                const krwPerRub = parseFloat((1 / rubRate).toFixed(2))
+    for (let i = 0; i < datesToFetch.length; i += batchSize) {
+      const batch = datesToFetch.slice(i, i + batchSize)
 
-                historyData.push({
-                  date: formatDateForDisplay(currentDate),
-                  rate: krwPerRub
-                })
-              }
-            } else {
-              // USD/RUB
-              const rubData = data.find((item: any) => item.cur_unit === 'RUB')
-              const usdData = data.find((item: any) => item.cur_unit === 'USD')
+      const batchResults = await Promise.all(
+        batch.map(async (date) => {
+          const dateStr = formatDate(date)
 
-              if (rubData && usdData) {
-                const rubRate = parseFloat(rubData.deal_bas_r.replace(/,/g, ''))
-                const usdRate = parseFloat(usdData.deal_bas_r.replace(/,/g, ''))
-                const rubPerUsd = parseFloat((rubRate / usdRate).toFixed(2))
+          try {
+            const koeximbankUrl = `https://www.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey=&searchdate=${dateStr}&data=AP01`
+            const response = await fetch(koeximbankUrl, {
+              next: { revalidate: 3600 }
+            })
 
-                historyData.push({
-                  date: formatDateForDisplay(currentDate),
-                  rate: rubPerUsd
-                })
+            if (response.ok) {
+              const data = await response.json()
+
+              if (currency === 'rub') {
+                // RUB/KRW
+                const rubData = data.find((item: any) => item.cur_unit === 'RUB')
+                if (rubData) {
+                  const rubRate = parseFloat(rubData.deal_bas_r.replace(/,/g, ''))
+                  const krwPerRub = parseFloat((1 / rubRate).toFixed(2))
+
+                  return {
+                    date: formatDateForDisplay(date),
+                    rate: krwPerRub
+                  }
+                }
+              } else {
+                // USD/RUB
+                const rubData = data.find((item: any) => item.cur_unit === 'RUB')
+                const usdData = data.find((item: any) => item.cur_unit === 'USD')
+
+                if (rubData && usdData) {
+                  const rubRate = parseFloat(rubData.deal_bas_r.replace(/,/g, ''))
+                  const usdRate = parseFloat(usdData.deal_bas_r.replace(/,/g, ''))
+                  const rubPerUsd = parseFloat((rubRate / usdRate).toFixed(2))
+
+                  return {
+                    date: formatDateForDisplay(date),
+                    rate: rubPerUsd
+                  }
+                }
               }
             }
+          } catch (error) {
+            console.error(`날짜 ${dateStr} 환율 데이터 가져오기 실패:`, error)
           }
-        } catch (error) {
-          console.error(`날짜 ${dateStr} 환율 데이터 가져오기 실패:`, error)
-        }
-      }
+          return null
+        })
+      )
 
-      currentDate.setDate(currentDate.getDate() + 1)
+      // 성공한 결과만 추가
+      historyData.push(...batchResults.filter(item => item !== null))
     }
 
     // 데이터가 없으면 현재 환율로 대체 데이터 생성

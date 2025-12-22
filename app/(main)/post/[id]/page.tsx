@@ -141,7 +141,7 @@ export default function PostDetailPage() {
         .select('id')
         .eq('user_id', user.id)
         .eq('post_id', postId)
-        .single()
+        .maybeSingle()
 
       // Check if user interested
       const { data: userInterestData } = await supabase
@@ -149,7 +149,7 @@ export default function PostDetailPage() {
         .select('id')
         .eq('user_id', user.id)
         .eq('post_id', postId)
-        .single()
+        .maybeSingle()
 
       // Extract author profile (Supabase returns it as array)
       const author = Array.isArray(postData.profiles)
