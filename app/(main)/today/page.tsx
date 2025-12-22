@@ -63,6 +63,8 @@ export default function TodayPage() {
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null)
   const [weatherLastUpdated, setWeatherLastUpdated] = useState<Date | null>(null)
   const [isRefreshingWeather, setIsRefreshingWeather] = useState(false)
+  const [exchangeRatesLastUpdated, setExchangeRatesLastUpdated] = useState<Date | null>(null)
+  const [isRefreshingExchangeRates, setIsRefreshingExchangeRates] = useState(false)
 
   // 환율 계산기 상태
   const [rubAmount, setRubAmount] = useState<string>('')
@@ -74,6 +76,39 @@ export default function TodayPage() {
   const [showChart, setShowChart] = useState(false)
   const [chartType, setChartType] = useState<'rub' | 'usd'>('rub')
   const [chartPeriod, setChartPeriod] = useState<'week' | 'month' | 'quarter'>('week')
+
+  // 환율 데이터 가져오기 함수
+  const fetchExchangeRates = useCallback(async () => {
+    try {
+      // 자체 API 라우트를 통해 네이버 환율 정보 가져오기
+      const response = await fetch('/api/exchange-rates')
+
+      if (!response.ok) {
+        throw new Error('환율 정보를 가져올 수 없습니다')
+      }
+
+      const data = await response.json()
+
+      setExchangeRates({
+        krwToRub: data.krwToRub,
+        rubToUsd: data.rubToUsd,
+        lastUpdated: new Date(data.lastUpdated).toLocaleString('ko-KR'),
+        source: data.source
+      })
+      setExchangeRatesLastUpdated(new Date())
+
+      console.log('환율 출처:', data.source === 'naver' ? '네이버 금융' : data.source === 'api' ? 'ExchangeRate API' : '대체 API')
+    } catch (error) {
+      console.error('환율 정보 가져오기 실패:', error)
+      // 에러 발생 시 예시 데이터
+      setExchangeRates({
+        krwToRub: 0.075,
+        rubToUsd: 0.011,
+        lastUpdated: new Date().toLocaleString('ko-KR')
+      })
+      setExchangeRatesLastUpdated(new Date())
+    }
+  }, [])
 
   // 날씨 데이터 가져오기 함수
   const fetchWeatherData = useCallback(async (city: string) => {
@@ -193,36 +228,6 @@ export default function TodayPage() {
       setLoading(false)
     }
 
-    const fetchExchangeRates = async () => {
-      try {
-        // 자체 API 라우트를 통해 네이버 환율 정보 가져오기
-        const response = await fetch('/api/exchange-rates')
-
-        if (!response.ok) {
-          throw new Error('환율 정보를 가져올 수 없습니다')
-        }
-
-        const data = await response.json()
-
-        setExchangeRates({
-          krwToRub: data.krwToRub,
-          rubToUsd: data.rubToUsd,
-          lastUpdated: new Date(data.lastUpdated).toLocaleString('ko-KR'),
-          source: data.source
-        })
-
-        console.log('환율 출처:', data.source === 'naver' ? '네이버 금융' : data.source === 'api' ? 'ExchangeRate API' : '대체 API')
-      } catch (error) {
-        console.error('환율 정보 가져오기 실패:', error)
-        // 에러 발생 시 예시 데이터
-        setExchangeRates({
-          krwToRub: 0.075,
-          rubToUsd: 0.011,
-          lastUpdated: new Date().toLocaleString('ko-KR')
-        })
-      }
-    }
-
     setCurrentDate(new Date())
     fetchUserCity()
     fetchExchangeRates()
@@ -235,10 +240,17 @@ export default function TodayPage() {
       }
     }, 30 * 60 * 1000) // 30분
 
+    // 1시간마다 환율 자동 업데이트
+    const exchangeRatesInterval = setInterval(() => {
+      console.log('자동 환율 업데이트 실행')
+      fetchExchangeRates()
+    }, 60 * 60 * 1000) // 1시간
+
     return () => {
       clearInterval(weatherInterval)
+      clearInterval(exchangeRatesInterval)
     }
-  }, [userCity, fetchWeatherData])
+  }, [userCity, fetchWeatherData, fetchExchangeRates])
 
   const formatDate = () => {
     const timezone = userCity ? CITY_TIMEZONES[userCity] : undefined
@@ -269,12 +281,24 @@ export default function TodayPage() {
     }
   }
 
+  // 수동 환율 새로고침
+  const handleRefreshExchangeRates = async () => {
+    if (isRefreshingExchangeRates) return
+
+    setIsRefreshingExchangeRates(true)
+    try {
+      await fetchExchangeRates()
+    } finally {
+      setIsRefreshingExchangeRates(false)
+    }
+  }
+
   // 마지막 업데이트 시간 포맷팅
-  const getLastUpdatedText = () => {
-    if (!weatherLastUpdated) return ''
+  const getLastUpdatedText = (lastUpdated: Date | null) => {
+    if (!lastUpdated) return ''
 
     const now = new Date()
-    const diffMs = now.getTime() - weatherLastUpdated.getTime()
+    const diffMs = now.getTime() - lastUpdated.getTime()
     const diffMins = Math.floor(diffMs / (1000 * 60))
 
     if (diffMins < 1) return '방금 전'
@@ -283,7 +307,7 @@ export default function TodayPage() {
     const diffHours = Math.floor(diffMins / 60)
     if (diffHours < 24) return `${diffHours}시간 전`
 
-    return weatherLastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+    return lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
   }
 
   // 숫자 포맷팅 함수 (천 단위 쉼표)
@@ -415,7 +439,7 @@ export default function TodayPage() {
                 {weatherLastUpdated && (
                   <div className="flex justify-end">
                     <span className="text-xs text-muted-foreground">
-                      마지막 업데이트: {getLastUpdatedText()}
+                      마지막 업데이트: {getLastUpdatedText(weatherLastUpdated)}
                     </span>
                   </div>
                 )}
@@ -433,13 +457,27 @@ export default function TodayPage() {
                 <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
                 <h2 className="font-bold">환율</h2>
               </div>
-              <button
-                onClick={() => setShowCalculator(true)}
-                className="p-2 hover:bg-background rounded-lg transition-colors"
-                aria-label="환율 계산기"
-              >
-                <Calculator className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleRefreshExchangeRates}
+                  disabled={isRefreshingExchangeRates}
+                  className="p-2 hover:bg-background rounded-lg transition-colors disabled:opacity-50"
+                  aria-label="환율 새로고침"
+                >
+                  <RefreshCw
+                    className={`w-4 h-4 text-muted-foreground ${
+                      isRefreshingExchangeRates ? 'animate-spin' : ''
+                    }`}
+                  />
+                </button>
+                <button
+                  onClick={() => setShowCalculator(true)}
+                  className="p-2 hover:bg-background rounded-lg transition-colors"
+                  aria-label="환율 계산기"
+                >
+                  <Calculator className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </button>
+              </div>
             </div>
 
             {exchangeRates ? (
@@ -487,7 +525,9 @@ export default function TodayPage() {
                     exchangeRates.source === 'api' ? 'ExchangeRate API' :
                     '캐시 데이터'
                   }</div>
-                  <div>업데이트: {new Date(exchangeRates.lastUpdated).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</div>
+                  {exchangeRatesLastUpdated && (
+                    <div>마지막 업데이트: {getLastUpdatedText(exchangeRatesLastUpdated)}</div>
+                  )}
                 </div>
               </>
             ) : (
