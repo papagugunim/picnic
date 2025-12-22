@@ -13,6 +13,7 @@ import {
 } from '@/lib/constants'
 import { getBreadInfo, getBreadDescription, getBreadEmoji } from '@/lib/bread'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
+import { BreadLevelModal } from '@/components/bread-level-modal'
 
 interface Profile {
   id: string
@@ -60,6 +61,7 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isStartingChat, setIsStartingChat] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [isBreadModalOpen, setIsBreadModalOpen] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -384,8 +386,9 @@ export default function ProfilePage() {
                     profile.user_role || undefined
                   )
                   return (
-                    <div
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+                    <button
+                      onClick={() => setIsBreadModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold hover:opacity-80 transition-opacity cursor-pointer"
                       style={{
                         backgroundColor: breadInfo.color,
                       }}
@@ -402,7 +405,7 @@ export default function ProfilePage() {
                       >
                         {breadInfo.name} · {description}
                       </span>
-                    </div>
+                    </button>
                   )
                 })()}
               </div>
@@ -764,6 +767,12 @@ export default function ProfilePage() {
           </button>
         </div>
       )}
+
+      {/* 브레드 등급 설명 모달 */}
+      <BreadLevelModal
+        open={isBreadModalOpen}
+        onOpenChange={setIsBreadModalOpen}
+      />
     </div>
   )
 }
