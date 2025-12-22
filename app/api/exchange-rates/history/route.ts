@@ -7,10 +7,10 @@ const CACHE_DURATION = 60 * 60 * 1000 // 1시간 캐시
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const period = searchParams.get('period') || 'week' // week, month, quarter
     const currency = searchParams.get('currency') || 'rub' // rub, usd
 
-    const cacheKey = `${period}-${currency}`
+    // 캐시 키는 currency만 사용 (1년치 데이터를 통째로 캐시)
+    const cacheKey = `year-${currency}`
 
     // 캐시 확인
     const cached = cache.get(cacheKey)
@@ -21,23 +21,10 @@ export async function GET(request: Request) {
       })
     }
 
-    // 기간에 따른 날짜 계산
+    // 1년치 데이터 가져오기 (성능 개선: 한 번만 로드)
     const endDate = new Date()
     const startDate = new Date()
-
-    switch (period) {
-      case 'week':
-        startDate.setDate(endDate.getDate() - 7)
-        break
-      case 'month':
-        startDate.setDate(endDate.getDate() - 30)
-        break
-      case 'quarter':
-        startDate.setDate(endDate.getDate() - 90)
-        break
-      default:
-        startDate.setDate(endDate.getDate() - 7)
-    }
+    startDate.setDate(endDate.getDate() - 365) // 1년
 
     // 한국수출입은행 API로 히스토리 데이터 가져오기
     const historyData = []
@@ -98,7 +85,7 @@ export async function GET(request: Request) {
     // 데이터가 없으면 현재 환율로 대체 데이터 생성
     if (historyData.length === 0) {
       console.warn('히스토리 데이터 없음, 대체 데이터 생성')
-      const fallbackData = generateFallbackData(period, currency)
+      const fallbackData = generateFallbackData('year', currency)
 
       cache.set(cacheKey, {
         data: fallbackData,
@@ -127,11 +114,10 @@ export async function GET(request: Request) {
 
     // 에러 시 대체 데이터
     const { searchParams } = new URL(request.url)
-    const period = searchParams.get('period') || 'week'
     const currency = searchParams.get('currency') || 'rub'
 
     return NextResponse.json({
-      data: generateFallbackData(period, currency),
+      data: generateFallbackData('year', currency),
       error: true
     })
   }
@@ -152,7 +138,11 @@ function formatDateForDisplay(date: Date): string {
 
 // 대체 데이터 생성 (API 실패 시)
 function generateFallbackData(period: string, currency: string) {
-  const dataPoints = period === 'week' ? 7 : period === 'month' ? 30 : 90
+  const dataPoints =
+    period === 'week' ? 7 :
+    period === 'month' ? 30 :
+    period === 'quarter' ? 90 :
+    365 // year
   const currentRate = currency === 'rub' ? 18 : 90
   const data = []
 

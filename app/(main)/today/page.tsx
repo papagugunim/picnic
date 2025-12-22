@@ -75,9 +75,14 @@ export default function TodayPage() {
   // 환율 그래프 모달 상태
   const [showChart, setShowChart] = useState(false)
   const [chartType, setChartType] = useState<'rub' | 'usd'>('rub')
-  const [chartPeriod, setChartPeriod] = useState<'week' | 'month' | 'quarter'>('week')
+  const [chartPeriod, setChartPeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('week')
   const [chartData, setChartData] = useState<{ date: string; rate: number }[]>([])
   const [isLoadingChart, setIsLoadingChart] = useState(false)
+  // 1년치 전체 데이터 캐시 (성능 개선)
+  const [yearlyChartData, setYearlyChartData] = useState<{
+    rub: { date: string; rate: number }[]
+    usd: { date: string; rate: number }[]
+  }>({ rub: [], usd: [] })
 
   // 환율 데이터 가져오기 함수
   const fetchExchangeRates = useCallback(async () => {
@@ -319,30 +324,55 @@ export default function TodayPage() {
     return Number(num).toLocaleString('ko-KR')
   }
 
-  // 환율 그래프 데이터 로드
-  const loadChartData = useCallback(async (type: 'rub' | 'usd', period: 'week' | 'month' | 'quarter') => {
+  // 기간별 데이터 필터링
+  const filterDataByPeriod = useCallback((data: { date: string; rate: number }[], period: 'week' | 'month' | 'quarter' | 'year') => {
+    if (period === 'year') return data
+
+    const days = period === 'week' ? 7 : period === 'month' ? 30 : 90
+    return data.slice(-days)
+  }, [])
+
+  // 환율 그래프 데이터 로드 (성능 개선: 1년치 데이터를 한 번만 로드)
+  const loadChartData = useCallback(async (type: 'rub' | 'usd', period: 'week' | 'month' | 'quarter' | 'year') => {
+    // 이미 1년치 데이터가 있으면 필터링만 수행 (빠름!)
+    if (yearlyChartData[type].length > 0) {
+      const filtered = filterDataByPeriod(yearlyChartData[type], period)
+      setChartData(filtered)
+      return
+    }
+
+    // 1년치 데이터가 없으면 API 호출
     setIsLoadingChart(true)
     try {
-      const response = await fetch(`/api/exchange-rates/history?currency=${type}&period=${period}`)
+      const response = await fetch(`/api/exchange-rates/history?currency=${type}`)
 
       if (!response.ok) {
         throw new Error('환율 히스토리 데이터를 가져올 수 없습니다')
       }
 
       const result = await response.json()
-      setChartData(result.data || [])
+      const yearData = result.data || []
+
+      // 1년치 데이터를 캐시에 저장
+      setYearlyChartData(prev => ({
+        ...prev,
+        [type]: yearData
+      }))
+
+      // 기간에 맞게 필터링하여 표시
+      const filtered = filterDataByPeriod(yearData, period)
+      setChartData(filtered)
 
       if (result.fallback || result.error) {
         console.warn('환율 히스토리: 대체 데이터 사용 중')
       }
     } catch (error) {
       console.error('환율 히스토리 로드 실패:', error)
-      // 에러 시 빈 배열
       setChartData([])
     } finally {
       setIsLoadingChart(false)
     }
-  }, [])
+  }, [yearlyChartData, filterDataByPeriod])
 
   // 환율 계산 함수
   const handleRubChange = (value: string) => {
@@ -676,6 +706,19 @@ export default function TodayPage() {
                     }`}
                   >
                     1분기
+                  </button>
+                  <button
+                    onClick={() => {
+                      setChartPeriod('year')
+                      loadChartData(chartType, 'year')
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      chartPeriod === 'year'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background hover:bg-muted'
+                    }`}
+                  >
+                    1년
                   </button>
                 </div>
 
