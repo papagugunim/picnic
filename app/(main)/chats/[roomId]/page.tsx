@@ -7,10 +7,17 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
 import { useMessages } from '@/lib/hooks/useMessages'
+import { useAppointment } from '@/lib/hooks/useAppointment'
+import { useSale } from '@/lib/hooks/useSale'
 import Link from 'next/link'
 import type { ChatRoomWithProfile } from '@/types/chat'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadInfo, getBreadEmoji } from '@/lib/bread'
+import { AppointmentProposalForm } from '@/components/chat/AppointmentProposalForm'
+import { AppointmentCard } from '@/components/chat/AppointmentCard'
+import { CompleteSaleButton } from '@/components/chat/CompleteSaleButton'
+import { ReviewModal } from '@/components/review/ReviewModal'
+import { toast } from 'sonner'
 
 export default function ChatRoomPage() {
   const params = useParams()
@@ -21,9 +28,12 @@ export default function ChatRoomPage() {
   const [newMessage, setNewMessage] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [showReviewModal, setShowReviewModal] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const { messages, isSending, sendMessage, error: messagesError } = useMessages(roomId)
+  const { appointment, proposeAppointment, respondToAppointment } = useAppointment(roomId)
+  const { completeSale, createReview, checkReviewExists } = useSale()
 
   useEffect(() => {
     fetchRoom()
@@ -73,7 +83,7 @@ export default function ChatRoomPage() {
       if (roomData.post_id) {
         const { data } = await supabase
           .from('posts')
-          .select('id, title, price, images')
+          .select('id, title, price, images, status, author_id')
           .eq('id', roomData.post_id)
           .single()
 
@@ -105,11 +115,37 @@ export default function ChatRoomPage() {
     const success = await sendMessage(newMessage, currentUserId)
     if (success) {
       setNewMessage('')
-      // 메시지 전송 후 스크롤을 아래로 이동
       setTimeout(() => {
         scrollToBottom()
       }, 100)
     }
+  }
+
+  async function handleCompleteSale() {
+    if (!room?.post || !currentUserId) return
+
+    try {
+      await completeSale(
+        room.post.id,
+        roomId,
+        room.other_user.id,
+        currentUserId
+      )
+      // 채팅방 정보 다시 불러오기
+      await fetchRoom()
+    } catch (error) {
+      throw error
+    }
+  }
+
+  async function handleCreateReview(
+    postId: string,
+    reviewerId: string,
+    revieweeId: string,
+    rating: number,
+    comment?: string
+  ) {
+    await createReview(postId, reviewerId, revieweeId, rating, comment)
   }
 
   const scrollToBottom = () => {
@@ -123,6 +159,15 @@ export default function ChatRoomPage() {
       minute: '2-digit',
     })
   }
+
+  // 판매자인지 확인
+  const isSeller = room?.post?.author_id === currentUserId
+  // 구매자인지 확인
+  const isBuyer = !isSeller && room?.post
+  // 판매완료 여부
+  const isSold = room?.post?.status === 'sold'
+  // 약속 확정 여부
+  const isAppointmentConfirmed = appointment?.status === 'confirmed'
 
   if (isLoading) {
     return (
@@ -182,6 +227,32 @@ export default function ChatRoomPage() {
               </div>
             </div>
           </Link>
+
+          {/* 구매약속 & 판매완료 버튼 */}
+          <div className="flex gap-2">
+            {/* 구매자: 구매약속 잡기 버튼 (판매완료 아닐 때만) */}
+            {isBuyer && !isSold && currentUserId && room.post && (
+              <AppointmentProposalForm
+                roomId={roomId}
+                postId={room.post.id}
+                currentUserId={currentUserId}
+                otherUserId={room.other_user.id}
+                onPropose={proposeAppointment}
+              />
+            )}
+
+            {/* 판매자: 판매완료 버튼 (약속 확정 후, 판매완료 안 했을 때만) */}
+            {isSeller && isAppointmentConfirmed && !isSold && currentUserId && room.post && (
+              <CompleteSaleButton
+                postId={room.post.id}
+                roomId={roomId}
+                buyerId={room.other_user.id}
+                sellerId={currentUserId}
+                onComplete={handleCompleteSale}
+                onReviewRequest={() => setShowReviewModal(true)}
+              />
+            )}
+          </div>
         </div>
 
         {/* Related Post Banner */}
@@ -202,7 +273,12 @@ export default function ChatRoomPage() {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">{room.post.title}</div>
+              <div className="text-sm font-medium truncate flex items-center gap-2">
+                {room.post.title}
+                {isSold && (
+                  <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded">판매완료</span>
+                )}
+              </div>
               <div className="text-xs text-muted-foreground">
                 {room.post.price === 0 || room.post.price === null
                   ? '무료나눔'
@@ -215,12 +291,22 @@ export default function ChatRoomPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 pb-96 flex flex-col justify-end">
-        {messages.length === 0 ? (
+        {messages.length === 0 && !appointment ? (
           <div className="text-center py-16 text-muted-foreground flex-1 flex items-center justify-center">
             메시지를 보내서 대화를 시작해보세요
           </div>
         ) : (
           <div className="space-y-4">
+            {/* 약속 카드 (있을 경우 맨 위에 표시) */}
+            {appointment && currentUserId && (
+              <AppointmentCard
+                appointment={appointment}
+                currentUserId={currentUserId}
+                onRespond={respondToAppointment}
+              />
+            )}
+
+            {/* 메시지 목록 */}
             {messages.map((message, index) => {
               const isOwnMessage = message.sender_id === currentUserId
               const showDate = index === 0 ||
@@ -302,7 +388,6 @@ export default function ChatRoomPage() {
             className="resize-none text-base"
             style={{ fontSize: '16px' }}
             onFocus={() => {
-              // 키보드가 올라올 때 스크롤을 아래로 이동
               setTimeout(() => {
                 scrollToBottom()
               }, 300)
@@ -324,6 +409,19 @@ export default function ChatRoomPage() {
           </Button>
         </div>
       </div>
+
+      {/* Review Modal */}
+      {currentUserId && room.post && (
+        <ReviewModal
+          open={showReviewModal}
+          onOpenChange={setShowReviewModal}
+          postId={room.post.id}
+          reviewerId={currentUserId}
+          revieweeId={room.other_user.id}
+          revieweeName={room.other_user.full_name || '익명'}
+          onSubmit={handleCreateReview}
+        />
+      )}
     </div>
   )
 }

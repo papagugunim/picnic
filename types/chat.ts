@@ -2,6 +2,8 @@
  * 채팅 관련 타입 정의
  */
 
+import type { PurchaseAppointment } from './purchase'
+
 export interface ChatRoom {
   id: string
   user1_id: string
@@ -9,6 +11,7 @@ export interface ChatRoom {
   post_id: string | null
   last_message: string | null
   last_message_at: string | null
+  sale_completed_at: string | null
   created_at: string
   updated_at: string
 }
@@ -36,7 +39,10 @@ export interface ChatRoomWithProfile extends ChatRoom {
     title: string
     price: number | null
     images: string[]
+    status?: string
+    author_id?: string
   }
+  active_appointment?: PurchaseAppointment | null
 }
 
 export interface ChatMessageWithProfile extends ChatMessage {
