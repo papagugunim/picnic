@@ -43,24 +43,33 @@ export default function ForgotPasswordPage() {
       setIsLoading(true)
       const supabase = createClient()
 
-      const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      console.log('Attempting to send password reset email to:', values.email)
+
+      const { data, error } = await supabase.auth.resetPasswordForEmail(values.email, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
       })
 
+      console.log('Reset password response:', { data, error })
+
       if (error) {
+        console.error('Reset password error:', error)
         toast.error('이메일 전송 실패', {
-          description: '잠시 후 다시 시도해주세요.',
+          description: error.message || '잠시 후 다시 시도해주세요.',
         })
         return
       }
 
+      // Supabase는 보안상 이메일이 존재하지 않아도 에러를 반환하지 않음
+      // 항상 성공으로 처리하여 이메일 존재 여부를 노출하지 않음
       setEmailSent(true)
       toast.success('이메일을 전송했습니다!', {
-        description: '메일함을 확인해주세요.',
+        description: '가입된 이메일인 경우 메일함을 확인해주세요.',
       })
     } catch (err) {
       console.error('Reset password error:', err)
-      toast.error('오류가 발생했습니다')
+      toast.error('오류가 발생했습니다', {
+        description: '잠시 후 다시 시도해주세요.',
+      })
     } finally {
       setIsLoading(false)
     }
