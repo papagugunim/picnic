@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
   // 1. 인증이 필요한 페이지 체크 (토큰 존재 여부만 확인)
-  const protectedPaths = ['/feed', '/profile', '/settings', '/post/new', '/community/new', '/chats']
+  const protectedPaths = ['/feed', '/profile', '/settings', '/post/new', '/community/new', '/chats', '/onboarding', '/welcome', '/notifications']
   const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path))
 
   const accessToken = request.cookies.get('sb-access-token')?.value

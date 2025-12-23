@@ -26,38 +26,45 @@ export async function GET(request: Request) {
     // 이메일 확인 성공
     console.log('Email verification success:', data)
 
-    // 세션이 생성되었는지 확인
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (session) {
-      console.log('Session created successfully')
-
-      // 신규 회원인지 확인 (프로필 생성 시간이 최근인지)
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('created_at')
-        .eq('id', session.user.id)
-        .single()
-
-      if (profile) {
-        const createdAt = new Date(profile.created_at)
-        const now = new Date()
-        const diffInMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60)
-
-        // 10분 이내에 생성된 프로필이면 신규 회원으로 간주하고 온보딩으로
-        if (diffInMinutes < 10) {
-          console.log('New user detected, redirecting to onboarding')
-          return NextResponse.redirect(`${origin}/onboarding`)
-        }
-      }
-
-      // 기존 회원은 welcome 페이지로
-      return NextResponse.redirect(`${origin}/welcome`)
-    } else {
-      console.log('Session not created, redirecting to login')
-      // 세션이 없으면 로그인 페이지로
-      return NextResponse.redirect(`${origin}/login?message=로그인해주세요`)
+    // verifyOtp의 응답에서 사용자 정보 확인
+    const user = data?.user
+    if (!user) {
+      console.error('No user in verification response')
+      return NextResponse.redirect(`${origin}/login?message=사용자 정보를 찾을 수 없습니다`)
     }
+
+    console.log('User verified:', user.id)
+
+    // 프로필 생성 시간 확인하여 신규 회원인지 판단
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('created_at, full_name, city')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError) {
+      console.error('Profile fetch error:', profileError)
+      // 프로필이 없으면 회원가입 페이지로
+      return NextResponse.redirect(`${origin}/signup?message=프로필을 생성해주세요`)
+    }
+
+    console.log('Profile found:', profile)
+
+    // 신규 회원 판단: 프로필 생성 후 30분 이내면 신규 회원으로 간주
+    const createdAt = new Date(profile.created_at)
+    const now = new Date()
+    const diffInMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60)
+
+    console.log(`Profile age: ${diffInMinutes} minutes`)
+
+    if (diffInMinutes < 30) {
+      console.log('New user detected, redirecting to onboarding')
+      return NextResponse.redirect(`${origin}/onboarding`)
+    }
+
+    // 기존 회원은 welcome 페이지로
+    console.log('Existing user, redirecting to welcome')
+    return NextResponse.redirect(`${origin}/welcome`)
   }
 
   // OAuth 플로우 (code)
