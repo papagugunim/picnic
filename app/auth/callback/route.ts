@@ -67,7 +67,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/welcome`)
   }
 
-  // OAuth 플로우 (code)
+  // OAuth 플로우 (code) - 이메일 인증도 code로 올 수 있음
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
@@ -80,21 +80,44 @@ export async function GET(request: Request) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (user) {
-      // 프로필이 있는지 확인
-      const { data: profile } = await supabase
+      console.log('User authenticated via code:', user.id)
+
+      // 프로필 조회 (created_at 포함)
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('city, full_name')
+        .select('created_at, city, full_name')
         .eq('id', user.id)
         .single()
 
       // 프로필이 없거나 필수 정보가 없으면 회원가입 페이지로
-      if (!profile || !profile.city || !profile.full_name) {
+      if (profileError || !profile || !profile.city || !profile.full_name) {
+        console.error('Profile not found or incomplete:', profileError)
         return NextResponse.redirect(`${origin}/signup?message=프로필 정보를 입력해주세요`)
       }
 
-      // next 파라미터가 있으면 해당 페이지로, 없으면 welcome 페이지로
-      const redirectUrl = next ? `${origin}${next}` : `${origin}/welcome`
-      return NextResponse.redirect(redirectUrl)
+      console.log('Profile found:', profile)
+
+      // 신규 회원 판단: 프로필 생성 후 30분 이내면 신규 회원으로 간주
+      const createdAt = new Date(profile.created_at)
+      const now = new Date()
+      const diffInMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60)
+
+      console.log(`Profile age: ${diffInMinutes} minutes`)
+
+      // next 파라미터가 있으면 우선
+      if (next) {
+        return NextResponse.redirect(`${origin}${next}`)
+      }
+
+      // 신규 회원이면 온보딩으로
+      if (diffInMinutes < 30) {
+        console.log('New user detected (code flow), redirecting to onboarding')
+        return NextResponse.redirect(`${origin}/onboarding`)
+      }
+
+      // 기존 회원은 welcome 페이지로
+      console.log('Existing user (code flow), redirecting to welcome')
+      return NextResponse.redirect(`${origin}/welcome`)
     }
   }
 
