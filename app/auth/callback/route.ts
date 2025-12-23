@@ -31,7 +31,27 @@ export async function GET(request: Request) {
 
     if (session) {
       console.log('Session created successfully')
-      // welcome 페이지로 리다이렉트
+
+      // 신규 회원인지 확인 (프로필 생성 시간이 최근인지)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('created_at')
+        .eq('id', session.user.id)
+        .single()
+
+      if (profile) {
+        const createdAt = new Date(profile.created_at)
+        const now = new Date()
+        const diffInMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60)
+
+        // 10분 이내에 생성된 프로필이면 신규 회원으로 간주하고 온보딩으로
+        if (diffInMinutes < 10) {
+          console.log('New user detected, redirecting to onboarding')
+          return NextResponse.redirect(`${origin}/onboarding`)
+        }
+      }
+
+      // 기존 회원은 welcome 페이지로
       return NextResponse.redirect(`${origin}/welcome`)
     } else {
       console.log('Session not created, redirecting to login')
