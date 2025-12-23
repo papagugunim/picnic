@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Bell, Menu, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/contexts/UserContext'
+import { useNotifications } from '@/lib/hooks/useNotifications'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +22,7 @@ interface TopBarProps {
 export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
   const router = useRouter()
   const { profile, refreshProfile } = useUser()
-  const [hasNotifications, setHasNotifications] = useState(true) // TODO: 실제 알림 데이터로 교체
+  const { unreadCount } = useNotifications()
 
   const currentCity = profile?.city
     ? (profile.city.toLowerCase() === 'moscow' ? '모스크바' : '상트페테르부르크')
@@ -106,7 +107,7 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
             <Bell className="w-5 h-5" />
             <span className="sr-only">알림</span>
             {/* 알림 배지 */}
-            {hasNotifications && (
+            {unreadCount > 0 && (
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
             )}
           </Button>
