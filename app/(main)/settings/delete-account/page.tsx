@@ -66,6 +66,14 @@ export default function DeleteAccountPage() {
         })
         .eq('id', user.id)
 
+      // Auth 계정 완전 삭제 (재가입 가능하도록)
+      const { error: deleteError } = await supabase.rpc('delete_user')
+
+      if (deleteError) {
+        console.error('Failed to delete auth user:', deleteError)
+        // Auth 삭제 실패 시에도 로그아웃은 진행
+      }
+
       // 로그아웃
       await supabase.auth.signOut()
 
