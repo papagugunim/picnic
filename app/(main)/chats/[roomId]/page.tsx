@@ -385,6 +385,18 @@ export default function ChatRoomPage() {
       {/* Message Input */}
       <div className="flex-none bg-background border-t border-border p-4 safe-area-bottom">
         <div className="flex flex-col gap-2">
+          {/* 구매약속 잡기 버튼 (구매자만, 판매완료 아닐 때) */}
+          {isBuyer && !isSold && currentUserId && room.post && room.post.author_id && (
+            <AppointmentProposalForm
+              roomId={roomId}
+              postId={room.post.id}
+              postAuthorId={room.post.author_id}
+              currentUserId={currentUserId}
+              otherUserId={room.other_user.id}
+              onPropose={proposeAppointment}
+            />
+          )}
+
           <div className="flex gap-2">
             <Textarea
               ref={inputRef}
@@ -415,18 +427,6 @@ export default function ChatRoomPage() {
               <Send className="w-4 h-4" />
             </Button>
           </div>
-
-          {/* 구매약속 잡기 버튼 (구매자만, 판매완료 아닐 때) */}
-          {isBuyer && !isSold && currentUserId && room.post && room.post.author_id && (
-            <AppointmentProposalForm
-              roomId={roomId}
-              postId={room.post.id}
-              postAuthorId={room.post.author_id}
-              currentUserId={currentUserId}
-              otherUserId={room.other_user.id}
-              onPropose={proposeAppointment}
-            />
-          )}
         </div>
       </div>
 
