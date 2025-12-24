@@ -417,7 +417,7 @@ export default function ChatRoomPage() {
           </div>
 
           {/* 구매약속 잡기 버튼 (구매자만, 판매완료 아닐 때) */}
-          {isBuyer && !isSold && currentUserId && room.post && (
+          {isBuyer && !isSold && currentUserId && room.post && room.post.author_id && (
             <AppointmentProposalForm
               roomId={roomId}
               postId={room.post.id}
