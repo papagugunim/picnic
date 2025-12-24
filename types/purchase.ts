@@ -9,7 +9,7 @@ export interface PurchaseAppointment {
   room_id: string
   post_id: string
   appointment_date: string
-  location: string
+  location: string | null
   memo: string | null
   status: AppointmentStatus
   proposer_id: string
@@ -36,7 +36,7 @@ export interface CreateAppointmentParams {
   room_id: string
   post_id: string
   appointment_date: string
-  location: string
+  location?: string
   memo?: string
   proposer_id: string
   responder_id: string

@@ -80,8 +80,8 @@ export function AppointmentProposalForm({
         room_id: roomId,
         post_id: postId,
         appointment_date: new Date(formData.date).toISOString(),
-        location: formData.location || undefined,
-        memo: formData.memo || undefined,
+        location: formData.location.trim() || undefined,
+        memo: formData.memo.trim() || undefined,
         proposer_id: currentUserId,
         responder_id: otherUserId
       })
