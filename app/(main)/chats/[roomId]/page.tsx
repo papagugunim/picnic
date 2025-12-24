@@ -17,7 +17,6 @@ import { AppointmentProposalForm } from '@/components/chat/AppointmentProposalFo
 import { AppointmentCard } from '@/components/chat/AppointmentCard'
 import { CompleteSaleButton } from '@/components/chat/CompleteSaleButton'
 import { ReviewModal } from '@/components/review/ReviewModal'
-import { toast } from 'sonner'
 
 export default function ChatRoomPage() {
   const params = useParams()
@@ -30,10 +29,11 @@ export default function ChatRoomPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  const { messages, isSending, sendMessage, error: messagesError } = useMessages(roomId)
+  const { messages, isSending, sendMessage } = useMessages(roomId)
   const { appointment, proposeAppointment, respondToAppointment } = useAppointment(roomId)
-  const { completeSale, createReview, checkReviewExists } = useSale()
+  const { completeSale, createReview } = useSale()
 
   useEffect(() => {
     fetchRoom()
@@ -42,6 +42,25 @@ export default function ChatRoomPage() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // 모바일 키보드 대응
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return
+
+    const handleResize = () => {
+      // 키보드가 올라오면 스크롤
+      if (document.activeElement === inputRef.current) {
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+        }, 100)
+      }
+    }
+
+    window.visualViewport.addEventListener('resize', handleResize)
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleResize)
+    }
+  }, [])
 
   async function fetchRoom() {
     try {
@@ -191,9 +210,9 @@ export default function ChatRoomPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-background border-b border-border">
+      <div className="flex-none bg-background border-b border-border">
         <div className="flex items-center gap-3 px-4 py-3">
           <Button
             variant="ghost"
@@ -290,13 +309,13 @@ export default function ChatRoomPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 pb-96 flex flex-col justify-end">
+      <div className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 && !appointment ? (
-          <div className="text-center py-16 text-muted-foreground flex-1 flex items-center justify-center">
+          <div className="text-center py-16 text-muted-foreground h-full flex items-center justify-center">
             메시지를 보내서 대화를 시작해보세요
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 min-h-full flex flex-col justify-end">
             {/* 약속 카드 (있을 경우 맨 위에 표시) */}
             {appointment && currentUserId && (
               <AppointmentCard
@@ -378,9 +397,10 @@ export default function ChatRoomPage() {
       </div>
 
       {/* Message Input */}
-      <div className="fixed bottom-16 left-0 right-0 bg-background border-t border-border p-4 z-30">
-        <div className="max-w-4xl mx-auto flex gap-2">
+      <div className="flex-none bg-background border-t border-border p-4 safe-area-bottom">
+        <div className="flex gap-2">
           <Textarea
+            ref={inputRef}
             placeholder="메시지를 입력하세요..."
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
@@ -389,8 +409,8 @@ export default function ChatRoomPage() {
             style={{ fontSize: '16px' }}
             onFocus={() => {
               setTimeout(() => {
-                scrollToBottom()
-              }, 300)
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+              }, 100)
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
