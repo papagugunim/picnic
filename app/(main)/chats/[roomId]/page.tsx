@@ -102,7 +102,7 @@ export default function ChatRoomPage() {
       if (roomData.post_id) {
         const { data } = await supabase
           .from('posts')
-          .select('id, title, price, images, status, author_id')
+          .select('id, title, price, images, status, author_id, preferred_metro_stations')
           .eq('id', roomData.post_id)
           .single()
 
@@ -247,31 +247,17 @@ export default function ChatRoomPage() {
             </div>
           </Link>
 
-          {/* 구매약속 & 판매완료 버튼 */}
-          <div className="flex gap-2">
-            {/* 구매자: 구매약속 잡기 버튼 (판매완료 아닐 때만) */}
-            {isBuyer && !isSold && currentUserId && room.post && (
-              <AppointmentProposalForm
-                roomId={roomId}
-                postId={room.post.id}
-                currentUserId={currentUserId}
-                otherUserId={room.other_user.id}
-                onPropose={proposeAppointment}
-              />
-            )}
-
-            {/* 판매자: 판매완료 버튼 (약속 확정 후, 판매완료 안 했을 때만) */}
-            {isSeller && isAppointmentConfirmed && !isSold && currentUserId && room.post && (
-              <CompleteSaleButton
-                postId={room.post.id}
-                roomId={roomId}
-                buyerId={room.other_user.id}
-                sellerId={currentUserId}
-                onComplete={handleCompleteSale}
-                onReviewRequest={() => setShowReviewModal(true)}
-              />
-            )}
-          </div>
+          {/* 판매완료 버튼 (판매자만, 약속 확정 후) */}
+          {isSeller && isAppointmentConfirmed && !isSold && currentUserId && room.post && (
+            <CompleteSaleButton
+              postId={room.post.id}
+              roomId={roomId}
+              buyerId={room.other_user.id}
+              sellerId={currentUserId}
+              onComplete={handleCompleteSale}
+              onReviewRequest={() => setShowReviewModal(true)}
+            />
+          )}
         </div>
 
         {/* Related Post Banner */}
@@ -398,35 +384,49 @@ export default function ChatRoomPage() {
 
       {/* Message Input */}
       <div className="flex-none bg-background border-t border-border p-4 safe-area-bottom">
-        <div className="flex gap-2">
-          <Textarea
-            ref={inputRef}
-            placeholder="메시지를 입력하세요..."
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            rows={1}
-            className="resize-none text-base"
-            style={{ fontSize: '16px' }}
-            onFocus={() => {
-              setTimeout(() => {
-                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-              }, 100)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                handleSendMessage()
-              }
-            }}
-          />
-          <Button
-            onClick={handleSendMessage}
-            disabled={!newMessage.trim() || isSending}
-            size="icon"
-            className="flex-shrink-0"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <Textarea
+              ref={inputRef}
+              placeholder="메시지를 입력하세요..."
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              rows={1}
+              className="resize-none text-base"
+              style={{ fontSize: '16px' }}
+              onFocus={() => {
+                setTimeout(() => {
+                  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+                }, 100)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSendMessage()
+                }
+              }}
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={!newMessage.trim() || isSending}
+              size="icon"
+              className="flex-shrink-0"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* 구매약속 잡기 버튼 (구매자만, 판매완료 아닐 때) */}
+          {isBuyer && !isSold && currentUserId && room.post && (
+            <AppointmentProposalForm
+              roomId={roomId}
+              postId={room.post.id}
+              postAuthorId={room.post.author_id}
+              currentUserId={currentUserId}
+              otherUserId={room.other_user.id}
+              onPropose={proposeAppointment}
+            />
+          )}
         </div>
       </div>
 
