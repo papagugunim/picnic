@@ -18,6 +18,7 @@ import { Calendar } from 'lucide-react'
 import type { CreateAppointmentParams } from '@/types/purchase'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import { getMetroStationLabel } from '@/lib/metro-stations'
 
 interface AppointmentProposalFormProps {
   roomId: string
@@ -139,9 +140,9 @@ export function AppointmentProposalForm({
                         variant="outline"
                         size="sm"
                         className="text-xs"
-                        onClick={() => setFormData({ ...formData, location: station })}
+                        onClick={() => setFormData({ ...formData, location: getMetroStationLabel(station) })}
                       >
-                        {station}
+                        {getMetroStationLabel(station)}
                       </Button>
                     ))}
                   </div>

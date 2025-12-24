@@ -231,3 +231,17 @@ export const SPB_METRO_STATIONS: MetroStation[] = [
   { value: 'Bukharestskaya', labelKo: '부하레스츠카야', labelRu: 'Бухарестская', line: 'Line 5' },
   { value: 'Mezhdunarodnaya', labelKo: '메즈두나로드나야', labelRu: 'Международная', line: 'Line 5' },
 ]
+
+// 모든 지하철역 통합
+export const ALL_METRO_STATIONS = [...MOSCOW_METRO_STATIONS, ...SPB_METRO_STATIONS]
+
+// 영문 value로 한글 label 찾기
+export function getMetroStationLabel(value: string): string {
+  const station = ALL_METRO_STATIONS.find(s => s.value === value)
+  return station?.labelKo || value
+}
+
+// 여러 지하철역의 한글 label 찾기
+export function getMetroStationLabels(values: string[]): string[] {
+  return values.map(value => getMetroStationLabel(value))
+}
