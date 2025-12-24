@@ -72,23 +72,10 @@ export function SwipeableChatItem({ children, onDelete }: SwipeableChatItemProps
   }, [offset])
 
   return (
-    <div ref={itemRef} className="relative overflow-hidden">
-      {/* 삭제 버튼 (뒤에 숨겨진 상태) */}
-      <div
-        className="absolute right-0 top-0 bottom-0 flex items-center justify-center bg-destructive text-destructive-foreground"
-        style={{ width: `${DELETE_BUTTON_WIDTH}px` }}
-      >
-        <button
-          onClick={handleDelete}
-          className="h-full w-full flex flex-col items-center justify-center gap-1 hover:bg-destructive/90 transition-colors"
-        >
-          <Trash2 className="h-5 w-5" />
-          <span className="text-xs font-medium">삭제</span>
-        </button>
-      </div>
-
+    <div ref={itemRef} className="relative">
       {/* 스와이프 가능한 아이템 */}
       <div
+        className="relative bg-background"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -98,6 +85,24 @@ export function SwipeableChatItem({ children, onDelete }: SwipeableChatItemProps
         }}
       >
         {children}
+      </div>
+
+      {/* 삭제 버튼 (뒤에 숨겨진 상태) */}
+      <div
+        className="absolute right-0 top-0 bottom-0 flex items-center justify-center bg-destructive text-destructive-foreground"
+        style={{
+          width: `${DELETE_BUTTON_WIDTH}px`,
+          transform: `translateX(${DELETE_BUTTON_WIDTH - offset}px)`,
+          transition: isDragging ? 'none' : 'transform 0.3s ease-out',
+        }}
+      >
+        <button
+          onClick={handleDelete}
+          className="h-full w-full flex flex-col items-center justify-center gap-1 hover:bg-destructive/90 transition-colors"
+        >
+          <Trash2 className="h-5 w-5" />
+          <span className="text-xs font-medium">삭제</span>
+        </button>
       </div>
     </div>
   )
