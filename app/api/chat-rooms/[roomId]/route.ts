@@ -1,12 +1,12 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { roomId: string } }
+  context: { params: Promise<{ roomId: string }> }
 ) {
   try {
-    const supabase = await createClient()
+    const supabase = await createServerClient()
 
     // 사용자 인증 확인
     const {
@@ -18,7 +18,7 @@ export async function DELETE(
       return NextResponse.json({ error: '인증되지 않은 사용자입니다' }, { status: 401 })
     }
 
-    const roomId = params.roomId
+    const { roomId } = await context.params
 
     // 채팅방 존재 여부 및 권한 확인
     const { data: room, error: roomError } = await supabase
