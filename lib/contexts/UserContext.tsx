@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+import { preloadAllPages } from '@/lib/preloader'
 
 interface UserProfile {
   id: string
@@ -30,6 +31,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [hasPreloaded, setHasPreloaded] = useState(false)
 
   const fetchUserAndProfile = async (forceRefresh = false) => {
     try {
@@ -93,6 +95,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setUser(null)
         setProfile(null)
         setLoading(false)
+        setHasPreloaded(false)
       }
     })
 
@@ -100,6 +103,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe()
     }
   }, [])
+
+  // 사용자 로그인 후 백그라운드 프리로딩
+  useEffect(() => {
+    if (user && profile && !loading && !hasPreloaded) {
+      setHasPreloaded(true)
+      // 백그라운드에서 실행 (페이지 로딩을 막지 않음)
+      setTimeout(() => {
+        preloadAllPages()
+      }, 1000) // 1초 후 실행하여 초기 페이지 로딩 방해하지 않음
+    }
+  }, [user, profile, loading, hasPreloaded])
 
   const refreshProfile = async () => {
     // 강제 새로고침 (캐시 무시)

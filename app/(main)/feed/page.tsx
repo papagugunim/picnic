@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { MOSCOW_METRO_STATIONS, SPB_METRO_STATIONS } from '@/lib/constants'
+import { getCache, setCache, CACHE_KEYS } from '@/lib/cache'
 
 interface Post {
   id: string
@@ -51,6 +52,15 @@ export default function FeedPage() {
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
+        setIsLoading(false)
+        return
+      }
+
+      // 캐시 확인 (5분 TTL - 게시글은 자주 업데이트되므로 짧게 설정)
+      const cached = getCache<Post[]>(CACHE_KEYS.POSTS(1), 5 * 60 * 1000)
+      if (cached && cached.length > 0) {
+        console.log('게시글 데이터 캐시 히트')
+        setPosts(cached)
         setIsLoading(false)
         return
       }
@@ -147,6 +157,9 @@ export default function FeedPage() {
         user_liked: userLikesSet.has(post.id),
         user_interested: userInterestsSet.has(post.id),
       }))
+
+      // 캐시에 저장 (5분 TTL)
+      setCache(CACHE_KEYS.POSTS(1), postsWithReactions as Post[], 5 * 60 * 1000)
 
       setPosts(postsWithReactions as Post[])
     } catch (err) {
@@ -368,9 +381,12 @@ export default function FeedPage() {
                       src={post.images[0]}
                       alt={post.title}
                       fill
-                      sizes="112px"
+                      sizes="(max-width: 768px) 112px, 128px"
                       className="object-cover"
                       loading="lazy"
+                      quality={75}
+                      placeholder="blur"
+                      blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">

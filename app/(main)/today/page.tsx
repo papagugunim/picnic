@@ -1,9 +1,19 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { TrendingUp, Newspaper, Cloud, Calendar as CalendarIcon, MapPin, Calculator, X, RefreshCw } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { TrendingUp, Newspaper, Calendar as CalendarIcon, MapPin, Calculator, X, RefreshCw } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
+import { getCache, setCache, CACHE_KEYS } from '@/lib/cache'
+
+// 차트 컴포넌트 동적 임포트 (번들 크기 최적화)
+const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart), { ssr: false })
+const Line = dynamic(() => import('recharts').then(mod => mod.Line), { ssr: false })
+const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false })
+const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false })
+const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid), { ssr: false })
+const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip), { ssr: false })
+const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false })
 
 // 도시별 타임존 매핑
 const CITY_TIMEZONES: Record<string, string> = {
@@ -87,6 +97,15 @@ export default function TodayPage() {
   // 환율 데이터 가져오기 함수
   const fetchExchangeRates = useCallback(async () => {
     try {
+      // 캐시 확인 (1시간 TTL)
+      const cached = getCache<ExchangeRates>(CACHE_KEYS.EXCHANGE_RATES, 60 * 60 * 1000)
+      if (cached) {
+        console.log('환율 데이터 캐시 히트')
+        setExchangeRates(cached)
+        setExchangeRatesLastUpdated(new Date(cached.lastUpdated))
+        return
+      }
+
       // 자체 API 라우트를 통해 네이버 환율 정보 가져오기
       const response = await fetch('/api/exchange-rates')
 
@@ -96,12 +115,17 @@ export default function TodayPage() {
 
       const data = await response.json()
 
-      setExchangeRates({
+      const rates = {
         krwToRub: data.krwToRub,
         rubToUsd: data.rubToUsd,
         lastUpdated: new Date(data.lastUpdated).toLocaleString('ko-KR'),
         source: data.source
-      })
+      }
+
+      // 캐시에 저장 (1시간 TTL)
+      setCache(CACHE_KEYS.EXCHANGE_RATES, rates, 60 * 60 * 1000)
+
+      setExchangeRates(rates)
       setExchangeRatesLastUpdated(new Date())
 
       console.log('환율 출처:', data.source === 'naver' ? '네이버 금융' : data.source === 'api' ? 'ExchangeRate API' : '대체 API')
@@ -120,6 +144,14 @@ export default function TodayPage() {
   // 날씨 데이터 가져오기 함수
   const fetchWeatherData = useCallback(async (city: string) => {
       try {
+        // 캐시 확인 (30분 TTL)
+        const cached = getCache<WeatherData>(CACHE_KEYS.WEATHER(city), 30 * 60 * 1000)
+        if (cached) {
+          console.log('날씨 데이터 캐시 히트:', city)
+          setWeather(cached)
+          return
+        }
+
         // 도시별 좌표 (Moscow, Saint Petersburg)
         const cityCoords: Record<string, { lat: number; lon: number }> = {
           'Moscow': { lat: 55.7558, lon: 37.6173 },
@@ -189,12 +221,17 @@ export default function TodayPage() {
           condition = weatherId === 800 ? 'clear' : 'cloudy'
         }
 
-        setWeather({
+        const weatherData: WeatherData = {
           condition,
           temp: Math.round(data.main.temp),
           feelsLike: Math.round(data.main.feels_like),
           icon: WEATHER_ICONS[condition]
-        })
+        }
+
+        // 캐시에 저장 (30분 TTL)
+        setCache(CACHE_KEYS.WEATHER(city), weatherData, 30 * 60 * 1000)
+
+        setWeather(weatherData)
         setWeatherLastUpdated(new Date())
       } catch (error) {
         console.error('날씨 정보 가져오기 실패:', error)
@@ -341,6 +378,19 @@ export default function TodayPage() {
       return
     }
 
+    // 캐시 확인 (24시간 TTL)
+    const cached = getCache<{ date: string; rate: number }[]>(
+      CACHE_KEYS.EXCHANGE_HISTORY(type),
+      24 * 60 * 60 * 1000
+    )
+    if (cached && cached.length > 0) {
+      console.log('환율 히스토리 캐시 히트:', type)
+      setYearlyChartData(prev => ({ ...prev, [type]: cached }))
+      const filtered = filterDataByPeriod(cached, period)
+      setChartData(filtered)
+      return
+    }
+
     // 1년치 데이터가 없으면 API 호출
     setIsLoadingChart(true)
     try {
@@ -353,11 +403,14 @@ export default function TodayPage() {
       const result = await response.json()
       const yearData = result.data || []
 
-      // 1년치 데이터를 캐시에 저장
+      // 1년치 데이터를 메모리 캐시에 저장
       setYearlyChartData(prev => ({
         ...prev,
         [type]: yearData
       }))
+
+      // localStorage 캐시에도 저장 (24시간 TTL)
+      setCache(CACHE_KEYS.EXCHANGE_HISTORY(type), yearData, 24 * 60 * 60 * 1000)
 
       // 기간에 맞게 필터링하여 표시
       const filtered = filterDataByPeriod(yearData, period)
