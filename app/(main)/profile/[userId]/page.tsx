@@ -12,6 +12,7 @@ import {
   SPB_METRO_STATIONS,
 } from '@/lib/constants'
 import { getBreadInfo, getBreadDescription, getBreadEmoji } from '@/lib/bread'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { BreadLevelModal } from '@/components/bread-level-modal'
 
@@ -301,31 +302,13 @@ export default function ProfilePage() {
           <div className="flex items-start gap-4">
             {/* 아바타 */}
             <div className="flex-shrink-0">
-              {(() => {
-                const breadInfo = getBreadInfo(
-                  profile.matryoshka_level || 1,
-                  profile.user_role || undefined
-                )
-                return profile.avatar_url ? (
-                  <img
-                    src={profile.avatar_url}
-                    alt={profile.full_name || '프로필'}
-                    className="w-20 h-20 rounded-full object-cover border-2 border-border"
-                  />
-                ) : (
-                  <div
-                    className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold border-2 border-border"
-                    style={{
-                      backgroundColor: breadInfo.color,
-                      color: profile.user_role === 'developer' || profile.user_role === 'admin'
-                        ? '#FFFFFF'
-                        : '#1F2937'
-                    }}
-                  >
-                    {profile.full_name?.charAt(0).toUpperCase() || '?'}
-                  </div>
-                )
-              })()}
+              <UserAvatar
+                src={profile.avatar_url}
+                alt={profile.full_name || '프로필'}
+                matryoshkaLevel={profile.matryoshka_level || 1}
+                size="xl"
+                className="border-2 border-border"
+              />
             </div>
 
             {/* 정보 */}

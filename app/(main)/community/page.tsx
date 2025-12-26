@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadEmoji } from '@/lib/bread'
 import { getCache, setCache } from '@/lib/cache'
+import { UserAvatar } from '@/components/ui/user-avatar'
 
 interface CommunityPost {
   id: string
@@ -313,17 +314,12 @@ export default function CommunityPage() {
                     <div className="flex items-start gap-3 mb-3">
                       {/* Avatar */}
                       <Link href={`/profile/${post.user_id}`}>
-                        {post.profiles.avatar_url ? (
-                          <img
-                            src={post.profiles.avatar_url}
-                            alt={post.profiles.full_name || '사용자'}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-bold">
-                            {post.profiles.full_name?.charAt(0).toUpperCase() || '?'}
-                          </div>
-                        )}
+                        <UserAvatar
+                          src={post.profiles.avatar_url}
+                          alt={post.profiles.full_name || '사용자'}
+                          matryoshkaLevel={post.profiles.matryoshka_level}
+                          size="md"
+                        />
                       </Link>
 
                       <div className="flex-1 min-w-0">

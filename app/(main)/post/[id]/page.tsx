@@ -18,6 +18,7 @@ import {
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadInfo, getBreadEmoji } from '@/lib/bread'
 import { getCache, setCache } from '@/lib/cache'
+import { UserAvatar } from '@/components/ui/user-avatar'
 
 interface Post {
   id: string
@@ -676,21 +677,12 @@ export default function PostDetailPage() {
             href={`/profile/${post.author_id}`}
             className="flex items-center gap-3 mb-4 pb-4 border-b border-border"
           >
-            {post.profiles.avatar_url ? (
-              <div className="w-12 h-12 rounded-full overflow-hidden relative flex-shrink-0">
-                <Image
-                  src={post.profiles.avatar_url}
-                  alt={post.profiles.full_name || '사용자'}
-                  fill
-                  sizes="48px"
-                  className="object-cover"
-                />
-              </div>
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-bold">
-                {post.profiles.full_name?.charAt(0).toUpperCase() || '?'}
-              </div>
-            )}
+            <UserAvatar
+              src={post.profiles.avatar_url}
+              alt={post.profiles.full_name || '사용자'}
+              matryoshkaLevel={post.profiles.matryoshka_level}
+              size="lg"
+            />
 
             <div className="flex-1">
               <div className="flex items-center gap-2">
