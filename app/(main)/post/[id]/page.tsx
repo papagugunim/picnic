@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadInfo, getBreadEmoji } from '@/lib/bread'
+import { getCache, setCache } from '@/lib/cache'
 
 interface Post {
   id: string
@@ -78,6 +79,16 @@ export default function PostDetailPage() {
         return
       }
       setCurrentUserId(user.id)
+
+      // 캐시 확인 (5분 TTL)
+      const cacheKey = `cache_post_detail_${postId}`
+      const cached = getCache<Post>(cacheKey, 5 * 60 * 1000)
+      if (cached) {
+        console.log('게시글 상세 캐시 히트')
+        setPost(cached)
+        setIsLoading(false)
+        return
+      }
 
       // Get current user's role
       const { data: currentUserProfile } = await supabase
@@ -156,14 +167,19 @@ export default function PostDetailPage() {
         ? postData.profiles[0]
         : postData.profiles
 
-      setPost({
+      const postWithDetails = {
         ...postData,
         profiles: author,
         likes_count: likesData?.length || 0,
         interests_count: interestsData?.length || 0,
         user_liked: !!userLikeData,
         user_interested: !!userInterestData,
-      } as Post)
+      } as Post
+
+      // 캐시에 저장 (5분 TTL)
+      setCache(cacheKey, postWithDetails, 5 * 60 * 1000)
+
+      setPost(postWithDetails)
     } catch (err) {
       console.error('Fetch error:', err)
     } finally {

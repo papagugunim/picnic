@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ChatRoomWithProfile } from '@/types/chat'
+import { getCache, setCache } from '@/lib/cache'
 
 /**
  * 채팅방 목록을 가져오고 실시간 업데이트를 제공하는 훅
@@ -24,6 +25,17 @@ export function useChats() {
         setChatRooms([])
         setIsLoading(false)
         return
+      }
+
+      // 캐시 확인 (3분 TTL - 채팅방은 자주 변경되므로 짧게 설정)
+      const chatCacheKey = `cache_chat_rooms_${user.id}`
+      const cached = getCache<ChatRoomWithProfile[]>(chatCacheKey, 3 * 60 * 1000)
+      if (cached && cached.length > 0) {
+        console.log('채팅방 목록 캐시 히트')
+        setChatRooms(cached)
+        setIsLoading(false)
+        // 캐시 사용 후에도 백그라운드에서 업데이트
+        // return 하지 않고 계속 진행
       }
 
       // Get chat rooms where user is either user1 or user2
@@ -105,6 +117,9 @@ export function useChats() {
           post: post || null,
         }
       })
+
+      // 캐시에 저장 (3분 TTL)
+      setCache(chatCacheKey, roomsWithDetails as ChatRoomWithProfile[], 3 * 60 * 1000)
 
       setChatRooms(roomsWithDetails as ChatRoomWithProfile[])
     } catch (err) {
