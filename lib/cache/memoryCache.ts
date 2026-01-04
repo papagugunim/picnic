@@ -3,6 +3,10 @@
  * Redis 대신 경량 인메모리 캐시 사용 (Vercel Serverless 환경에 최적화)
  */
 
+import { createNamespacedLogger } from '../logger'
+
+const logger = createNamespacedLogger('MemoryCache')
+
 interface CacheEntry<T> {
   value: T
   expiresAt: number
