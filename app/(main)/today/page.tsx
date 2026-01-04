@@ -141,10 +141,10 @@ export default function TodayPage() {
       logger.log('환율 출처:', data.source === 'naver' ? '네이버 금융' : data.source === 'api' ? 'ExchangeRate API' : '대체 API')
     } catch (error) {
       logger.error('환율 정보 가져오기 실패:', error)
-      // 에러 발생 시 예시 데이터
+      // 에러 발생 시 예시 데이터 (2026년 1월 기준 실제 환율)
       setExchangeRates({
-        krwToRub: 0.075,
-        rubToUsd: 0.011,
+        krwToRub: 0.0547,  // 1 KRW = 0.0547 RUB
+        rubToUsd: 0.0127,  // 1 RUB = 0.0127 USD
         lastUpdated: new Date().toLocaleString('ko-KR')
       })
       setExchangeRatesLastUpdated(new Date())

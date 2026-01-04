@@ -38,7 +38,42 @@ export async function GET() {
       return fetchPromise
     }
 
-    // 1. 네이버 금융 시도 (1순위 - 24시간 업데이트, 가장 신뢰)
+    // 1. ExchangeRate-API 시도 (1순위 - 안정적이고 정확)
+    try {
+      const apiResponse = await fetch('https://api.exchangerate-api.com/v4/latest/KRW', {
+        next: { revalidate: 600 }
+      })
+
+      if (apiResponse.ok) {
+        const apiData = await apiResponse.json()
+
+        // KRW → RUB, RUB → USD 계산
+        const krwToRub = parseFloat((apiData.rates.RUB || 0.055).toFixed(4))
+        const krwToUsd = parseFloat((apiData.rates.USD || 0.0007).toFixed(6))
+        const rubToUsd = parseFloat((krwToUsd / krwToRub).toFixed(4))
+
+        cachedData = {
+          krwToRub,
+          rubToUsd,
+          lastUpdated: new Date().toISOString(),
+          source: 'exchangerate-api'
+        }
+        lastFetchTime = now
+        fetchPromise = null
+
+        logger.log(`환율 업데이트 성공: KRW→RUB=${krwToRub}, RUB→USD=${rubToUsd}`)
+
+        return NextResponse.json(cachedData, {
+          headers: {
+            'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=300'
+          }
+        })
+      }
+    } catch (apiError) {
+      logger.warn('ExchangeRate-API 실패, 네이버 시도:', apiError)
+    }
+
+    // 2. 네이버 금융 시도 (2순위 백업)
     try {
       const [rubResponse, usdResponse] = await Promise.all([
         fetch('https://finance.naver.com/marketindex/exchangeDetail.naver?marketindexCd=FX_RURKRW', {
@@ -94,7 +129,7 @@ export async function GET() {
       logger.warn('네이버 환율 실패, 한국수출입은행 시도:', naverError)
     }
 
-    // 2. 한국 수출입은행 환율 API 시도 (2순위)
+    // 3. 한국 수출입은행 환율 API 시도 (3순위 백업)
     try {
       const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
       const koeximbankUrl = `https://www.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey=&searchdate=${today}&data=AP01`
@@ -130,32 +165,7 @@ export async function GET() {
         }
       }
     } catch (koeximbankError) {
-      logger.warn('한국수출입은행 API 실패, ExchangeRate-API 시도:', koeximbankError)
-    }
-
-    // 3. ExchangeRate-API 시도 (3순위 대체)
-    try {
-      const fallbackResponse = await fetch('https://api.exchangerate-api.com/v4/latest/KRW', {
-        next: { revalidate: 600 }
-      })
-
-      if (fallbackResponse.ok) {
-        const fallbackData = await fallbackResponse.json()
-        const krwToRub = parseFloat((fallbackData.rates.RUB || 0.075).toFixed(4))
-        const rubToUsd = parseFloat(((fallbackData.rates.USD / fallbackData.rates.RUB) || 0.011).toFixed(4))
-
-        cachedData = {
-          krwToRub,
-          rubToUsd,
-          lastUpdated: new Date().toISOString(),
-          source: 'api'
-        }
-        lastFetchTime = now
-
-        return NextResponse.json(cachedData)
-      }
-    } catch (apiError) {
-      logger.warn('모든 환율 API 실패:', apiError)
+      logger.warn('한국수출입은행 API도 실패:', koeximbankError)
     }
 
     // 모든 API 실패 시 에러
@@ -172,10 +182,10 @@ export async function GET() {
       })
     }
 
-    // 에러 발생 시 기본 데이터 반환
+    // 에러 발생 시 기본 데이터 반환 (2026년 1월 기준 실제 환율)
     return NextResponse.json({
-      krwToRub: 0.075,
-      rubToUsd: 0.011,
+      krwToRub: 0.0547,  // 1 KRW = 0.0547 RUB (업데이트: 2026-01)
+      rubToUsd: 0.0127,  // 1 RUB = 0.0127 USD (업데이트: 2026-01)
       lastUpdated: new Date().toISOString(),
       source: 'fallback'
     })
