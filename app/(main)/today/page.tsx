@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { TrendingUp, Newspaper, Calendar as CalendarIcon, MapPin, Calculator, X, RefreshCw } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
-import { getCache, setCache, CACHE_KEYS } from '@/lib/cache'
+import { getCache, setCache, clearCache, CACHE_KEYS } from '@/lib/cache'
 
 // 차트 컴포넌트 동적 임포트 (번들 크기 최적화)
 const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart), { ssr: false })
@@ -98,15 +98,22 @@ export default function TodayPage() {
   }>({ rub: [], usd: [] })
 
   // 환율 데이터 가져오기 함수
-  const fetchExchangeRates = useCallback(async () => {
+  const fetchExchangeRates = useCallback(async (forceRefresh: boolean = false) => {
     try {
-      // 캐시 확인 (1시간 TTL)
-      const cached = getCache<ExchangeRates>(CACHE_KEYS.EXCHANGE_RATES, 60 * 60 * 1000)
-      if (cached) {
-        logger.log('환율 데이터 캐시 히트')
-        setExchangeRates(cached)
-        setExchangeRatesLastUpdated(new Date(cached.lastUpdated))
-        return
+      // 강제 새로고침이 아닐 때만 캐시 확인
+      if (!forceRefresh) {
+        // 캐시 TTL: 15분 (더 자주 업데이트)
+        const cached = getCache<ExchangeRates>(CACHE_KEYS.EXCHANGE_RATES, 15 * 60 * 1000)
+        if (cached) {
+          logger.log('환율 데이터 캐시 히트')
+          setExchangeRates(cached)
+          setExchangeRatesLastUpdated(new Date(cached.lastUpdated))
+          return
+        }
+      } else {
+        // 강제 새로고침 시 캐시 삭제
+        clearCache(CACHE_KEYS.EXCHANGE_RATES)
+        logger.log('환율 데이터 강제 새로고침')
       }
 
       // 자체 API 라우트를 통해 네이버 환율 정보 가져오기
@@ -125,8 +132,8 @@ export default function TodayPage() {
         source: data.source
       }
 
-      // 캐시에 저장 (1시간 TTL)
-      setCache(CACHE_KEYS.EXCHANGE_RATES, rates, 60 * 60 * 1000)
+      // 캐시에 저장 (15분 TTL)
+      setCache(CACHE_KEYS.EXCHANGE_RATES, rates, 15 * 60 * 1000)
 
       setExchangeRates(rates)
       setExchangeRatesLastUpdated(new Date())
@@ -145,14 +152,21 @@ export default function TodayPage() {
   }, [])
 
   // 날씨 데이터 가져오기 함수
-  const fetchWeatherData = useCallback(async (city: string) => {
+  const fetchWeatherData = useCallback(async (city: string, forceRefresh: boolean = false) => {
       try {
-        // 캐시 확인 (30분 TTL)
-        const cached = getCache<WeatherData>(CACHE_KEYS.WEATHER(city), 30 * 60 * 1000)
-        if (cached) {
-          logger.log('날씨 데이터 캐시 히트:', city)
-          setWeather(cached)
-          return
+        // 강제 새로고침이 아닐 때만 캐시 확인
+        if (!forceRefresh) {
+          // 캐시 TTL: 10분 (더 자주 업데이트)
+          const cached = getCache<WeatherData>(CACHE_KEYS.WEATHER(city), 10 * 60 * 1000)
+          if (cached) {
+            logger.log('날씨 데이터 캐시 히트:', city)
+            setWeather(cached)
+            return
+          }
+        } else {
+          // 강제 새로고침 시 캐시 삭제
+          clearCache(CACHE_KEYS.WEATHER(city))
+          logger.log('날씨 데이터 강제 새로고침:', city)
         }
 
         // 도시별 좌표 (Moscow, Saint Petersburg)
@@ -231,8 +245,8 @@ export default function TodayPage() {
           icon: WEATHER_ICONS[condition]
         }
 
-        // 캐시에 저장 (30분 TTL)
-        setCache(CACHE_KEYS.WEATHER(city), weatherData, 30 * 60 * 1000)
+        // 캐시에 저장 (10분 TTL)
+        setCache(CACHE_KEYS.WEATHER(city), weatherData, 10 * 60 * 1000)
 
         setWeather(weatherData)
         setWeatherLastUpdated(new Date())
@@ -279,19 +293,20 @@ export default function TodayPage() {
     fetchUserCity()
     fetchExchangeRates()
 
-    // 30분마다 날씨 자동 업데이트
+    // 10분마다 날씨 자동 업데이트 (캐시 TTL과 동일)
     const weatherInterval = setInterval(() => {
       if (userCity) {
         logger.log('자동 날씨 업데이트 실행')
-        fetchWeatherData(userCity)
+        fetchWeatherData(userCity, true) // forceRefresh=true로 최신 데이터 가져오기
+        setWeatherLastUpdated(new Date())
       }
-    }, 30 * 60 * 1000) // 30분
+    }, 10 * 60 * 1000) // 10분
 
-    // 1시간마다 환율 자동 업데이트
+    // 15분마다 환율 자동 업데이트 (캐시 TTL과 동일)
     const exchangeRatesInterval = setInterval(() => {
       logger.log('자동 환율 업데이트 실행')
-      fetchExchangeRates()
-    }, 60 * 60 * 1000) // 1시간
+      fetchExchangeRates(true) // forceRefresh=true로 최신 데이터 가져오기
+    }, 15 * 60 * 1000) // 15분
 
     return () => {
       clearInterval(weatherInterval)
@@ -322,7 +337,8 @@ export default function TodayPage() {
 
     setIsRefreshingWeather(true)
     try {
-      await fetchWeatherData(userCity)
+      await fetchWeatherData(userCity, true) // forceRefresh=true
+      setWeatherLastUpdated(new Date())
     } finally {
       setIsRefreshingWeather(false)
     }
@@ -334,7 +350,7 @@ export default function TodayPage() {
 
     setIsRefreshingExchangeRates(true)
     try {
-      await fetchExchangeRates()
+      await fetchExchangeRates(true) // forceRefresh=true
     } finally {
       setIsRefreshingExchangeRates(false)
     }

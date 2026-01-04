@@ -64,7 +64,7 @@ async function preloadWeather(city: string) {
       icon: WEATHER_ICONS[condition]
     }
 
-    setCache(CACHE_KEYS.WEATHER(city), weatherData, 30 * 60 * 1000)
+    setCache(CACHE_KEYS.WEATHER(city), weatherData, 10 * 60 * 1000) // 10분 TTL
     logger.log('✅ 날씨 데이터 프리로드 완료')
   } catch (error) {
     logger.error('날씨 프리로드 실패:', error)
@@ -88,7 +88,7 @@ async function preloadExchangeRates() {
       source: data.source
     }
 
-    setCache(CACHE_KEYS.EXCHANGE_RATES, rates, 60 * 60 * 1000)
+    setCache(CACHE_KEYS.EXCHANGE_RATES, rates, 15 * 60 * 1000) // 15분 TTL
     logger.log('✅ 환율 데이터 프리로드 완료')
   } catch (error) {
     logger.error('환율 프리로드 실패:', error)
