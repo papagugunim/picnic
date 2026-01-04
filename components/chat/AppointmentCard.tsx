@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('AppointmentCard')
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { Calendar, MapPin, MessageSquare, CheckCircle2, XCircle, Clock } from 'lucide-react'
@@ -60,7 +63,7 @@ export function AppointmentCard({
       await onRespond(appointment.id, status)
       toast.success(status === 'confirmed' ? '약속을 승인했습니다' : '약속을 거부했습니다')
     } catch (error) {
-      console.error('Respond error:', error)
+      logger.error('Respond error:', error)
       toast.error('약속 응답에 실패했습니다')
     } finally {
       setIsResponding(false)

@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('NewPostForm')
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -64,7 +67,7 @@ export default function NewPostForm() {
         .upload(filePath, file)
 
       if (uploadError) {
-        console.error('Image upload error:', uploadError)
+        logger.error('Image upload error:', uploadError)
         throw new Error('이미지 업로드 중 오류가 발생했습니다')
       }
 
@@ -136,7 +139,7 @@ export default function NewPostForm() {
         status: 'active',
       }
 
-      console.log('Inserting post data:', postData)
+      logger.log('Inserting post data:', postData)
 
       const { data: post, error: postError } = await supabase
         .from('posts')
@@ -145,12 +148,12 @@ export default function NewPostForm() {
         .single()
 
       if (postError) {
-        console.error('Post creation error:', postError)
-        console.error('Error details:', JSON.stringify(postError, null, 2))
-        console.error('Error message:', postError.message)
-        console.error('Error code:', postError.code)
-        console.error('Error hint:', postError.hint)
-        console.error('Error details:', postError.details)
+        logger.error('Post creation error:', postError)
+        logger.error('Error details:', JSON.stringify(postError, null, 2))
+        logger.error('Error message:', postError.message)
+        logger.error('Error code:', postError.code)
+        logger.error('Error hint:', postError.hint)
+        logger.error('Error details:', postError.details)
         setError(`게시물 작성 중 오류가 발생했습니다: ${postError.message || JSON.stringify(postError)}`)
         return
       }
@@ -159,7 +162,7 @@ export default function NewPostForm() {
       router.push(`/post/${tempPostId}`)
       router.refresh()
     } catch (err) {
-      console.error('Submission error:', err)
+      logger.error('Submission error:', err)
       setError(err instanceof Error ? err.message : '게시물 작성 중 오류가 발생했습니다')
     } finally {
       setIsLoading(false)

@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useCallback } from 'react'
 import { TrendingUp, Newspaper, Calendar as CalendarIcon, MapPin, Calculator, X, RefreshCw } from 'lucide-react'
 import dynamic from 'next/dynamic'
@@ -100,7 +103,7 @@ export default function TodayPage() {
       // 캐시 확인 (1시간 TTL)
       const cached = getCache<ExchangeRates>(CACHE_KEYS.EXCHANGE_RATES, 60 * 60 * 1000)
       if (cached) {
-        console.log('환율 데이터 캐시 히트')
+        logger.log('환율 데이터 캐시 히트')
         setExchangeRates(cached)
         setExchangeRatesLastUpdated(new Date(cached.lastUpdated))
         return
@@ -128,9 +131,9 @@ export default function TodayPage() {
       setExchangeRates(rates)
       setExchangeRatesLastUpdated(new Date())
 
-      console.log('환율 출처:', data.source === 'naver' ? '네이버 금융' : data.source === 'api' ? 'ExchangeRate API' : '대체 API')
+      logger.log('환율 출처:', data.source === 'naver' ? '네이버 금융' : data.source === 'api' ? 'ExchangeRate API' : '대체 API')
     } catch (error) {
-      console.error('환율 정보 가져오기 실패:', error)
+      logger.error('환율 정보 가져오기 실패:', error)
       // 에러 발생 시 예시 데이터
       setExchangeRates({
         krwToRub: 0.075,
@@ -147,7 +150,7 @@ export default function TodayPage() {
         // 캐시 확인 (30분 TTL)
         const cached = getCache<WeatherData>(CACHE_KEYS.WEATHER(city), 30 * 60 * 1000)
         if (cached) {
-          console.log('날씨 데이터 캐시 히트:', city)
+          logger.log('날씨 데이터 캐시 히트:', city)
           setWeather(cached)
           return
         }
@@ -165,7 +168,7 @@ export default function TodayPage() {
 
         const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY
         if (!apiKey || apiKey === 'your-api-key-here') {
-          console.warn('OpenWeatherMap API 키가 설정되지 않았습니다. 예시 데이터를 사용합니다.')
+          logger.warn('OpenWeatherMap API 키가 설정되지 않았습니다. 예시 데이터를 사용합니다.')
           // API 키가 없을 때 예시 데이터 사용
           const month = new Date().getMonth() + 1
           let condition: WeatherCondition = 'snow'
@@ -234,7 +237,7 @@ export default function TodayPage() {
         setWeather(weatherData)
         setWeatherLastUpdated(new Date())
       } catch (error) {
-        console.error('날씨 정보 가져오기 실패:', error)
+        logger.error('날씨 정보 가져오기 실패:', error)
         // 에러 발생 시 기본 날씨 표시
         setWeather({
           condition: 'cloudy',
@@ -251,8 +254,8 @@ export default function TodayPage() {
       const supabase = createClient()
       const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-      console.log('User:', user)
-      console.log('User Error:', userError)
+      logger.log('User:', user)
+      logger.log('User Error:', userError)
 
       if (user) {
         const { data: profile, error: profileError } = await supabase
@@ -261,8 +264,8 @@ export default function TodayPage() {
           .eq('id', user.id)
           .single()
 
-        console.log('Profile:', profile)
-        console.log('Profile Error:', profileError)
+        logger.log('Profile:', profile)
+        logger.log('Profile Error:', profileError)
 
         if (profile?.city) {
           setUserCity(profile.city)
@@ -279,14 +282,14 @@ export default function TodayPage() {
     // 30분마다 날씨 자동 업데이트
     const weatherInterval = setInterval(() => {
       if (userCity) {
-        console.log('자동 날씨 업데이트 실행')
+        logger.log('자동 날씨 업데이트 실행')
         fetchWeatherData(userCity)
       }
     }, 30 * 60 * 1000) // 30분
 
     // 1시간마다 환율 자동 업데이트
     const exchangeRatesInterval = setInterval(() => {
-      console.log('자동 환율 업데이트 실행')
+      logger.log('자동 환율 업데이트 실행')
       fetchExchangeRates()
     }, 60 * 60 * 1000) // 1시간
 
@@ -384,7 +387,7 @@ export default function TodayPage() {
       24 * 60 * 60 * 1000
     )
     if (cached && cached.length > 0) {
-      console.log('환율 히스토리 캐시 히트:', type)
+      logger.log('환율 히스토리 캐시 히트:', type)
       setYearlyChartData(prev => ({ ...prev, [type]: cached }))
       const filtered = filterDataByPeriod(cached, period)
       setChartData(filtered)
@@ -417,10 +420,10 @@ export default function TodayPage() {
       setChartData(filtered)
 
       if (result.fallback || result.error) {
-        console.warn('환율 히스토리: 대체 데이터 사용 중')
+        logger.warn('환율 히스토리: 대체 데이터 사용 중')
       }
     } catch (error) {
-      console.error('환율 히스토리 로드 실패:', error)
+      logger.error('환율 히스토리 로드 실패:', error)
       setChartData([])
     } finally {
       setIsLoadingChart(false)

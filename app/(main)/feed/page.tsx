@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { Plus, Heart, Bookmark } from 'lucide-react'
 import Link from 'next/link'
@@ -59,7 +62,7 @@ export default function FeedPage() {
       // 캐시 확인 (5분 TTL - 게시글은 자주 업데이트되므로 짧게 설정)
       const cached = getCache<Post[]>(CACHE_KEYS.POSTS(1), 5 * 60 * 1000)
       if (cached && cached.length > 0) {
-        console.log('게시글 데이터 캐시 히트')
+        logger.log('게시글 데이터 캐시 히트')
         setPosts(cached)
         setIsLoading(false)
         return
@@ -105,7 +108,7 @@ export default function FeedPage() {
         .limit(20)
 
       if (error || !postsData) {
-        console.error('Posts fetch error:', error)
+        logger.error('Posts fetch error:', error)
         setIsLoading(false)
         return
       }
@@ -163,7 +166,7 @@ export default function FeedPage() {
 
       setPosts(postsWithReactions as Post[])
     } catch (err) {
-      console.error('Fetch error:', err)
+      logger.error('Fetch error:', err)
     } finally {
       setIsLoading(false)
     }
@@ -242,7 +245,7 @@ export default function FeedPage() {
           .insert({ user_id: user.id, post_id: postId })
       }
     } catch (err) {
-      console.error('Toggle like error:', err)
+      logger.error('Toggle like error:', err)
       // 실패 시 원래 상태로 복구
       setPosts(prevPosts =>
         prevPosts.map(post =>
@@ -292,7 +295,7 @@ export default function FeedPage() {
           .insert({ user_id: user.id, post_id: postId })
       }
     } catch (err) {
-      console.error('Toggle interest error:', err)
+      logger.error('Toggle interest error:', err)
       // 실패 시 원래 상태로 복구
       setPosts(prevPosts =>
         prevPosts.map(post =>

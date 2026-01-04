@@ -3,6 +3,10 @@
  * localStorage를 사용하여 API 응답을 캐시하고 TTL을 관리합니다.
  */
 
+import { createNamespacedLogger } from './logger'
+
+const logger = createNamespacedLogger('Cache')
+
 interface CacheItem<T> {
   data: T
   timestamp: number
@@ -33,7 +37,7 @@ export function getCache<T>(key: string, ttl: number = 30 * 60 * 1000): T | null
 
     return item.data
   } catch (error) {
-    console.error('Cache read error:', error)
+    logger.error('Cache read error:', error)
     return null
   }
 }
@@ -55,7 +59,7 @@ export function setCache<T>(key: string, data: T, ttl: number = 30 * 60 * 1000):
     }
     localStorage.setItem(key, JSON.stringify(item))
   } catch (error) {
-    console.error('Cache write error:', error)
+    logger.error('Cache write error:', error)
   }
 }
 
@@ -69,7 +73,7 @@ export function clearCache(key: string): void {
   try {
     localStorage.removeItem(key)
   } catch (error) {
-    console.error('Cache clear error:', error)
+    logger.error('Cache clear error:', error)
   }
 }
 
@@ -87,7 +91,7 @@ export function clearAllCache(): void {
       }
     })
   } catch (error) {
-    console.error('Clear all cache error:', error)
+    logger.error('Clear all cache error:', error)
   }
 }
 

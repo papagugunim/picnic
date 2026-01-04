@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ChatRoomWithProfile } from '@/types/chat'
 import { getCache, setCache } from '@/lib/cache'
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('useChats')
 
 /**
  * 채팅방 목록을 가져오고 실시간 업데이트를 제공하는 훅
@@ -31,7 +34,7 @@ export function useChats() {
       const chatCacheKey = `cache_chat_rooms_${user.id}`
       const cached = getCache<ChatRoomWithProfile[]>(chatCacheKey, 3 * 60 * 1000)
       if (cached && cached.length > 0) {
-        console.log('채팅방 목록 캐시 히트')
+        logger.log('채팅방 목록 캐시 히트')
         setChatRooms(cached)
         setIsLoading(false)
         // 캐시 사용 후에도 백그라운드에서 업데이트
@@ -46,7 +49,7 @@ export function useChats() {
         .order('updated_at', { ascending: false })
 
       if (roomsError) {
-        console.error('Rooms fetch error:', roomsError)
+        logger.error('Rooms fetch error:', roomsError)
         setError('채팅방 목록을 불러오는데 실패했습니다')
         return
       }
@@ -123,7 +126,7 @@ export function useChats() {
 
       setChatRooms(roomsWithDetails as ChatRoomWithProfile[])
     } catch (err) {
-      console.error('Fetch error:', err)
+      logger.error('Fetch error:', err)
       setError('채팅방 목록을 불러오는데 실패했습니다')
     } finally {
       setIsLoading(false)
@@ -148,7 +151,7 @@ export function useChats() {
             table: 'chat_rooms',
           },
           () => {
-            console.log('Chat room changed, refetching...')
+            logger.log('Chat room changed, refetching...')
             fetchChatRooms()
           }
         )
@@ -160,12 +163,12 @@ export function useChats() {
             table: 'chat_messages',
           },
           () => {
-            console.log('Chat message changed, refetching...')
+            logger.log('Chat message changed, refetching...')
             fetchChatRooms()
           }
         )
         .subscribe((status) => {
-          console.log('Chat rooms subscription status:', status)
+          logger.log('Chat rooms subscription status:', status)
         })
     }
 

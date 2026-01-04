@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('AppointmentProposalForm')
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -91,7 +94,7 @@ export function AppointmentProposalForm({
       setOpen(false)
       setFormData({ date: '', location: '', memo: '' })
     } catch (error) {
-      console.error('Appointment proposal error:', error)
+      logger.error('Appointment proposal error:', error)
       toast.error('약속 제안에 실패했습니다')
     } finally {
       setIsSubmitting(false)

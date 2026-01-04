@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -57,7 +60,7 @@ function VerifyEmailContent() {
       })
       setResendCooldown(60) // 60초 쿨다운
     } catch (err) {
-      console.error('Resend error:', err)
+      logger.error('Resend error:', err)
       toast.error('이메일 재전송 중 오류가 발생했습니다')
     } finally {
       setIsResending(false)

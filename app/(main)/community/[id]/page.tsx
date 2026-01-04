@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ChevronLeft, Heart, MessageCircle, Send, MoreVertical, Trash2, EyeOff, Eye, Edit } from 'lucide-react'
@@ -127,7 +130,7 @@ export default function CommunityPostDetailPage() {
         .single()
 
       if (postError) {
-        console.error('Post fetch error:', postError)
+        logger.error('Post fetch error:', postError)
         return
       }
 
@@ -182,7 +185,7 @@ export default function CommunityPostDetailPage() {
         .order('created_at', { ascending: true })
 
       if (commentsError) {
-        console.error('Comments fetch error:', commentsError)
+        logger.error('Comments fetch error:', commentsError)
         return
       }
 
@@ -217,7 +220,7 @@ export default function CommunityPostDetailPage() {
 
       setComments(commentsWithLikes as Comment[])
     } catch (err) {
-      console.error('Fetch error:', err)
+      logger.error('Fetch error:', err)
     } finally {
       setIsLoading(false)
     }
@@ -285,14 +288,14 @@ export default function CommunityPostDetailPage() {
         })
 
       if (error) {
-        console.error('Comment submit error:', error)
+        logger.error('Comment submit error:', error)
         return
       }
 
       setNewComment('')
       fetchPostAndComments()
     } catch (err) {
-      console.error('Submit error:', err)
+      logger.error('Submit error:', err)
     } finally {
       setIsSubmitting(false)
     }
@@ -310,14 +313,14 @@ export default function CommunityPostDetailPage() {
         .eq('id', commentId)
 
       if (error) {
-        console.error('Comment delete error:', error)
+        logger.error('Comment delete error:', error)
         alert('댓글 삭제 중 오류가 발생했습니다')
         return
       }
 
       fetchPostAndComments()
     } catch (err) {
-      console.error('Delete error:', err)
+      logger.error('Delete error:', err)
       alert('댓글 삭제 중 오류가 발생했습니다')
     }
   }
@@ -335,7 +338,7 @@ export default function CommunityPostDetailPage() {
         .eq('id', postId)
 
       if (error) {
-        console.error('Post deletion error:', error)
+        logger.error('Post deletion error:', error)
         alert('게시글 삭제 중 오류가 발생했습니다')
         return
       }
@@ -343,7 +346,7 @@ export default function CommunityPostDetailPage() {
       router.push('/community')
       router.refresh()
     } catch (err) {
-      console.error('Delete error:', err)
+      logger.error('Delete error:', err)
       alert('게시글 삭제 중 오류가 발생했습니다')
     } finally {
       setIsDeleting(false)
@@ -373,14 +376,14 @@ export default function CommunityPostDetailPage() {
         .eq('id', postId)
 
       if (error) {
-        console.error('Toggle hidden error:', error)
+        logger.error('Toggle hidden error:', error)
         alert('게시글 숨김 처리 중 오류가 발생했습니다')
         return
       }
 
       fetchPostAndComments()
     } catch (err) {
-      console.error('Toggle hidden error:', err)
+      logger.error('Toggle hidden error:', err)
       alert('게시글 숨김 처리 중 오류가 발생했습니다')
     }
   }

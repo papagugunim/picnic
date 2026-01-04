@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('SignupForm')
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -110,7 +113,7 @@ export default function SignupForm() {
         router.push(`/verify-email?email=${encodeURIComponent(values.email)}`)
       }, 1500)
     } catch (err) {
-      console.error('Signup error:', err)
+      logger.error('Signup error:', err)
       setError('회원가입 중 오류가 발생했습니다')
     } finally {
       setIsLoading(false)

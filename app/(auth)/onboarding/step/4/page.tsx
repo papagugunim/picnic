@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -113,7 +116,7 @@ export default function OnboardingStep4() {
         .eq('id', user.id)
 
       if (updateError) {
-        console.error('Profile update error:', updateError)
+        logger.error('Profile update error:', updateError)
         setError('프로필 업데이트 중 오류가 발생했습니다')
         return
       }
@@ -121,7 +124,7 @@ export default function OnboardingStep4() {
       // 완료 페이지로 이동
       router.push('/onboarding/complete')
     } catch (err) {
-      console.error('Save error:', err)
+      logger.error('Save error:', err)
       setError('저장 중 오류가 발생했습니다')
     } finally {
       setIsLoading(false)
@@ -150,7 +153,7 @@ export default function OnboardingStep4() {
 
       router.push('/onboarding/complete')
     } catch (err) {
-      console.error('Skip error:', err)
+      logger.error('Skip error:', err)
       router.push('/onboarding/complete')
     } finally {
       setIsLoading(false)

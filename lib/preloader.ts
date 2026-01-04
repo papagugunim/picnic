@@ -5,6 +5,9 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { setCache, CACHE_KEYS } from '@/lib/cache'
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Preloader')
 
 /**
  * 날씨 데이터 프리로드
@@ -23,7 +26,7 @@ async function preloadWeather(city: string) {
 
     const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY
     if (!apiKey || apiKey === 'your-api-key-here') {
-      console.log('날씨 API 키 없음 - 프리로드 스킵')
+      logger.log('날씨 API 키 없음 - 프리로드 스킵')
       return
     }
 
@@ -62,9 +65,9 @@ async function preloadWeather(city: string) {
     }
 
     setCache(CACHE_KEYS.WEATHER(city), weatherData, 30 * 60 * 1000)
-    console.log('✅ 날씨 데이터 프리로드 완료')
+    logger.log('✅ 날씨 데이터 프리로드 완료')
   } catch (error) {
-    console.error('날씨 프리로드 실패:', error)
+    logger.error('날씨 프리로드 실패:', error)
   }
 }
 
@@ -86,9 +89,9 @@ async function preloadExchangeRates() {
     }
 
     setCache(CACHE_KEYS.EXCHANGE_RATES, rates, 60 * 60 * 1000)
-    console.log('✅ 환율 데이터 프리로드 완료')
+    logger.log('✅ 환율 데이터 프리로드 완료')
   } catch (error) {
-    console.error('환율 프리로드 실패:', error)
+    logger.error('환율 프리로드 실패:', error)
   }
 }
 
@@ -181,9 +184,9 @@ async function preloadPosts() {
     }))
 
     setCache(CACHE_KEYS.POSTS(1), postsWithReactions, 5 * 60 * 1000)
-    console.log('✅ 게시글 데이터 프리로드 완료')
+    logger.log('✅ 게시글 데이터 프리로드 완료')
   } catch (error) {
-    console.error('게시글 프리로드 실패:', error)
+    logger.error('게시글 프리로드 실패:', error)
   }
 }
 
@@ -192,7 +195,7 @@ async function preloadPosts() {
  * 로그인 후 자동으로 호출하여 페이지 전환 시 즉시 데이터 표시
  */
 export async function preloadAllPages() {
-  console.log('🚀 백그라운드 프리로딩 시작...')
+  logger.log('🚀 백그라운드 프리로딩 시작...')
 
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -214,5 +217,5 @@ export async function preloadAllPages() {
     preloadPosts(),
   ])
 
-  console.log('✅ 백그라운드 프리로딩 완료!')
+  logger.log('✅ 백그라운드 프리로딩 완료!')
 }

@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('UseNotifications')
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Notification } from '@/types/notification'
@@ -55,7 +58,7 @@ export function useNotifications(): UseNotificationsReturn {
       setUnreadCount((data || []).filter(n => !n.is_read).length)
     } catch (err) {
       setError(err instanceof Error ? err : new Error('알림을 불러오는데 실패했습니다'))
-      console.error('Failed to fetch notifications:', err)
+      logger.error('Failed to fetch notifications:', err)
     } finally {
       setIsLoading(false)
     }
@@ -77,7 +80,7 @@ export function useNotifications(): UseNotificationsReturn {
       )
       setUnreadCount(prev => Math.max(0, prev - 1))
     } catch (err) {
-      console.error('Failed to mark notification as read:', err)
+      logger.error('Failed to mark notification as read:', err)
     }
   }, [supabase])
 
@@ -98,7 +101,7 @@ export function useNotifications(): UseNotificationsReturn {
       )
       setUnreadCount(0)
     } catch (err) {
-      console.error('Failed to mark all notifications as read:', err)
+      logger.error('Failed to mark all notifications as read:', err)
     }
   }, [supabase])
 

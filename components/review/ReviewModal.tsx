@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('ReviewModal')
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -55,7 +58,7 @@ export function ReviewModal({
       setRating(5)
       setComment('')
     } catch (error) {
-      console.error('Submit review error:', error)
+      logger.error('Submit review error:', error)
       toast.error('리뷰 작성에 실패했습니다')
     } finally {
       setIsSubmitting(false)

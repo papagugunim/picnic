@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('CompleteSaleButton')
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -48,7 +51,7 @@ export function CompleteSaleButton({
         }, 1500)
       }
     } catch (error) {
-      console.error('Complete sale error:', error)
+      logger.error('Complete sale error:', error)
       toast.error('판매완료 처리에 실패했습니다')
     } finally {
       setIsCompleting(false)

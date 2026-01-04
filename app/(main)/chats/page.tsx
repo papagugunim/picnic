@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { MessageCircle, Package } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -27,7 +30,7 @@ export default function ChatsPage() {
       mutate()
       toast.success('채팅방이 삭제되었습니다')
     } catch (error) {
-      console.error('Delete room error:', error)
+      logger.error('Delete room error:', error)
       toast.error('채팅방 삭제에 실패했습니다')
     }
   }

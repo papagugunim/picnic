@@ -1,3 +1,7 @@
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Route')
+
 import { NextResponse } from 'next/server'
 
 // 캐시 저장소 (메모리)
@@ -94,7 +98,7 @@ export async function GET(request: Request) {
               }
             }
           } catch (error) {
-            console.error(`날짜 ${dateStr} 환율 데이터 가져오기 실패:`, error)
+            logger.error(`날짜 ${dateStr} 환율 데이터 가져오기 실패:`, error)
           }
           return null
         })
@@ -106,7 +110,7 @@ export async function GET(request: Request) {
 
     // 데이터가 없으면 현재 환율로 대체 데이터 생성
     if (historyData.length === 0) {
-      console.warn('히스토리 데이터 없음, 대체 데이터 생성')
+      logger.warn('히스토리 데이터 없음, 대체 데이터 생성')
       const fallbackData = generateFallbackData('year', currency)
 
       cache.set(cacheKey, {
@@ -132,7 +136,7 @@ export async function GET(request: Request) {
     })
 
   } catch (error) {
-    console.error('환율 히스토리 가져오기 실패:', error)
+    logger.error('환율 히스토리 가져오기 실패:', error)
 
     // 에러 시 대체 데이터
     const { searchParams } = new URL(request.url)

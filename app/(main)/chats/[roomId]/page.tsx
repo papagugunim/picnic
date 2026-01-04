@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ChevronLeft, Send, Package } from 'lucide-react'
@@ -83,7 +86,7 @@ export default function ChatRoomPage() {
         .single()
 
       if (roomError) {
-        console.error('Room fetch error:', roomError)
+        logger.error('Room fetch error:', roomError)
         router.push('/chats')
         return
       }
@@ -122,7 +125,7 @@ export default function ChatRoomPage() {
         post: postData,
       })
     } catch (err) {
-      console.error('Fetch error:', err)
+      logger.error('Fetch error:', err)
     } finally {
       setIsLoading(false)
     }

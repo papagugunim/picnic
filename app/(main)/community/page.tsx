@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Heart, MessageCircle, Plus, Search } from 'lucide-react'
@@ -70,7 +73,7 @@ export default function CommunityPage() {
       const cacheKey = `cache_community_posts_${selectedCategory}_${user.id}`
       const cached = getCache<CommunityPost[]>(cacheKey, 5 * 60 * 1000)
       if (cached && cached.length > 0) {
-        console.log('커뮤니티 게시글 캐시 히트')
+        logger.log('커뮤니티 게시글 캐시 히트')
         setPosts(cached)
         setIsLoading(false)
         return
@@ -114,7 +117,7 @@ export default function CommunityPage() {
       const { data: postsData, error: postsError } = await query
 
       if (postsError) {
-        console.error('Posts fetch error:', postsError)
+        logger.error('Posts fetch error:', postsError)
         return
       }
 
@@ -183,7 +186,7 @@ export default function CommunityPage() {
 
       setPosts(postsWithCounts as CommunityPost[])
     } catch (err) {
-      console.error('Fetch error:', err)
+      logger.error('Fetch error:', err)
     } finally {
       setIsLoading(false)
     }

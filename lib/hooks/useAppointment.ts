@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('UseAppointment')
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { PurchaseAppointment, CreateAppointmentParams } from '@/types/purchase'
@@ -30,14 +33,14 @@ export function useAppointment(roomId: string) {
           .maybeSingle()
 
         if (error) {
-          console.error('Appointment fetch error:', error)
+          logger.error('Appointment fetch error:', error)
           setError('약속 정보를 불러오는데 실패했습니다')
           return
         }
 
         setAppointment(data)
       } catch (err) {
-        console.error('Fetch error:', err)
+        logger.error('Fetch error:', err)
         setError('약속 정보를 불러오는데 실패했습니다')
       } finally {
         setIsLoading(false)
@@ -55,7 +58,7 @@ export function useAppointment(roomId: string) {
         table: 'purchase_appointments',
         filter: `room_id=eq.${roomId}`
       }, (payload) => {
-        console.log('Appointment change:', payload)
+        logger.log('Appointment change:', payload)
 
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const newAppointment = payload.new as PurchaseAppointment
@@ -92,13 +95,13 @@ export function useAppointment(roomId: string) {
       })
 
       if (error) {
-        console.error('Create appointment error:', error)
+        logger.error('Create appointment error:', error)
         throw new Error('약속 제안 실패')
       }
 
       return data
     } catch (err) {
-      console.error('Propose appointment error:', err)
+      logger.error('Propose appointment error:', err)
       throw err
     }
   }
@@ -114,7 +117,7 @@ export function useAppointment(roomId: string) {
       })
 
       if (error) {
-        console.error('Respond to appointment error:', error)
+        logger.error('Respond to appointment error:', error)
         throw new Error('약속 응답 실패')
       }
 
@@ -124,7 +127,7 @@ export function useAppointment(roomId: string) {
 
       return data
     } catch (err) {
-      console.error('Respond error:', err)
+      logger.error('Respond error:', err)
       throw err
     }
   }

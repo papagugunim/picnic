@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, AlertTriangle } from 'lucide-react'
@@ -70,7 +73,7 @@ export default function DeleteAccountPage() {
       const { error: deleteError } = await supabase.rpc('delete_user')
 
       if (deleteError) {
-        console.error('Failed to delete auth user:', deleteError)
+        logger.error('Failed to delete auth user:', deleteError)
         // Auth 삭제 실패 시에도 로그아웃은 진행
       }
 
@@ -80,7 +83,7 @@ export default function DeleteAccountPage() {
       // 로그인 페이지로 리다이렉트
       router.push('/login?message=account_deleted')
     } catch (err) {
-      console.error('Delete account error:', err)
+      logger.error('Delete account error:', err)
       setError('회원 탈퇴 중 오류가 발생했습니다')
     } finally {
       setIsDeleting(false)

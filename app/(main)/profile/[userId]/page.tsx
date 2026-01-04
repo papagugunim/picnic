@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Settings, MapPin, Calendar, Package, Train, Users, MessageCircle, Heart, Bookmark } from 'lucide-react'
@@ -94,7 +97,7 @@ export default function ProfilePage() {
           .single()
 
         if (profileError) {
-          console.error('Profile fetch error:', profileError)
+          logger.error('Profile fetch error:', profileError)
           return
         }
 
@@ -108,7 +111,7 @@ export default function ProfilePage() {
           .order('created_at', { ascending: false })
 
         if (postsError) {
-          console.error('Posts fetch error:', {
+          logger.error('Posts fetch error:', {
             message: postsError.message,
             code: postsError.code,
             details: postsError.details,
@@ -127,7 +130,7 @@ export default function ProfilePage() {
           .order('created_at', { ascending: false })
 
         if (communityPostsError) {
-          console.error('Community posts fetch error:', communityPostsError)
+          logger.error('Community posts fetch error:', communityPostsError)
           setCommunityPosts([])
         } else {
           setCommunityPosts(communityPostsData || [])
@@ -153,7 +156,7 @@ export default function ProfilePage() {
             .order('created_at', { ascending: false })
 
           if (likedPostsError) {
-            console.error('Liked posts fetch error:', likedPostsError)
+            logger.error('Liked posts fetch error:', likedPostsError)
             setLikedPosts([])
           } else {
             const liked = likedPostsData?.map((item: any) => item.posts).filter(Boolean) || []
@@ -178,7 +181,7 @@ export default function ProfilePage() {
             .order('created_at', { ascending: false })
 
           if (interestedPostsError) {
-            console.error('Interested posts fetch error:', interestedPostsError)
+            logger.error('Interested posts fetch error:', interestedPostsError)
             setInterestedPosts([])
           } else {
             const interested = interestedPostsData?.map((item: any) => item.posts).filter(Boolean) || []
@@ -186,7 +189,7 @@ export default function ProfilePage() {
           }
         }
       } catch (err) {
-        console.error('Fetch error:', err)
+        logger.error('Fetch error:', err)
       } finally {
         setIsLoading(false)
       }
@@ -214,14 +217,14 @@ export default function ProfilePage() {
       })
 
       if (error) {
-        console.error('Chat room creation error:', error)
+        logger.error('Chat room creation error:', error)
         return
       }
 
       // Navigate to chat room
       router.push(`/chats/${data}`)
     } catch (err) {
-      console.error('Start chat error:', err)
+      logger.error('Start chat error:', err)
     } finally {
       setIsStartingChat(false)
     }
@@ -236,7 +239,7 @@ export default function ProfilePage() {
       router.push('/')
       router.refresh()
     } catch (err) {
-      console.error('Logout error:', err)
+      logger.error('Logout error:', err)
     }
   }
 

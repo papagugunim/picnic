@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, MapPin, Clock, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye } from 'lucide-react'
@@ -85,7 +88,7 @@ export default function PostDetailPage() {
       const cacheKey = `cache_post_detail_${postId}`
       const cached = getCache<Post>(cacheKey, 5 * 60 * 1000)
       if (cached) {
-        console.log('게시글 상세 캐시 히트')
+        logger.log('게시글 상세 캐시 히트')
         setPost(cached)
         setIsLoading(false)
         return
@@ -131,7 +134,7 @@ export default function PostDetailPage() {
         .single()
 
       if (postError) {
-        console.error('Post fetch error:', postError)
+        logger.error('Post fetch error:', postError)
         return
       }
 
@@ -182,7 +185,7 @@ export default function PostDetailPage() {
 
       setPost(postWithDetails)
     } catch (err) {
-      console.error('Fetch error:', err)
+      logger.error('Fetch error:', err)
     } finally {
       setIsLoading(false)
     }
@@ -210,14 +213,14 @@ export default function PostDetailPage() {
       })
 
       if (error) {
-        console.error('Chat room creation error:', error)
+        logger.error('Chat room creation error:', error)
         return
       }
 
       // Navigate to chat room
       router.push(`/chats/${data}`)
     } catch (err) {
-      console.error('Start chat error:', err)
+      logger.error('Start chat error:', err)
     } finally {
       setIsStartingChat(false)
     }
@@ -243,7 +246,7 @@ export default function PostDetailPage() {
           .remove(filePaths)
 
         if (storageError) {
-          console.error('Image deletion error:', storageError)
+          logger.error('Image deletion error:', storageError)
         }
       }
 
@@ -254,7 +257,7 @@ export default function PostDetailPage() {
         .eq('id', postId)
 
       if (postError) {
-        console.error('Post deletion error:', postError)
+        logger.error('Post deletion error:', postError)
         alert('게시글 삭제 중 오류가 발생했습니다')
         return
       }
@@ -263,7 +266,7 @@ export default function PostDetailPage() {
       router.push('/feed')
       router.refresh()
     } catch (err) {
-      console.error('Delete error:', err)
+      logger.error('Delete error:', err)
       alert('게시글 삭제 중 오류가 발생했습니다')
     } finally {
       setIsDeleting(false)
@@ -293,7 +296,7 @@ export default function PostDetailPage() {
         .eq('id', postId)
 
       if (error) {
-        console.error('Toggle hidden error:', error)
+        logger.error('Toggle hidden error:', error)
         alert('게시글 숨김 처리 중 오류가 발생했습니다')
         return
       }
@@ -301,7 +304,7 @@ export default function PostDetailPage() {
       // Refresh post data
       fetchPost()
     } catch (err) {
-      console.error('Toggle hidden error:', err)
+      logger.error('Toggle hidden error:', err)
       alert('게시글 숨김 처리 중 오류가 발생했습니다')
     }
   }
@@ -336,7 +339,7 @@ export default function PostDetailPage() {
           .insert({ user_id: user.id, post_id: postId })
       }
     } catch (err) {
-      console.error('Toggle like error:', err)
+      logger.error('Toggle like error:', err)
       // 실패 시 원래 상태로 복구
       if (post) {
         setPost({
@@ -378,7 +381,7 @@ export default function PostDetailPage() {
           .insert({ user_id: user.id, post_id: postId })
       }
     } catch (err) {
-      console.error('Toggle interest error:', err)
+      logger.error('Toggle interest error:', err)
       // 실패 시 원래 상태로 복구
       if (post) {
         setPost({

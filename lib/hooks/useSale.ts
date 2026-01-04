@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('UseSale')
 import { createClient } from '@/lib/supabase/client'
 
 /**
@@ -24,7 +27,7 @@ export function useSale() {
       })
 
       if (error) {
-        console.error('Complete sale error:', error)
+        logger.error('Complete sale error:', error)
         throw new Error('판매완료 처리 실패')
       }
 
@@ -34,7 +37,7 @@ export function useSale() {
 
       return data
     } catch (err) {
-      console.error('Complete sale error:', err)
+      logger.error('Complete sale error:', err)
       throw err
     }
   }
@@ -61,11 +64,11 @@ export function useSale() {
         })
 
       if (error) {
-        console.error('Create review error:', error)
+        logger.error('Create review error:', error)
         throw new Error('리뷰 작성 실패')
       }
     } catch (err) {
-      console.error('Create review error:', err)
+      logger.error('Create review error:', err)
       throw err
     }
   }
@@ -88,13 +91,13 @@ export function useSale() {
         .maybeSingle()
 
       if (error) {
-        console.error('Check review error:', error)
+        logger.error('Check review error:', error)
         return false
       }
 
       return !!data
     } catch (err) {
-      console.error('Check review error:', err)
+      logger.error('Check review error:', err)
       return false
     }
   }
@@ -123,13 +126,13 @@ export function useSale() {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Get reviews error:', error)
+        logger.error('Get reviews error:', error)
         throw new Error('리뷰를 불러오는데 실패했습니다')
       }
 
       return data || []
     } catch (err) {
-      console.error('Get reviews error:', err)
+      logger.error('Get reviews error:', err)
       throw err
     }
   }

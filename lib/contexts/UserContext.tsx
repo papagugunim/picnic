@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('UserContext')
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
@@ -47,11 +50,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const now = Date.now()
 
         if (!forceRefresh && cached && (now - cached.timestamp) < CACHE_TTL) {
-          console.log('[UserContext] Using cached profile')
+          logger.log('[UserContext] Using cached profile')
           setProfile(cached.data)
         } else {
           // 캐시 미스 또는 강제 새로고침 - DB에서 가져오기
-          console.log('[UserContext] Fetching profile from database')
+          logger.log('[UserContext] Fetching profile from database')
           const { data: profileData } = await supabase
             .from('profiles')
             .select('id, full_name, city, avatar_url, preferred_metro_stations, matryoshka_level')
@@ -72,7 +75,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setProfile(null)
       }
     } catch (error) {
-      console.error('사용자 정보 로드 실패:', error)
+      logger.error('사용자 정보 로드 실패:', error)
       setUser(null)
       setProfile(null)
     } finally {

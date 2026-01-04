@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('UseUnreadCount')
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -47,7 +50,7 @@ export function useUnreadCount() {
 
         setUnreadCount(count || 0)
       } catch (error) {
-        console.error('Error fetching unread count:', error)
+        logger.error('Error fetching unread count:', error)
         setUnreadCount(0)
       } finally {
         setIsLoading(false)
@@ -69,7 +72,7 @@ export function useUnreadCount() {
             table: 'chat_messages',
           },
           () => {
-            console.log('Chat message changed, refetching unread count...')
+            logger.log('Chat message changed, refetching unread count...')
             fetchUnreadCount()
           }
         )
@@ -81,12 +84,12 @@ export function useUnreadCount() {
             table: 'chat_rooms',
           },
           () => {
-            console.log('Chat room changed, refetching unread count...')
+            logger.log('Chat room changed, refetching unread count...')
             fetchUnreadCount()
           }
         )
         .subscribe((status) => {
-          console.log('Unread count subscription status:', status)
+          logger.log('Unread count subscription status:', status)
         })
     }
 

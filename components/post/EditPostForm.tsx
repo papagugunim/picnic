@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('EditPostForm')
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -77,7 +80,7 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
         .single()
 
       if (postError || !post) {
-        console.error('Post fetch error:', postError)
+        logger.error('Post fetch error:', postError)
         setError('게시글을 불러올 수 없습니다')
         return
       }
@@ -101,7 +104,7 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
         setExistingImages(post.images)
       }
     } catch (err) {
-      console.error('Fetch error:', err)
+      logger.error('Fetch error:', err)
       setError('게시글을 불러오는 중 오류가 발생했습니다')
     } finally {
       setIsFetchingPost(false)
@@ -123,7 +126,7 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
         .upload(filePath, file)
 
       if (uploadError) {
-        console.error('Image upload error:', uploadError)
+        logger.error('Image upload error:', uploadError)
         throw new Error('이미지 업로드 중 오류가 발생했습니다')
       }
 
@@ -171,7 +174,7 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
         images: allImages,
       }
 
-      console.log('Updating post data:', updateData)
+      logger.log('Updating post data:', updateData)
 
       const { error: postError } = await supabase
         .from('posts')
@@ -179,7 +182,7 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
         .eq('id', postId)
 
       if (postError) {
-        console.error('Post update error:', postError)
+        logger.error('Post update error:', postError)
         setError(`게시물 수정 중 오류가 발생했습니다: ${postError.message}`)
         return
       }
@@ -188,7 +191,7 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
       router.push(`/post/${postId}`)
       router.refresh()
     } catch (err) {
-      console.error('Submission error:', err)
+      logger.error('Submission error:', err)
       setError(err instanceof Error ? err.message : '게시물 수정 중 오류가 발생했습니다')
     } finally {
       setIsLoading(false)

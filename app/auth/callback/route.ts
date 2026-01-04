@@ -1,3 +1,7 @@
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Route')
+
 import { createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
@@ -19,21 +23,21 @@ export async function GET(request: Request) {
     })
 
     if (error) {
-      console.error('Email verification error:', error)
+      logger.error('Email verification error:', error)
       return NextResponse.redirect(`${origin}/login?message=이메일 인증에 실패했습니다`)
     }
 
     // 이메일 확인 성공
-    console.log('Email verification success:', data)
+    logger.log('Email verification success:', data)
 
     // verifyOtp의 응답에서 사용자 정보 확인
     const user = data?.user
     if (!user) {
-      console.error('No user in verification response')
+      logger.error('No user in verification response')
       return NextResponse.redirect(`${origin}/login?message=사용자 정보를 찾을 수 없습니다`)
     }
 
-    console.log('User verified:', user.id)
+    logger.log('User verified:', user.id)
 
     // 프로필 생성 시간 확인하여 신규 회원인지 판단
     const { data: profile, error: profileError } = await supabase
@@ -43,27 +47,27 @@ export async function GET(request: Request) {
       .single()
 
     if (profileError) {
-      console.error('Profile fetch error:', profileError)
+      logger.error('Profile fetch error:', profileError)
       // 프로필이 없으면 회원가입 페이지로
       return NextResponse.redirect(`${origin}/signup?message=프로필을 생성해주세요`)
     }
 
-    console.log('Profile found:', profile)
+    logger.log('Profile found:', profile)
 
     // 신규 회원 판단: 프로필 생성 후 30분 이내면 신규 회원으로 간주
     const createdAt = new Date(profile.created_at)
     const now = new Date()
     const diffInMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60)
 
-    console.log(`Profile age: ${diffInMinutes} minutes`)
+    logger.log(`Profile age: ${diffInMinutes} minutes`)
 
     if (diffInMinutes < 30) {
-      console.log('New user detected, redirecting to onboarding')
+      logger.log('New user detected, redirecting to onboarding')
       return NextResponse.redirect(`${origin}/onboarding`)
     }
 
     // 기존 회원은 welcome 페이지로
-    console.log('Existing user, redirecting to welcome')
+    logger.log('Existing user, redirecting to welcome')
     return NextResponse.redirect(`${origin}/welcome`)
   }
 
@@ -72,7 +76,7 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (error) {
-      console.error('Auth callback error:', error)
+      logger.error('Auth callback error:', error)
       return NextResponse.redirect(`${origin}/login?message=인증에 실패했습니다`)
     }
 
@@ -80,7 +84,7 @@ export async function GET(request: Request) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (user) {
-      console.log('User authenticated via code:', user.id)
+      logger.log('User authenticated via code:', user.id)
 
       // 프로필 조회 (created_at 포함)
       const { data: profile, error: profileError } = await supabase
@@ -91,18 +95,18 @@ export async function GET(request: Request) {
 
       // 프로필이 없거나 필수 정보가 없으면 회원가입 페이지로
       if (profileError || !profile || !profile.city || !profile.full_name) {
-        console.error('Profile not found or incomplete:', profileError)
+        logger.error('Profile not found or incomplete:', profileError)
         return NextResponse.redirect(`${origin}/signup?message=프로필 정보를 입력해주세요`)
       }
 
-      console.log('Profile found:', profile)
+      logger.log('Profile found:', profile)
 
       // 신규 회원 판단: 프로필 생성 후 30분 이내면 신규 회원으로 간주
       const createdAt = new Date(profile.created_at)
       const now = new Date()
       const diffInMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60)
 
-      console.log(`Profile age: ${diffInMinutes} minutes`)
+      logger.log(`Profile age: ${diffInMinutes} minutes`)
 
       // next 파라미터가 있으면 우선
       if (next) {
@@ -111,12 +115,12 @@ export async function GET(request: Request) {
 
       // 신규 회원이면 온보딩으로
       if (diffInMinutes < 30) {
-        console.log('New user detected (code flow), redirecting to onboarding')
+        logger.log('New user detected (code flow), redirecting to onboarding')
         return NextResponse.redirect(`${origin}/onboarding`)
       }
 
       // 기존 회원은 welcome 페이지로
-      console.log('Existing user (code flow), redirecting to welcome')
+      logger.log('Existing user (code flow), redirecting to welcome')
       return NextResponse.redirect(`${origin}/welcome`)
     }
   }

@@ -1,3 +1,7 @@
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Route')
+
 import { NextResponse } from 'next/server'
 
 // 캐시 저장소 (메모리)
@@ -87,7 +91,7 @@ export async function GET() {
         }
       }
     } catch (naverError) {
-      console.warn('네이버 환율 실패, 한국수출입은행 시도:', naverError)
+      logger.warn('네이버 환율 실패, 한국수출입은행 시도:', naverError)
     }
 
     // 2. 한국 수출입은행 환율 API 시도 (2순위)
@@ -126,7 +130,7 @@ export async function GET() {
         }
       }
     } catch (koeximbankError) {
-      console.warn('한국수출입은행 API 실패, ExchangeRate-API 시도:', koeximbankError)
+      logger.warn('한국수출입은행 API 실패, ExchangeRate-API 시도:', koeximbankError)
     }
 
     // 3. ExchangeRate-API 시도 (3순위 대체)
@@ -151,14 +155,14 @@ export async function GET() {
         return NextResponse.json(cachedData)
       }
     } catch (apiError) {
-      console.warn('모든 환율 API 실패:', apiError)
+      logger.warn('모든 환율 API 실패:', apiError)
     }
 
     // 모든 API 실패 시 에러
     throw new Error('모든 환율 소스에서 데이터를 가져올 수 없습니다')
 
   } catch (error) {
-    console.error('환율 정보 가져오기 실패:', error)
+    logger.error('환율 정보 가져오기 실패:', error)
 
     // 캐시된 데이터가 있으면 오래되어도 반환
     if (cachedData) {

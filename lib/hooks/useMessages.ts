@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('UseMessages')
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ChatMessageWithProfile } from '@/types/chat'
@@ -38,7 +41,7 @@ export function useMessages(roomId: string) {
         .order('created_at', { ascending: true })
 
       if (messagesError) {
-        console.error('Messages fetch error:', messagesError)
+        logger.error('Messages fetch error:', messagesError)
         setError('메시지를 불러오는데 실패했습니다')
         return
       }
@@ -50,7 +53,7 @@ export function useMessages(roomId: string) {
 
       setMessages(formattedMessages as ChatMessageWithProfile[])
     } catch (err) {
-      console.error('Fetch error:', err)
+      logger.error('Fetch error:', err)
       setError('메시지를 불러오는데 실패했습니다')
     } finally {
       setIsLoading(false)
@@ -79,7 +82,7 @@ export function useMessages(roomId: string) {
           .eq('is_read', false)
           .neq('sender_id', user.id)
       } catch (err) {
-        console.error('Mark as read error:', err)
+        logger.error('Mark as read error:', err)
       }
     }
 
@@ -93,7 +96,7 @@ export function useMessages(roomId: string) {
           await supabase.removeChannel(subscription)
         }
 
-        console.log(`[Realtime] Connecting to room ${roomId}...`)
+        logger.log(`[Realtime] Connecting to room ${roomId}...`)
 
         // Subscribe to new messages in this room
         subscription = supabase
@@ -107,7 +110,7 @@ export function useMessages(roomId: string) {
               filter: `room_id=eq.${roomId}`,
             },
             async (payload) => {
-              console.log('[Realtime] New message received:', payload.new)
+              logger.log('[Realtime] New message received:', payload.new)
               const newMessage = payload.new
 
               // 프로필 정보 가져오기
@@ -130,7 +133,7 @@ export function useMessages(roomId: string) {
               setMessages((prev) => {
                 const existsById = prev.some((msg) => msg.id === newMessage.id)
                 if (existsById) {
-                  console.log('[Realtime] Message already exists (by ID), skipping')
+                  logger.log('[Realtime] Message already exists (by ID), skipping')
                   return prev
                 }
 
@@ -140,11 +143,11 @@ export function useMessages(roomId: string) {
                   Math.abs(new Date(msg.created_at).getTime() - new Date(newMessage.created_at).getTime()) < 5000
                 )
                 if (existsByContent) {
-                  console.log('[Realtime] Message already exists (by content), skipping')
+                  logger.log('[Realtime] Message already exists (by content), skipping')
                   return prev
                 }
 
-                console.log('[Realtime] Adding new message to state')
+                logger.log('[Realtime] Adding new message to state')
                 return [...prev, messageWithProfile as ChatMessageWithProfile]
               })
 
@@ -161,7 +164,7 @@ export function useMessages(roomId: string) {
               filter: `room_id=eq.${roomId}`,
             },
             (payload) => {
-              console.log('[Realtime] Message updated:', payload.new)
+              logger.log('[Realtime] Message updated:', payload.new)
               const updatedMessage = payload.new
               setMessages((prev) =>
                 prev.map((msg) =>
@@ -173,41 +176,41 @@ export function useMessages(roomId: string) {
             }
           )
           .subscribe((status, err) => {
-            console.log('[Realtime] Subscription status:', status)
+            logger.log('[Realtime] Subscription status:', status)
 
             if (status === 'SUBSCRIBED') {
-              console.log('[Realtime] Successfully connected!')
+              logger.log('[Realtime] Successfully connected!')
               reconnectAttempts = 0
             } else if (status === 'CLOSED') {
-              console.log('[Realtime] Connection closed')
+              logger.log('[Realtime] Connection closed')
               handleReconnect()
             } else if (status === 'CHANNEL_ERROR') {
-              console.error('[Realtime] Channel error:', err)
+              logger.error('[Realtime] Channel error:', err)
               handleReconnect()
             } else if (status === 'TIMED_OUT') {
-              console.error('[Realtime] Connection timed out')
+              logger.error('[Realtime] Connection timed out')
               handleReconnect()
             }
           })
       } catch (err) {
-        console.error('[Realtime] Setup error:', err)
+        logger.error('[Realtime] Setup error:', err)
         handleReconnect()
       }
     }
 
     function handleReconnect() {
       if (reconnectAttempts >= maxReconnectAttempts) {
-        console.log('[Realtime] Max reconnection attempts reached, giving up')
+        logger.log('[Realtime] Max reconnection attempts reached, giving up')
         return
       }
 
       reconnectAttempts++
       const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000) // Exponential backoff, max 30s
 
-      console.log(`[Realtime] Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`)
+      logger.log(`[Realtime] Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`)
 
       reconnectTimer = setTimeout(() => {
-        console.log('[Realtime] Attempting to reconnect...')
+        logger.log('[Realtime] Attempting to reconnect...')
         setupRealtimeSubscription()
       }, delay)
     }
@@ -217,7 +220,7 @@ export function useMessages(roomId: string) {
     setupRealtimeSubscription()
 
     return () => {
-      console.log('[Realtime] Cleaning up subscription')
+      logger.log('[Realtime] Cleaning up subscription')
       if (reconnectTimer) {
         clearTimeout(reconnectTimer)
       }
@@ -260,7 +263,7 @@ export function useMessages(roomId: string) {
           },
         }
 
-        console.log('Adding optimistic message:', optimisticMessage)
+        logger.log('Adding optimistic message:', optimisticMessage)
         setMessages((prev) => [...prev, optimisticMessage])
 
         // 메시지 전송
@@ -275,14 +278,14 @@ export function useMessages(roomId: string) {
           .single()
 
         if (error) {
-          console.error('Send message error:', error)
+          logger.error('Send message error:', error)
           // 실패 시 낙관적으로 추가한 메시지 제거
           setMessages((prev) => prev.filter((msg) => msg.id !== tempId))
           setError('메시지 전송에 실패했습니다')
           return false
         }
 
-        console.log('Message sent successfully:', data)
+        logger.log('Message sent successfully:', data)
 
         // 성공 시 임시 메시지를 실제 메시지로 교체
         if (data) {
@@ -304,7 +307,7 @@ export function useMessages(roomId: string) {
 
         return true
       } catch (err) {
-        console.error('Send error:', err)
+        logger.error('Send error:', err)
         // 실패 시 낙관적으로 추가한 메시지 제거
         setMessages((prev) => prev.filter((msg) => msg.id !== tempId))
         setError('메시지 전송에 실패했습니다')

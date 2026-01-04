@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Camera, ChevronLeft, X, Search, Sun, Moon, Monitor, AlertTriangle } from 'lucide-react'
@@ -60,7 +63,7 @@ export default function SettingsPage() {
           .single()
 
         if (profileError) {
-          console.error('Profile fetch error:', profileError)
+          logger.error('Profile fetch error:', profileError)
           return
         }
 
@@ -71,7 +74,7 @@ export default function SettingsPage() {
         setSelectedStations(profileData.preferred_metro_stations || [])
         setAvatarPreview(profileData.avatar_url)
       } catch (err) {
-        console.error('Fetch error:', err)
+        logger.error('Fetch error:', err)
       } finally {
         setIsLoading(false)
       }
@@ -163,7 +166,7 @@ export default function SettingsPage() {
           .upload(filePath, avatarFile, { upsert: true })
 
         if (uploadError) {
-          console.error('Avatar upload error:', uploadError)
+          logger.error('Avatar upload error:', uploadError)
           setError('프로필 사진 업로드 중 오류가 발생했습니다')
           return
         }
@@ -189,7 +192,7 @@ export default function SettingsPage() {
         .eq('id', user.id)
 
       if (updateError) {
-        console.error('Profile update error:', updateError)
+        logger.error('Profile update error:', updateError)
         setError('프로필 업데이트 중 오류가 발생했습니다')
         return
       }
@@ -199,7 +202,7 @@ export default function SettingsPage() {
         router.push('/profile/' + user.id)
       }, 1500)
     } catch (err) {
-      console.error('Save error:', err)
+      logger.error('Save error:', err)
       setError('저장 중 오류가 발생했습니다')
     } finally {
       setIsSaving(false)

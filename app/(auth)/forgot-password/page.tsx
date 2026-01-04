@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { useState } from 'react'
 import Link from 'next/link'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -43,16 +46,16 @@ export default function ForgotPasswordPage() {
       setIsLoading(true)
       const supabase = createClient()
 
-      console.log('Attempting to send password reset email to:', values.email)
+      logger.log('Attempting to send password reset email to:', values.email)
 
       const { data, error } = await supabase.auth.resetPasswordForEmail(values.email, {
         redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
       })
 
-      console.log('Reset password response:', { data, error })
+      logger.log('Reset password response:', { data, error })
 
       if (error) {
-        console.error('Reset password error:', error)
+        logger.error('Reset password error:', error)
         toast.error('이메일 전송 실패', {
           description: error.message || '잠시 후 다시 시도해주세요.',
         })
@@ -66,7 +69,7 @@ export default function ForgotPasswordPage() {
         description: '가입된 이메일인 경우 메일함을 확인해주세요.',
       })
     } catch (err) {
-      console.error('Reset password error:', err)
+      logger.error('Reset password error:', err)
       toast.error('오류가 발생했습니다', {
         description: '잠시 후 다시 시도해주세요.',
       })

@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('LoginForm')
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -115,7 +118,7 @@ export default function LoginForm() {
         return
       }
 
-      console.log('Login success:', result.data)
+      logger.log('Login success:', result.data)
 
       // 로그인 기억하기 처리
       if (rememberMe) {
@@ -136,7 +139,7 @@ export default function LoginForm() {
       router.push('/feed')
       router.refresh()
     } catch (err) {
-      console.error('Login exception:', err)
+      logger.error('Login exception:', err)
       setError('로그인 중 오류가 발생했습니다')
     } finally {
       setIsLoading(false)

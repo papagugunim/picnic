@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('LocationOnboarding')
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm, FormProvider } from 'react-hook-form'
@@ -68,7 +71,7 @@ export default function LocationOnboarding({ userId }: LocationOnboardingProps) 
         alert(`위치를 감지했습니다! ${nearestCity === 'moscow' ? '모스크바' : '상트페테르부르크'}에 가까우시군요.`)
       },
       (error) => {
-        console.error('Location error:', error)
+        logger.error('Location error:', error)
         alert('위치 정보를 가져올 수 없습니다. 수동으로 선택해주세요.')
         setIsRequestingLocation(false)
       }
@@ -91,7 +94,7 @@ export default function LocationOnboarding({ userId }: LocationOnboardingProps) 
         .eq('id', userId)
 
       if (error) {
-        console.error('Profile update error:', error)
+        logger.error('Profile update error:', error)
         alert('프로필 업데이트 중 오류가 발생했습니다')
         return
       }
@@ -100,7 +103,7 @@ export default function LocationOnboarding({ userId }: LocationOnboardingProps) 
       router.push('/feed')
       router.refresh()
     } catch (err) {
-      console.error('Submit error:', err)
+      logger.error('Submit error:', err)
       alert('오류가 발생했습니다')
     } finally {
       setIsSubmitting(false)

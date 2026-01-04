@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Search } from 'lucide-react'
@@ -110,7 +113,7 @@ export default function OnboardingStep3() {
         .eq('id', user.id)
 
       if (updateError) {
-        console.error('Profile update error:', updateError)
+        logger.error('Profile update error:', updateError)
         setError('프로필 업데이트 중 오류가 발생했습니다')
         return
       }
@@ -118,7 +121,7 @@ export default function OnboardingStep3() {
       // 다음 단계로 이동
       router.push('/onboarding/step/4')
     } catch (err) {
-      console.error('Save error:', err)
+      logger.error('Save error:', err)
       setError('저장 중 오류가 발생했습니다')
     } finally {
       setIsLoading(false)

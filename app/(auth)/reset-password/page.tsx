@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -91,7 +94,7 @@ export default function ResetPasswordPage() {
         router.push('/login')
       }, 2000)
     } catch (err) {
-      console.error('Update password error:', err)
+      logger.error('Update password error:', err)
       toast.error('오류가 발생했습니다')
     } finally {
       setIsLoading(false)

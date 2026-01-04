@@ -1,5 +1,8 @@
 'use client'
 
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Page')
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Image as ImageIcon, X } from 'lucide-react'
@@ -62,7 +65,7 @@ export default function NewCommunityPostPage() {
         .upload(filePath, file)
 
       if (uploadError) {
-        console.error('Upload error:', uploadError)
+        logger.error('Upload error:', uploadError)
         setError('이미지 업로드 중 오류가 발생했습니다')
         continue
       }
@@ -120,14 +123,14 @@ export default function NewCommunityPostPage() {
         .single()
 
       if (insertError) {
-        console.error('Insert error:', insertError)
+        logger.error('Insert error:', insertError)
         setError('게시글 작성 중 오류가 발생했습니다')
         return
       }
 
       router.push(`/community/${data.id}`)
     } catch (err) {
-      console.error('Submit error:', err)
+      logger.error('Submit error:', err)
       setError('게시글 작성 중 오류가 발생했습니다')
     } finally {
       setIsSubmitting(false)

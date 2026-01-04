@@ -1,3 +1,7 @@
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('Route')
+
 import { createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
@@ -43,13 +47,13 @@ export async function DELETE(
       .eq('id', roomId)
 
     if (deleteError) {
-      console.error('Chat room deletion error:', deleteError)
+      logger.error('Chat room deletion error:', deleteError)
       return NextResponse.json({ error: '채팅방 삭제에 실패했습니다' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Delete chat room error:', error)
+    logger.error('Delete chat room error:', error)
     return NextResponse.json({ error: '서버 오류가 발생했습니다' }, { status: 500 })
   }
 }
