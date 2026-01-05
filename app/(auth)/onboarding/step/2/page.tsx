@@ -58,7 +58,7 @@ export default function OnboardingStep2() {
         return
       }
 
-      // 다음 단계로 이동
+      // 다음 단계로 이동 (지하철역 선택)
       router.push('/onboarding/step/3')
     } catch (err) {
       logger.error('Save error:', err)

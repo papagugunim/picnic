@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git remote:*)",
+      "Bash(cat:*)",
+      "Bash(npm run dev:*)",
+      "Bash(code --install-extension:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(git restore:*)",
+      "Bash(find /Users/seongmincho/Library/CloudStorage/GoogleDrive-photographersmin@gmail.com/내 드라이브/dev/picnic/app -type d -name \"(auth)\" -o -name \"(main)\")",
+      "Bash(ls:*)",
+      "Bash(npm run db:pull:*)",
+      "Bash(SUPABASE_ACCESS_TOKEN=sbp_daa35652b319ef47003c7112b51d870cb75ea6f1 supabase migration repair:*)",
+      "Bash(npm run build:check:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

@@ -15,10 +15,14 @@ export async function middleware(request: NextRequest) {
   const protectedPaths = ['/feed', '/profile', '/settings', '/post/new', '/community/new', '/chats', '/onboarding', '/welcome', '/notifications']
   const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path))
 
-  const accessToken = request.cookies.get('sb-access-token')?.value
+  // Supabase 쿠키 확인 (프로젝트별 쿠키 이름)
+  const supabaseCookies = request.cookies.getAll()
+  const hasAuthToken = supabaseCookies.some(cookie =>
+    cookie.name.includes('auth-token') || cookie.name.includes('sb-')
+  )
 
   // 인증 필요한 페이지인데 토큰이 없으면 리다이렉트
-  if (isProtectedPath && !accessToken) {
+  if (isProtectedPath && !hasAuthToken) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 

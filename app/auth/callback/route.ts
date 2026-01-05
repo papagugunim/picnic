@@ -62,8 +62,8 @@ export async function GET(request: Request) {
     logger.log(`Profile age: ${diffInMinutes} minutes`)
 
     if (diffInMinutes < 30) {
-      logger.log('New user detected, redirecting to onboarding')
-      return NextResponse.redirect(`${origin}/onboarding`)
+      logger.log('New user detected, redirecting to step/1')
+      return NextResponse.redirect(`${origin}/onboarding/step/1`)
     }
 
     // 기존 회원은 welcome 페이지로
@@ -112,20 +112,20 @@ export async function GET(request: Request) {
           return NextResponse.redirect(`${origin}/login?message=프로필 생성에 실패했습니다`)
         }
 
-        // 신규 OAuth 사용자는 도시 선택부터 시작
-        logger.log('New OAuth user created, redirecting to onboarding step 2')
-        return NextResponse.redirect(`${origin}/onboarding/step/2`)
+        // 신규 OAuth 사용자는 닉네임 설정부터 시작 (step/1)
+        logger.log('New OAuth user created, redirecting to step/1')
+        return NextResponse.redirect(`${origin}/onboarding/step/1`)
       }
 
       // 프로필은 있지만 필수 정보가 없는 경우
       if (!profile.city) {
-        logger.log('Profile incomplete (no city), redirecting to onboarding step 2')
-        return NextResponse.redirect(`${origin}/onboarding/step/2`)
+        logger.log('Profile incomplete (no city), redirecting to step/1')
+        return NextResponse.redirect(`${origin}/onboarding/step/1`)
       }
 
       if (!profile.full_name) {
-        logger.log('Profile incomplete (no full_name), redirecting to onboarding')
-        return NextResponse.redirect(`${origin}/onboarding`)
+        logger.log('Profile incomplete (no full_name), redirecting to step/1')
+        return NextResponse.redirect(`${origin}/onboarding/step/1`)
       }
 
       logger.log('Profile found:', profile)
@@ -142,10 +142,10 @@ export async function GET(request: Request) {
         return NextResponse.redirect(`${origin}${next}`)
       }
 
-      // 신규 회원이면 온보딩으로
+      // 신규 회원이면 온보딩으로 (step/1)
       if (diffInMinutes < 30) {
-        logger.log('New user detected (code flow), redirecting to onboarding')
-        return NextResponse.redirect(`${origin}/onboarding`)
+        logger.log('New user detected (code flow), redirecting to step/1')
+        return NextResponse.redirect(`${origin}/onboarding/step/1`)
       }
 
       // 기존 회원은 welcome 페이지로
