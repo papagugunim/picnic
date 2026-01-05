@@ -1,13 +1,54 @@
 'use client'
 
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase/client'
+import { createNamespacedLogger } from '@/lib/logger'
+
+const logger = createNamespacedLogger('SocialLogin')
 
 interface SocialLoginProps {
   mode?: 'login' | 'signup'
 }
 
+type Provider = 'google' | 'apple'
+
 export default function SocialLogin({ mode = 'signup' }: SocialLoginProps) {
+  const [isLoading, setIsLoading] = useState<Provider | null>(null)
   const actionText = mode === 'login' ? '로그인하기' : '가입하기'
+
+  const handleSocialLogin = async (provider: Provider) => {
+    try {
+      setIsLoading(provider)
+      logger.log(`Starting ${provider} OAuth login`)
+
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            ...(provider === 'google' && {
+              prompt: 'select_account',
+              access_type: 'offline',
+            }),
+          },
+        },
+      })
+
+      if (error) {
+        logger.error(`${provider} OAuth error:`, error)
+        alert(`${provider === 'google' ? 'Google' : 'Apple'} 로그인에 실패했습니다. 다시 시도해주세요.`)
+        setIsLoading(null)
+      }
+      // 성공 시 자동으로 리다이렉트되므로 로딩 상태는 유지
+    } catch (error) {
+      logger.error(`${provider} OAuth unexpected error:`, error)
+      alert('로그인 중 오류가 발생했습니다.')
+      setIsLoading(null)
+    }
+  }
+
   return (
     <div className="space-y-3">
       {/* Google */}
@@ -15,7 +56,8 @@ export default function SocialLogin({ mode = 'signup' }: SocialLoginProps) {
         type="button"
         variant="outline"
         className="w-full"
-        disabled
+        onClick={() => handleSocialLogin('google')}
+        disabled={isLoading !== null}
       >
         <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
           <path
@@ -35,7 +77,7 @@ export default function SocialLogin({ mode = 'signup' }: SocialLoginProps) {
             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
           />
         </svg>
-        Google로 {actionText} (준비중)
+        {isLoading === 'google' ? 'Google로 로그인 중...' : `Google로 ${actionText}`}
       </Button>
 
       {/* Apple */}
@@ -43,12 +85,13 @@ export default function SocialLogin({ mode = 'signup' }: SocialLoginProps) {
         type="button"
         variant="outline"
         className="w-full"
-        disabled
+        onClick={() => handleSocialLogin('apple')}
+        disabled={isLoading !== null}
       >
         <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
           <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
         </svg>
-        Apple로 {actionText} (준비중)
+        {isLoading === 'apple' ? 'Apple로 로그인 중...' : `Apple로 ${actionText}`}
       </Button>
 
       {/* Kakao */}

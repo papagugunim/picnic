@@ -93,10 +93,39 @@ export async function GET(request: Request) {
         .eq('id', user.id)
         .single()
 
-      // 프로필이 없거나 필수 정보가 없으면 회원가입 페이지로
-      if (profileError || !profile || !profile.city || !profile.full_name) {
-        logger.error('Profile not found or incomplete:', profileError)
-        return NextResponse.redirect(`${origin}/signup?message=프로필 정보를 입력해주세요`)
+      // 프로필이 없는 경우 (트리거 실패 시 Fallback)
+      if (profileError || !profile) {
+        logger.warn('Profile not found, attempting to create:', profileError)
+
+        // 프로필 직접 생성 시도
+        const { error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0],
+            avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture,
+          })
+
+        if (createError) {
+          logger.error('Profile creation failed:', createError)
+          return NextResponse.redirect(`${origin}/login?message=프로필 생성에 실패했습니다`)
+        }
+
+        // 신규 OAuth 사용자는 도시 선택부터 시작
+        logger.log('New OAuth user created, redirecting to onboarding step 2')
+        return NextResponse.redirect(`${origin}/onboarding/step/2`)
+      }
+
+      // 프로필은 있지만 필수 정보가 없는 경우
+      if (!profile.city) {
+        logger.log('Profile incomplete (no city), redirecting to onboarding step 2')
+        return NextResponse.redirect(`${origin}/onboarding/step/2`)
+      }
+
+      if (!profile.full_name) {
+        logger.log('Profile incomplete (no full_name), redirecting to onboarding')
+        return NextResponse.redirect(`${origin}/onboarding`)
       }
 
       logger.log('Profile found:', profile)
