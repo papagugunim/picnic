@@ -127,7 +127,7 @@ export default function OnboardingStep2() {
         </Button>
 
         <button
-          onClick={() => router.push('/feed')}
+          onClick={() => router.push('/onboarding/step/3')}
           className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
           disabled={isLoading}
         >
