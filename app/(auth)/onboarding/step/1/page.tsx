@@ -192,11 +192,6 @@ export default function OnboardingStep1() {
     }
   }
 
-  const handleSkip = () => {
-    // 닉네임 설정을 건너뛰고 다음 단계로 (도시 선택)
-    router.push('/onboarding/step/2')
-  }
-
   const canProceed = nickname.trim().length >= 2
 
   return (
@@ -219,7 +214,7 @@ export default function OnboardingStep1() {
               개인정보 보호를 위해 닉네임을 사용합니다
             </p>
             <p className="text-xs text-destructive/80">
-              ⚠️ 닉네임은 관리자 승인을 통해서만 변경 가능합니다
+              ⚠️ 닉네임 추후 변경 필요시, 관리자 승인을 통해서만 변경 가능 합니다.
             </p>
           </div>
 
@@ -288,19 +283,11 @@ export default function OnboardingStep1() {
 
         <Button
           onClick={handleNext}
-          className="w-full mb-4"
+          className="w-full"
           disabled={!canProceed || isLoading}
         >
           {isLoading ? '저장 중...' : '다음'}
         </Button>
-
-        <button
-          onClick={handleSkip}
-          className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
-          disabled={isLoading}
-        >
-          건너뛰기
-        </button>
       </div>
     </div>
   )

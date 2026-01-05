@@ -104,13 +104,11 @@ export default function OnboardingStep4() {
         return
       }
 
-      // 프로필 업데이트 및 온보딩 완료 표시
+      // 프로필 업데이트
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           preferred_categories: selectedCategories,
-          onboarding_completed: true,
-          onboarding_completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id)
@@ -121,8 +119,8 @@ export default function OnboardingStep4() {
         return
       }
 
-      // 완료 페이지로 이동
-      router.push('/onboarding/complete')
+      // 다음 단계로 이동 (빵 등급 안내)
+      router.push('/onboarding/step/5')
     } catch (err) {
       logger.error('Save error:', err)
       setError('저장 중 오류가 발생했습니다')
@@ -131,33 +129,9 @@ export default function OnboardingStep4() {
     }
   }
 
-  const handleSkip = async () => {
-    try {
-      setIsLoading(true)
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (user) {
-        // 온보딩 완료 표시만 하고 넘어가기
-        await supabase
-          .from('profiles')
-          .update({
-            onboarding_completed: true,
-            onboarding_completed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', user.id)
-      }
-
-      router.push('/onboarding/complete')
-    } catch (err) {
-      logger.error('Skip error:', err)
-      router.push('/onboarding/complete')
-    } finally {
-      setIsLoading(false)
-    }
+  const handleSkip = () => {
+    // 카테고리 선택을 건너뛰고 다음 단계로 (빵 등급 안내)
+    router.push('/onboarding/step/5')
   }
 
   return (

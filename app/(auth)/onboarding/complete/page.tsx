@@ -21,6 +21,16 @@ export default function OnboardingComplete() {
         return
       }
 
+      // 온보딩 완료 표시
+      await supabase
+        .from('profiles')
+        .update({
+          onboarding_completed: true,
+          onboarding_completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id)
+
       setIsLoading(false)
     }
 
