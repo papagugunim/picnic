@@ -226,8 +226,8 @@ export default function OnboardingStep1() {
           )}
 
           {suggestedNickname && (
-            <div className="mb-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
+            <div className="mb-4 p-6 bg-primary/5 border border-primary/20 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-medium text-primary">추천 닉네임</p>
                 <button
                   onClick={handleRefreshSuggestion}
@@ -237,11 +237,11 @@ export default function OnboardingStep1() {
                   <RefreshCw className={`w-4 h-4 ${isCheckingDuplicate ? 'animate-spin' : ''}`} />
                 </button>
               </div>
-              <div className="flex items-center gap-2">
-                <p className="text-lg font-bold flex-1">{suggestedNickname}</p>
+              <div className="text-center mb-4">
+                <p className="text-2xl font-bold text-primary mb-4">{suggestedNickname}</p>
                 <Button
-                  size="sm"
-                  variant="outline"
+                  size="lg"
+                  className="w-full bg-[#8BA888] hover:bg-[#7a9777] text-white"
                   onClick={handleUseSuggested}
                   disabled={isLoading}
                 >
