@@ -10,6 +10,7 @@ import { RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
+import OnboardingLayout from '@/components/onboarding/OnboardingLayout'
 
 // 귀여운 형용사 (2-3글자)
 const ADJECTIVES = [
@@ -195,15 +196,16 @@ export default function OnboardingStep1() {
   const canProceed = nickname.trim().length >= 2
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md">
-        <div className="text-center space-y-3 mb-8">
-          <h1 className="text-4xl font-bold gradient-text">picnic</h1>
-          <p className="text-muted-foreground">
-            닉네임을 설정해주세요
-          </p>
-        </div>
-
+    <OnboardingLayout
+      currentStep={1}
+      totalSteps={5}
+      title="닉네임을 설정해주세요"
+      onNext={handleNext}
+      nextDisabled={!canProceed}
+      nextLoading={isLoading}
+      hidePrevious
+    >
+      <div className="mb-6">
         <div className="glass-strong rounded-lg p-6 mb-6">
           <div className="text-center mb-6">
             <div className="text-6xl mb-4">😊</div>
@@ -280,15 +282,7 @@ export default function OnboardingStep1() {
             </div>
           )}
         </div>
-
-        <Button
-          onClick={handleNext}
-          className="w-full"
-          disabled={!canProceed || isLoading}
-        >
-          {isLoading ? '저장 중...' : '다음'}
-        </Button>
       </div>
-    </div>
+    </OnboardingLayout>
   )
 }

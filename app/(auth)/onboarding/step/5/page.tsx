@@ -4,9 +4,14 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import OnboardingLayout from '@/components/onboarding/OnboardingLayout'
 
 export default function OnboardingStep5() {
   const router = useRouter()
+
+  const handleNext = () => {
+    router.push('/onboarding/complete')
+  }
 
   const regularLevels = [
     { emoji: '🍞', name: '식빵', description: '피크닉을 처음 시작한 회원입니다', subtitle: '새싹 회원' },
@@ -22,17 +27,15 @@ export default function OnboardingStep5() {
   ]
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md">
-        <div className="text-center space-y-3 mb-8">
-          <Link href="/" className="inline-block">
-            <h1 className="text-5xl font-bold gradient-text">picnic</h1>
-          </Link>
-          <p className="text-muted-foreground text-lg">
-            환영합니다!
-          </p>
-        </div>
-
+    <OnboardingLayout
+      currentStep={5}
+      totalSteps={5}
+      title="환영합니다!"
+      description="활동할수록 성장하는 브레드 등급 시스템을 소개합니다"
+      onNext={handleNext}
+      nextLabel="피크닉 시작하기"
+    >
+      <div className="mb-6">
         <Card className="glass-strong mb-6">
           <CardContent className="pt-6 space-y-6">
             <div className="text-center mb-4">
@@ -115,14 +118,7 @@ export default function OnboardingStep5() {
             </div>
           </CardContent>
         </Card>
-
-        <Button
-          onClick={() => router.push('/onboarding/complete')}
-          className="w-full"
-        >
-          피크닉 시작하기
-        </Button>
       </div>
-    </div>
+    </OnboardingLayout>
   )
 }

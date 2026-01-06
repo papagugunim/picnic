@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
+import OnboardingLayout from '@/components/onboarding/OnboardingLayout'
 
 export default function OnboardingStep2() {
   const router = useRouter()
@@ -70,16 +71,22 @@ export default function OnboardingStep2() {
 
   const canProceed = selectedCity
 
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md">
-        <div className="text-center space-y-3 mb-8">
-          <h1 className="text-4xl font-bold gradient-text">picnic</h1>
-          <p className="text-muted-foreground">
-            어디에서 생활하고 계신가요?
-          </p>
-        </div>
+  const handleSkip = () => {
+    router.push('/onboarding/step/3')
+  }
 
+  return (
+    <OnboardingLayout
+      currentStep={2}
+      totalSteps={5}
+      title="어디에서 생활하고 계신가요?"
+      onNext={handleNext}
+      nextDisabled={!canProceed}
+      nextLoading={isLoading}
+      showSkip
+      onSkip={handleSkip}
+    >
+      <div className="mb-6">
         <div className="space-y-4 mb-6">
           <button
             onClick={() => handleCitySelect('Moscow')}
@@ -113,27 +120,11 @@ export default function OnboardingStep2() {
         </div>
 
         {error && (
-          <div className="mb-6 glass-strong rounded-lg p-3 text-center text-sm text-destructive">
+          <div className="glass-strong rounded-lg p-3 text-center text-sm text-destructive">
             {error}
           </div>
         )}
-
-        <Button
-          onClick={handleNext}
-          className="w-full mb-4"
-          disabled={!canProceed || isLoading}
-        >
-          {isLoading ? '저장 중...' : '다음'}
-        </Button>
-
-        <button
-          onClick={() => router.push('/onboarding/step/3')}
-          className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
-          disabled={isLoading}
-        >
-          건너뛰기
-        </button>
       </div>
-    </div>
+    </OnboardingLayout>
   )
 }

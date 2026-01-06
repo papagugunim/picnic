@@ -13,6 +13,7 @@ import {
   MOSCOW_METRO_STATIONS,
   SPB_METRO_STATIONS,
 } from '@/lib/constants'
+import OnboardingLayout from '@/components/onboarding/OnboardingLayout'
 
 export default function OnboardingStep3() {
   const router = useRouter()
@@ -133,15 +134,16 @@ export default function OnboardingStep3() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md">
-        <div className="text-center space-y-3 mb-8">
-          <h1 className="text-4xl font-bold gradient-text">picnic</h1>
-          <p className="text-muted-foreground">
-            자주 가는 지하철역 (선택)
-          </p>
-        </div>
-
+    <OnboardingLayout
+      currentStep={3}
+      totalSteps={5}
+      title="자주 가는 지하철역 (선택)"
+      onNext={handleNext}
+      nextLoading={isLoading}
+      showSkip
+      onSkip={handleSkip}
+    >
+      <div className="mb-6">
         {selectedStations.length > 0 && (
           <div className="mb-4 glass-strong rounded-lg p-4">
             <div className="text-sm font-medium mb-2">
@@ -236,27 +238,11 @@ export default function OnboardingStep3() {
         </div>
 
         {error && (
-          <div className="mb-4 glass-strong rounded-lg p-3 text-center text-sm text-destructive">
+          <div className="glass-strong rounded-lg p-3 text-center text-sm text-destructive">
             {error}
           </div>
         )}
-
-        <Button
-          onClick={handleNext}
-          className="w-full mb-4"
-          disabled={isLoading}
-        >
-          {isLoading ? '저장 중...' : '다음'}
-        </Button>
-
-        <button
-          onClick={handleSkip}
-          className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
-          disabled={isLoading}
-        >
-          건너뛰기
-        </button>
       </div>
-    </div>
+    </OnboardingLayout>
   )
 }

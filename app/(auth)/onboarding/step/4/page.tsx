@@ -22,6 +22,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES } from '@/lib/constants'
+import OnboardingLayout from '@/components/onboarding/OnboardingLayout'
 
 // 카테고리별 아이콘 매칭
 const categoryIcons = {
@@ -135,20 +136,22 @@ export default function OnboardingStep4() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md">
-        <div className="text-center space-y-3 mb-8">
-          <h1 className="text-4xl font-bold gradient-text">picnic</h1>
-          <p className="text-muted-foreground">
-            관심 카테고리 (최대 5개)
-          </p>
-          {selectedCategories.length > 0 && (
-            <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
-              {selectedCategories.length}/5
-            </div>
-          )}
-        </div>
-
+    <OnboardingLayout
+      currentStep={4}
+      totalSteps={5}
+      title="관심 카테고리 (최대 5개)"
+      description={
+        selectedCategories.length > 0
+          ? `${selectedCategories.length}/5 선택됨`
+          : undefined
+      }
+      onNext={handleNext}
+      nextLabel="완료"
+      nextLoading={isLoading}
+      showSkip
+      onSkip={handleSkip}
+    >
+      <div className="mb-6">
         <div className="grid grid-cols-3 gap-3 mb-6">
           {CATEGORIES.map((category) => {
             const isSelected = selectedCategories.includes(category.value)
@@ -172,27 +175,11 @@ export default function OnboardingStep4() {
         </div>
 
         {error && (
-          <div className="mb-4 glass-strong rounded-lg p-3 text-center text-sm text-destructive">
+          <div className="glass-strong rounded-lg p-3 text-center text-sm text-destructive">
             {error}
           </div>
         )}
-
-        <Button
-          onClick={handleNext}
-          className="w-full mb-4"
-          disabled={isLoading}
-        >
-          {isLoading ? '저장 중...' : '완료'}
-        </Button>
-
-        <button
-          onClick={handleSkip}
-          className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
-          disabled={isLoading}
-        >
-          건너뛰기
-        </button>
       </div>
-    </div>
+    </OnboardingLayout>
   )
 }
