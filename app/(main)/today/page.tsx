@@ -10,8 +10,10 @@ import { createClient } from '@/lib/supabase/client'
 import { getCache, setCache, clearCache, CACHE_KEYS } from '@/lib/cache'
 
 // 차트 컴포넌트 동적 임포트 (번들 크기 최적화)
-const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart), { ssr: false })
+const ComposedChart = dynamic(() => import('recharts').then(mod => mod.ComposedChart), { ssr: false })
+const Area = dynamic(() => import('recharts').then(mod => mod.Area), { ssr: false })
 const Line = dynamic(() => import('recharts').then(mod => mod.Line), { ssr: false })
+const Bar = dynamic(() => import('recharts').then(mod => mod.Bar), { ssr: false })
 const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false })
 const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false })
 const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid), { ssr: false })
@@ -380,12 +382,23 @@ export default function TodayPage() {
     return Number(num).toLocaleString('ko-KR')
   }
 
-  // 기간별 데이터 필터링
+  // 기간별 데이터 필터링 및 샘플링 (번잡함 감소)
   const filterDataByPeriod = useCallback((data: { date: string; rate: number }[], period: 'week' | 'month' | 'quarter' | 'year') => {
-    if (period === 'year') return data
+    // 기간별 날짜 수와 샘플링 간격
+    const config = {
+      week: { days: 7, interval: 1 },      // 모든 포인트 (7개)
+      month: { days: 30, interval: 2 },    // 2일마다 (15개)
+      quarter: { days: 90, interval: 3 },  // 3일마다 (30개)
+      year: { days: 365, interval: 7 }     // 7일마다 (52개)
+    }
 
-    const days = period === 'week' ? 7 : period === 'month' ? 30 : 90
-    return data.slice(-days)
+    const { days, interval } = config[period]
+    const filtered = data.slice(-days)
+
+    // 샘플링: interval마다 하나씩 선택
+    if (interval === 1) return filtered
+
+    return filtered.filter((_, index) => index % interval === 0)
   }, [])
 
   // 환율 그래프 데이터 로드 (성능 개선: 1년치 데이터를 한 번만 로드)
@@ -805,33 +818,53 @@ export default function TodayPage() {
                     </div>
                   ) : chartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                      <ComposedChart data={chartData}>
+                        <defs>
+                          <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#333" opacity={0.3} />
                         <XAxis
                           dataKey="date"
-                          tick={{ fontSize: 12 }}
-                          stroke="#888"
+                          tick={{ fontSize: 11 }}
+                          stroke="#666"
+                          tickMargin={8}
+                          interval={chartPeriod === 'year' ? 7 : chartPeriod === 'quarter' ? 4 : 'preserveStartEnd'}
                         />
                         <YAxis
-                          tick={{ fontSize: 12 }}
-                          stroke="#888"
+                          tick={{ fontSize: 11 }}
+                          stroke="#666"
                           domain={['dataMin - 1', 'dataMax + 1']}
+                          tickMargin={8}
                         />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            border: '1px solid #333',
-                            borderRadius: '8px'
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                            border: '1px solid #22c55e',
+                            borderRadius: '8px',
+                            fontSize: '12px'
                           }}
+                          labelStyle={{ color: '#fff' }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="rate"
+                          stroke="#22c55e"
+                          strokeWidth={2}
+                          fill="url(#colorRate)"
+                          fillOpacity={1}
                         />
                         <Line
                           type="monotone"
                           dataKey="rate"
                           stroke="#22c55e"
                           strokeWidth={2}
-                          dot={false}
+                          dot={chartPeriod === 'week'}
+                          activeDot={{ r: 6 }}
                         />
-                      </LineChart>
+                      </ComposedChart>
                     </ResponsiveContainer>
                   ) : (
                     <div className="flex items-center justify-center h-full">
