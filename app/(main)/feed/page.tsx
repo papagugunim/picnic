@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { MOSCOW_METRO_STATIONS, SPB_METRO_STATIONS } from '@/lib/constants'
 import { getCache, setCache, CACHE_KEYS } from '@/lib/cache'
+import { getNearbyMetroStations, hasNearbyStation } from '@/lib/metro-utils'
 
 interface Post {
   id: string
@@ -39,12 +40,20 @@ const categories = [
 
 export default function FeedPage() {
   const [posts, setPosts] = useState<Post[]>([])
+  const [allPosts, setAllPosts] = useState<Post[]>([]) // 필터링 전 전체 게시물
   const [isLoading, setIsLoading] = useState(true)
   const [userCity, setUserCity] = useState<string | null>(null)
+  const [userStations, setUserStations] = useState<string[]>([])
+  const [selectedTab, setSelectedTab] = useState<'all' | 'nearby' | 'recent'>('all')
 
   useEffect(() => {
     fetchPosts()
   }, [])
+
+  useEffect(() => {
+    // 탭 변경 시 필터링
+    filterPosts()
+  }, [selectedTab, allPosts])
 
   async function fetchPosts() {
     try {
@@ -68,10 +77,10 @@ export default function FeedPage() {
         return
       }
 
-      // 프로필 정보 가져오기
+      // 프로필 정보 가져오기 (도시 + 지하철역)
       const { data: profile } = await supabase
         .from('profiles')
-        .select('city')
+        .select('city, preferred_metro_stations')
         .eq('id', user.id)
         .single()
 
@@ -79,6 +88,9 @@ export default function FeedPage() {
       if (cityFilter) {
         setUserCity(cityFilter)
       }
+
+      const stations = profile?.preferred_metro_stations || []
+      setUserStations(stations)
 
       // 최적화: 단일 쿼리로 게시글과 좋아요/관심 정보를 함께 가져오기
       let query = supabase
@@ -164,12 +176,51 @@ export default function FeedPage() {
       // 캐시에 저장 (5분 TTL)
       setCache(CACHE_KEYS.POSTS(1), postsWithReactions as Post[], 5 * 60 * 1000)
 
+      setAllPosts(postsWithReactions as Post[])
+      // 초기 로딩 시에는 전체 게시물 표시
       setPosts(postsWithReactions as Post[])
     } catch (err) {
       logger.error('Fetch error:', err)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  function filterPosts() {
+    if (allPosts.length === 0) return
+
+    let filtered = [...allPosts]
+
+    switch (selectedTab) {
+      case 'all':
+        // 전체: 모든 게시물 (이미 도시 필터링됨)
+        filtered = allPosts
+        break
+
+      case 'nearby':
+        // 가까운 동네: 사용자 지하철역 근처 (상행/하행 5개역)
+        if (userStations.length > 0 && userCity) {
+          const nearbyStations = getNearbyMetroStations(userStations, userCity, 5)
+          filtered = allPosts.filter(post =>
+            hasNearbyStation(post.preferred_metro_stations, nearbyStations)
+          )
+        } else {
+          // 지하철역 설정이 없으면 전체 표시
+          filtered = allPosts
+        }
+        break
+
+      case 'recent':
+        // 방금전: 같은 도시의 최근 게시물 (이미 created_at 순으로 정렬됨)
+        // 추가 정렬 또는 필터링 필요 없음 (이미 시간순)
+        filtered = allPosts
+        break
+
+      default:
+        filtered = allPosts
+    }
+
+    setPosts(filtered)
   }
 
   const formatTimeAgo = (dateString: string) => {
@@ -346,10 +397,11 @@ export default function FeedPage() {
           {categories.map((category) => (
             <button
               key={category.id}
+              onClick={() => setSelectedTab(category.id as 'all' | 'nearby' | 'recent')}
               className={`
                 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors
                 ${
-                  category.id === 'all'
+                  category.id === selectedTab
                     ? 'bg-foreground text-background'
                     : 'bg-secondary text-secondary-foreground hover:bg-muted'
                 }
