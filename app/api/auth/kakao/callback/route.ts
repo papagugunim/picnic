@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@/lib/supabase/server'
 
 interface KakaoTokenResponse {
   access_token: string
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. Supabase Auth 연동
-    const supabase = await createClient()
+    const supabase = await createServerClient()
 
     // Kakao ID를 provider_id로 사용하여 이메일 기반 로그인
     // 기존 계정이 있으면 로그인, 없으면 자동 생성
