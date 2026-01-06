@@ -11,7 +11,7 @@ interface SocialLoginProps {
   mode?: 'login' | 'signup'
 }
 
-type Provider = 'google' | 'apple'
+type Provider = 'google' | 'apple' | 'kakao'
 
 export default function SocialLogin({ mode = 'signup' }: SocialLoginProps) {
   const [isLoading, setIsLoading] = useState<Provider | null>(null)
@@ -22,6 +22,13 @@ export default function SocialLogin({ mode = 'signup' }: SocialLoginProps) {
       setIsLoading(provider)
       logger.log(`Starting ${provider} OAuth login`)
 
+      // Kakao는 커스텀 OAuth 플로우 사용 (현재 비활성화)
+      // if (provider === 'kakao') {
+      //   window.location.href = '/api/auth/kakao'
+      //   return
+      // }
+
+      // Google, Apple은 Supabase OAuth 사용
       const supabase = createClient()
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -85,13 +92,12 @@ export default function SocialLogin({ mode = 'signup' }: SocialLoginProps) {
         type="button"
         variant="outline"
         className="w-full"
-        onClick={() => handleSocialLogin('apple')}
-        disabled={isLoading !== null}
+        disabled
       >
         <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
           <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
         </svg>
-        {isLoading === 'apple' ? 'Apple로 로그인 중...' : `Apple로 ${actionText}`}
+        Apple로 {actionText} (준비중)
       </Button>
 
       {/* Kakao */}
