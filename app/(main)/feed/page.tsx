@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client'
 import { MOSCOW_METRO_STATIONS, SPB_METRO_STATIONS } from '@/lib/constants'
 import { getCache, setCache, CACHE_KEYS } from '@/lib/cache'
 import { getNearbyMetroStations, hasNearbyStation } from '@/lib/metro-utils'
+import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
 
 interface Post {
   id: string
@@ -461,11 +462,18 @@ export default function FeedPage() {
                       <span> · </span>
                       <span>{formatTimeAgo(post.created_at)}</span>
                     </div>
-                    <p className="text-lg font-bold">
-                      {post.price === 0 || post.price === null
-                        ? '무료나눔'
-                        : `${post.price.toLocaleString()}₽`}
-                    </p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-lg font-bold">
+                        {post.price === 0 || post.price === null
+                          ? '무료나눔'
+                          : `${post.price.toLocaleString()}₽`}
+                      </p>
+                      {post.status && post.status !== 'active' && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${getPostStatusInfo(post.status as PostStatus).bgColor} ${getPostStatusInfo(post.status as PostStatus).textColor} font-medium`}>
+                          {getPostStatusInfo(post.status as PostStatus).label}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Link>

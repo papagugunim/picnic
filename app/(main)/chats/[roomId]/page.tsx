@@ -20,6 +20,7 @@ import { AppointmentProposalForm } from '@/components/chat/AppointmentProposalFo
 import { AppointmentCard } from '@/components/chat/AppointmentCard'
 import { CompleteSaleButton } from '@/components/chat/CompleteSaleButton'
 import { ReviewModal } from '@/components/review/ReviewModal'
+import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
 
 export default function ChatRoomPage() {
   const params = useParams()
@@ -282,16 +283,20 @@ export default function ChatRoomPage() {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate flex items-center gap-2">
+              <div className="text-sm font-medium truncate">
                 {room.post.title}
-                {isSold && (
-                  <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded">판매완료</span>
-                )}
               </div>
-              <div className="text-xs text-muted-foreground">
-                {room.post.price === 0 || room.post.price === null
-                  ? '무료나눔'
-                  : `${room.post.price.toLocaleString()}₽`}
+              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                <span>
+                  {room.post.price === 0 || room.post.price === null
+                    ? '무료나눔'
+                    : `${room.post.price.toLocaleString()}₽`}
+                </span>
+                {room.post.status && (
+                  <span className={`px-2 py-0.5 rounded-full ${getPostStatusInfo(room.post.status as PostStatus).bgColor} ${getPostStatusInfo(room.post.status as PostStatus).textColor} font-medium`}>
+                    {getPostStatusInfo(room.post.status as PostStatus).label}
+                  </span>
+                )}
               </div>
             </div>
             </Link>
