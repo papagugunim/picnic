@@ -8,10 +8,10 @@ import { TrendingUp, Newspaper, Calendar as CalendarIcon, MapPin, Calculator, X,
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { getCache, setCache, clearCache, CACHE_KEYS } from '@/lib/cache'
-import { Customized } from 'recharts'
 
 // 차트 컴포넌트 동적 임포트 (번들 크기 최적화)
 const ComposedChart = dynamic(() => import('recharts').then(mod => mod.ComposedChart), { ssr: false })
+const Bar = dynamic(() => import('recharts').then(mod => mod.Bar), { ssr: false })
 const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false })
 const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false })
 const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid), { ssr: false })
@@ -76,54 +76,58 @@ interface OHLCData {
   close: number
 }
 
-// 캔들스틱 렌더러 컴포넌트
-const CandlestickChart = ({ data, xScale, yScale, width, height }: any) => {
-  if (!data || !xScale || !yScale || data.length === 0) return null
+// 캔들스틱 Shape 컴포넌트 (Recharts Bar의 shape prop용)
+const CandlestickShape = (props: any) => {
+  const { x, y, width, height, payload } = props
 
-  const candleWidth = Math.max(3, Math.min(12, (width / data.length) * 0.7))
+  if (!payload || !payload.open || !payload.close || !payload.high || !payload.low) {
+    return null
+  }
+
+  const { open, close, high, low } = payload
+  const isRising = close >= open
+  const color = isRising ? '#22c55e' : '#ef4444'
+
+  // y축 스케일 계산을 위한 값들
+  const candleWidth = Math.max(3, Math.min(width, 12))
+
+  // 전체 범위 대비 각 값의 비율 계산
+  const range = high - low
+  if (range === 0) return null
+
+  // high가 y축 상단, low가 y축 하단
+  const yHigh = y
+  const yLow = y + height
+  const yOpen = yLow - ((open - low) / range) * height
+  const yClose = yLow - ((close - low) / range) * height
+
+  const bodyTop = Math.min(yOpen, yClose)
+  const bodyHeight = Math.abs(yOpen - yClose) || 1
+
+  const wickX = x + width / 2
 
   return (
     <g>
-      {data.map((item: OHLCData, index: number) => {
-        const x = xScale(item.date)
-        const isRising = item.close >= item.open
-        const color = isRising ? '#22c55e' : '#ef4444'
-
-        const highY = yScale(item.high)
-        const lowY = yScale(item.low)
-        const openY = yScale(item.open)
-        const closeY = yScale(item.close)
-
-        const bodyTop = Math.min(openY, closeY)
-        const bodyHeight = Math.abs(openY - closeY) || 1
-
-        const wickX = x
-
-        return (
-          <g key={`candle-${index}`}>
-            {/* 심지 (High-Low 선) */}
-            <line
-              x1={wickX}
-              y1={highY}
-              x2={wickX}
-              y2={lowY}
-              stroke={color}
-              strokeWidth={1.5}
-            />
-            {/* 몸통 (Open-Close 사각형) */}
-            <rect
-              x={wickX - candleWidth / 2}
-              y={bodyTop}
-              width={candleWidth}
-              height={bodyHeight}
-              fill={isRising ? color : color}
-              stroke={color}
-              strokeWidth={1}
-              fillOpacity={isRising ? 0.7 : 1}
-            />
-          </g>
-        )
-      })}
+      {/* 심지 (High-Low 선) */}
+      <line
+        x1={wickX}
+        y1={yHigh}
+        x2={wickX}
+        y2={yLow}
+        stroke={color}
+        strokeWidth={1.5}
+      />
+      {/* 몸통 (Open-Close 사각형) */}
+      <rect
+        x={wickX - candleWidth / 2}
+        y={bodyTop}
+        width={candleWidth}
+        height={bodyHeight}
+        fill={color}
+        stroke={color}
+        strokeWidth={1}
+        fillOpacity={isRising ? 0.7 : 1}
+      />
     </g>
   )
 }
@@ -889,7 +893,7 @@ export default function TodayPage() {
                         <YAxis
                           tick={{ fontSize: 11 }}
                           stroke="#666"
-                          domain={['auto', 'auto']}
+                          domain={['dataMin', 'dataMax']}
                           tickMargin={8}
                         />
                         <Tooltip
@@ -925,16 +929,10 @@ export default function TodayPage() {
                           }}
                         />
                         {/* 캔들스틱 렌더링 */}
-                        <Customized
-                          component={(props: any) => (
-                            <CandlestickChart
-                              data={chartData}
-                              xScale={props.xAxisMap?.[0]?.scale}
-                              yScale={props.yAxisMap?.[0]?.scale}
-                              width={props.width}
-                              height={props.height}
-                            />
-                          )}
+                        <Bar
+                          dataKey="high"
+                          shape={<CandlestickShape />}
+                          isAnimationActive={false}
                         />
                       </ComposedChart>
                     </ResponsiveContainer>
