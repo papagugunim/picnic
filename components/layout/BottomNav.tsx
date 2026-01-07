@@ -39,6 +39,12 @@ function BottomNav() {
   const pathname = usePathname()
   const { unreadCount } = useUnreadCount()
 
+  // 채팅방 페이지에서는 네비게이션바 숨기기
+  const isChatRoomPage = pathname?.match(/^\/chats\/[^/]+$/)
+  if (isChatRoomPage) {
+    return null
+  }
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background">
       <div className="flex items-center justify-around h-16 max-w-screen-xl mx-auto">
