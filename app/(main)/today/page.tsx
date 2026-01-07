@@ -8,12 +8,10 @@ import { TrendingUp, Newspaper, Calendar as CalendarIcon, MapPin, Calculator, X,
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { getCache, setCache, clearCache, CACHE_KEYS } from '@/lib/cache'
+import { Customized } from 'recharts'
 
 // 차트 컴포넌트 동적 임포트 (번들 크기 최적화)
 const ComposedChart = dynamic(() => import('recharts').then(mod => mod.ComposedChart), { ssr: false })
-const Area = dynamic(() => import('recharts').then(mod => mod.Area), { ssr: false })
-const Line = dynamic(() => import('recharts').then(mod => mod.Line), { ssr: false })
-const Bar = dynamic(() => import('recharts').then(mod => mod.Bar), { ssr: false })
 const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false })
 const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false })
 const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid), { ssr: false })
@@ -69,6 +67,67 @@ interface ExchangeRates {
   source?: string
 }
 
+// OHLC 데이터 타입
+interface OHLCData {
+  date: string
+  open: number
+  high: number
+  low: number
+  close: number
+}
+
+// 캔들스틱 렌더러 컴포넌트
+const CandlestickChart = ({ data, xScale, yScale, width, height }: any) => {
+  if (!data || !xScale || !yScale || data.length === 0) return null
+
+  const candleWidth = Math.max(3, Math.min(12, (width / data.length) * 0.7))
+
+  return (
+    <g>
+      {data.map((item: OHLCData, index: number) => {
+        const x = xScale(item.date)
+        const isRising = item.close >= item.open
+        const color = isRising ? '#22c55e' : '#ef4444'
+
+        const highY = yScale(item.high)
+        const lowY = yScale(item.low)
+        const openY = yScale(item.open)
+        const closeY = yScale(item.close)
+
+        const bodyTop = Math.min(openY, closeY)
+        const bodyHeight = Math.abs(openY - closeY) || 1
+
+        const wickX = x
+
+        return (
+          <g key={`candle-${index}`}>
+            {/* 심지 (High-Low 선) */}
+            <line
+              x1={wickX}
+              y1={highY}
+              x2={wickX}
+              y2={lowY}
+              stroke={color}
+              strokeWidth={1.5}
+            />
+            {/* 몸통 (Open-Close 사각형) */}
+            <rect
+              x={wickX - candleWidth / 2}
+              y={bodyTop}
+              width={candleWidth}
+              height={bodyHeight}
+              fill={isRising ? color : color}
+              stroke={color}
+              strokeWidth={1}
+              fillOpacity={isRising ? 0.7 : 1}
+            />
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
 export default function TodayPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showAllNews, setShowAllNews] = useState(false)
@@ -91,12 +150,12 @@ export default function TodayPage() {
   const [showChart, setShowChart] = useState(false)
   const [chartType, setChartType] = useState<'rub' | 'usd'>('rub')
   const [chartPeriod, setChartPeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('week')
-  const [chartData, setChartData] = useState<{ date: string; rate: number }[]>([])
+  const [chartData, setChartData] = useState<OHLCData[]>([])
   const [isLoadingChart, setIsLoadingChart] = useState(false)
   // 1년치 전체 데이터 캐시 (성능 개선)
   const [yearlyChartData, setYearlyChartData] = useState<{
-    rub: { date: string; rate: number }[]
-    usd: { date: string; rate: number }[]
+    rub: OHLCData[]
+    usd: OHLCData[]
   }>({ rub: [], usd: [] })
 
   // 환율 데이터 가져오기 함수
@@ -383,7 +442,7 @@ export default function TodayPage() {
   }
 
   // 기간별 데이터 필터링 및 샘플링 (번잡함 감소)
-  const filterDataByPeriod = useCallback((data: { date: string; rate: number }[], period: 'week' | 'month' | 'quarter' | 'year') => {
+  const filterDataByPeriod = useCallback((data: OHLCData[], period: 'week' | 'month' | 'quarter' | 'year') => {
     // 기간별 날짜 수와 샘플링 간격
     const config = {
       week: { days: 7, interval: 1 },      // 모든 포인트 (7개)
@@ -411,7 +470,7 @@ export default function TodayPage() {
     }
 
     // 캐시 확인 (24시간 TTL)
-    const cached = getCache<{ date: string; rate: number }[]>(
+    const cached = getCache<OHLCData[]>(
       CACHE_KEYS.EXCHANGE_HISTORY(type),
       24 * 60 * 60 * 1000
     )
@@ -819,12 +878,6 @@ export default function TodayPage() {
                   ) : chartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart data={chartData}>
-                        <defs>
-                          <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#333" opacity={0.3} />
                         <XAxis
                           dataKey="date"
@@ -836,33 +889,52 @@ export default function TodayPage() {
                         <YAxis
                           tick={{ fontSize: 11 }}
                           stroke="#666"
-                          domain={['dataMin - 1', 'dataMax + 1']}
+                          domain={['auto', 'auto']}
                           tickMargin={8}
                         />
                         <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                            border: '1px solid #22c55e',
-                            borderRadius: '8px',
-                            fontSize: '12px'
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload as OHLCData
+                              const isRising = data.close >= data.open
+                              return (
+                                <div style={{
+                                  backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                  border: `1px solid ${isRising ? '#22c55e' : '#ef4444'}`,
+                                  borderRadius: '8px',
+                                  padding: '8px 12px',
+                                  fontSize: '12px',
+                                  color: '#fff'
+                                }}>
+                                  <div style={{ marginBottom: '4px', fontWeight: 'bold' }}>{data.date}</div>
+                                  <div style={{ color: '#aaa' }}>시가: {data.open.toFixed(2)}</div>
+                                  <div style={{ color: '#22c55e' }}>고가: {data.high.toFixed(2)}</div>
+                                  <div style={{ color: '#ef4444' }}>저가: {data.low.toFixed(2)}</div>
+                                  <div style={{ fontWeight: 'bold' }}>종가: {data.close.toFixed(2)}</div>
+                                  <div style={{
+                                    marginTop: '4px',
+                                    color: isRising ? '#22c55e' : '#ef4444',
+                                    fontSize: '11px'
+                                  }}>
+                                    {isRising ? '▲' : '▼'} {Math.abs(data.close - data.open).toFixed(2)} ({((Math.abs(data.close - data.open) / data.open) * 100).toFixed(2)}%)
+                                  </div>
+                                </div>
+                              )
+                            }
+                            return null
                           }}
-                          labelStyle={{ color: '#fff' }}
                         />
-                        <Area
-                          type="monotone"
-                          dataKey="rate"
-                          stroke="#22c55e"
-                          strokeWidth={2}
-                          fill="url(#colorRate)"
-                          fillOpacity={1}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="rate"
-                          stroke="#22c55e"
-                          strokeWidth={2}
-                          dot={chartPeriod === 'week'}
-                          activeDot={{ r: 6 }}
+                        {/* 캔들스틱 렌더링 */}
+                        <Customized
+                          component={(props: any) => (
+                            <CandlestickChart
+                              data={chartData}
+                              xScale={props.xAxisMap?.[0]?.scale}
+                              yScale={props.yAxisMap?.[0]?.scale}
+                              width={props.width}
+                              height={props.height}
+                            />
+                          )}
                         />
                       </ComposedChart>
                     </ResponsiveContainer>
@@ -876,9 +948,16 @@ export default function TodayPage() {
                 </div>
 
                 <div className="text-xs text-muted-foreground text-center">
-                  {chartType === 'rub' ? '1루블당 원화 환율' : '1달러당 루블 환율'}
-                  <br />
-                  <span className="text-xs opacity-70">출처: 한국수출입은행 환율 데이터</span>
+                  <div className="mb-1">
+                    {chartType === 'rub' ? '1루블당 원화 환율 (캔들차트)' : '1달러당 루블 환율 (캔들차트)'}
+                  </div>
+                  <div className="opacity-70">
+                    출처: {chartType === 'usd' ? 'Alpha Vantage API' : '한국수출입은행 환율 데이터'}
+                  </div>
+                  <div className="mt-1 text-xs opacity-60">
+                    <span className="text-green-500">■</span> 상승(종가 ≥ 시가)
+                    <span className="ml-2 text-red-500">■</span> 하락(종가 {"<"} 시가)
+                  </div>
                 </div>
               </div>
             </div>

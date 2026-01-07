@@ -8,13 +8,22 @@ import { NextResponse } from 'next/server'
 const cache = new Map<string, { data: any; timestamp: number }>()
 const CACHE_DURATION = 60 * 60 * 1000 // 1시간 캐시
 
+// OHLC 데이터 타입
+interface OHLCData {
+  date: string
+  open: number
+  high: number
+  low: number
+  close: number
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const currency = searchParams.get('currency') || 'rub' // rub, usd
 
     // 캐시 키는 currency만 사용 (1년치 데이터를 통째로 캐시)
-    const cacheKey = `year-${currency}`
+    const cacheKey = `year-ohlc-${currency}`
 
     // 캐시 확인
     const cached = cache.get(cacheKey)
@@ -25,93 +34,20 @@ export async function GET(request: Request) {
       })
     }
 
-    // 1년치 데이터 가져오기 (성능 개선: 샘플링 + 병렬 처리)
-    const endDate = new Date()
-    const startDate = new Date()
-    startDate.setDate(endDate.getDate() - 365) // 1년
+    let historyData: OHLCData[] = []
 
-    // 데이터 포인트 생성 (주 1회 샘플링으로 52개 포인트만)
-    const datesToFetch: Date[] = []
-    const currentDate = new Date(startDate)
-
-    while (currentDate <= endDate) {
-      // 주말이 아니면 추가
-      if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
-        datesToFetch.push(new Date(currentDate))
-      }
-      // 7일씩 건너뛰기 (주 1회)
-      currentDate.setDate(currentDate.getDate() + 7)
+    if (currency === 'usd') {
+      // USD/RUB: Alpha Vantage에서 실제 OHLC 데이터 가져오기
+      historyData = await fetchAlphaVantageOHLC('USD', 'RUB')
+    } else {
+      // RUB/KRW: 한국수출입은행 데이터 + 시뮬레이션 OHLC
+      historyData = await fetchSimulatedRubKrwOHLC()
     }
 
-    // 최신 데이터 포인트 추가 (오늘)
-    if (endDate.getDay() !== 0 && endDate.getDay() !== 6) {
-      datesToFetch.push(new Date(endDate))
-    }
-
-    // 병렬로 데이터 가져오기 (10개씩 배치로 처리하여 API 부하 방지)
-    const batchSize = 10
-    const historyData = []
-
-    for (let i = 0; i < datesToFetch.length; i += batchSize) {
-      const batch = datesToFetch.slice(i, i + batchSize)
-
-      const batchResults = await Promise.all(
-        batch.map(async (date) => {
-          const dateStr = formatDate(date)
-
-          try {
-            const koeximbankUrl = `https://www.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey=&searchdate=${dateStr}&data=AP01`
-            const response = await fetch(koeximbankUrl, {
-              next: { revalidate: 3600 }
-            })
-
-            if (response.ok) {
-              const data = await response.json()
-
-              if (currency === 'rub') {
-                // RUB/KRW
-                const rubData = data.find((item: any) => item.cur_unit === 'RUB')
-                if (rubData) {
-                  const rubRate = parseFloat(rubData.deal_bas_r.replace(/,/g, ''))
-                  const krwPerRub = parseFloat((1 / rubRate).toFixed(2))
-
-                  return {
-                    date: formatDateForDisplay(date),
-                    rate: krwPerRub
-                  }
-                }
-              } else {
-                // USD/RUB
-                const rubData = data.find((item: any) => item.cur_unit === 'RUB')
-                const usdData = data.find((item: any) => item.cur_unit === 'USD')
-
-                if (rubData && usdData) {
-                  const rubRate = parseFloat(rubData.deal_bas_r.replace(/,/g, ''))
-                  const usdRate = parseFloat(usdData.deal_bas_r.replace(/,/g, ''))
-                  const rubPerUsd = parseFloat((rubRate / usdRate).toFixed(2))
-
-                  return {
-                    date: formatDateForDisplay(date),
-                    rate: rubPerUsd
-                  }
-                }
-              }
-            }
-          } catch (error) {
-            logger.error(`날짜 ${dateStr} 환율 데이터 가져오기 실패:`, error)
-          }
-          return null
-        })
-      )
-
-      // 성공한 결과만 추가
-      historyData.push(...batchResults.filter(item => item !== null))
-    }
-
-    // 데이터가 없으면 현재 환율로 대체 데이터 생성
+    // 데이터가 없으면 대체 데이터 생성
     if (historyData.length === 0) {
       logger.warn('히스토리 데이터 없음, 대체 데이터 생성')
-      const fallbackData = generateFallbackData('year', currency)
+      const fallbackData = generateFallbackOHLCData(currency)
 
       cache.set(cacheKey, {
         data: fallbackData,
@@ -143,9 +79,128 @@ export async function GET(request: Request) {
     const currency = searchParams.get('currency') || 'rub'
 
     return NextResponse.json({
-      data: generateFallbackData('year', currency),
+      data: generateFallbackOHLCData(currency),
       error: true
     })
+  }
+}
+
+// Alpha Vantage에서 USD/RUB OHLC 데이터 가져오기
+async function fetchAlphaVantageOHLC(from: string, to: string): Promise<OHLCData[]> {
+  try {
+    const apiKey = process.env.NEXT_PUBLIC_ALPHA_VANTAGE_API_KEY
+    if (!apiKey || apiKey === 'demo') {
+      logger.warn('Alpha Vantage API 키가 설정되지 않았습니다.')
+      return []
+    }
+
+    const url = `https://www.alphavantage.co/query?function=FX_DAILY&from_symbol=${from}&to_symbol=${to}&outputsize=full&apikey=${apiKey}`
+    const response = await fetch(url, { next: { revalidate: 3600 } })
+
+    if (!response.ok) {
+      throw new Error('Alpha Vantage API 호출 실패')
+    }
+
+    const data = await response.json()
+    const timeSeries = data['Time Series FX (Daily)']
+
+    if (!timeSeries) {
+      logger.error('Alpha Vantage 응답에 Time Series가 없습니다:', data)
+      return []
+    }
+
+    // 최근 365일 데이터만 추출
+    const ohlcData: OHLCData[] = []
+    const dates = Object.keys(timeSeries).slice(0, 365)
+
+    for (const date of dates) {
+      const dayData = timeSeries[date]
+      ohlcData.push({
+        date: formatDateForDisplay(new Date(date)),
+        open: parseFloat(dayData['1. open']),
+        high: parseFloat(dayData['2. high']),
+        low: parseFloat(dayData['3. low']),
+        close: parseFloat(dayData['4. close'])
+      })
+    }
+
+    // 날짜 순서 뒤집기 (오래된 것부터)
+    return ohlcData.reverse()
+  } catch (error) {
+    logger.error('Alpha Vantage OHLC 가져오기 실패:', error)
+    return []
+  }
+}
+
+// 한국수출입은행 데이터로 RUB/KRW OHLC 시뮬레이션
+async function fetchSimulatedRubKrwOHLC(): Promise<OHLCData[]> {
+  try {
+    const endDate = new Date()
+    const startDate = new Date()
+    startDate.setDate(endDate.getDate() - 365)
+
+    const datesToFetch: Date[] = []
+    const currentDate = new Date(startDate)
+
+    // 주 1-2회 샘플링 (성능 최적화)
+    while (currentDate <= endDate) {
+      if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
+        datesToFetch.push(new Date(currentDate))
+      }
+      currentDate.setDate(currentDate.getDate() + 3) // 3일마다
+    }
+
+    const ohlcData: OHLCData[] = []
+    const batchSize = 10
+
+    for (let i = 0; i < datesToFetch.length; i += batchSize) {
+      const batch = datesToFetch.slice(i, i + batchSize)
+
+      const batchResults = await Promise.all(
+        batch.map(async (date) => {
+          const dateStr = formatDate(date)
+
+          try {
+            const url = `https://www.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey=&searchdate=${dateStr}&data=AP01`
+            const response = await fetch(url, { next: { revalidate: 3600 } })
+
+            if (response.ok) {
+              const data = await response.json()
+              const rubData = data.find((item: any) => item.cur_unit === 'RUB')
+
+              if (rubData) {
+                const rubRate = parseFloat(rubData.deal_bas_r.replace(/,/g, ''))
+                const close = parseFloat((1 / rubRate).toFixed(2))
+
+                // OHLC 시뮬레이션: close 기준 ±2% 변동
+                const variation = close * 0.02
+                const open = parseFloat((close + (Math.random() - 0.5) * variation).toFixed(2))
+                const high = parseFloat(Math.max(open, close, close + Math.random() * variation).toFixed(2))
+                const low = parseFloat(Math.min(open, close, close - Math.random() * variation).toFixed(2))
+
+                return {
+                  date: formatDateForDisplay(date),
+                  open,
+                  high,
+                  low,
+                  close
+                }
+              }
+            }
+          } catch (error) {
+            logger.error(`날짜 ${dateStr} 데이터 가져오기 실패:`, error)
+          }
+          return null
+        })
+      )
+
+      ohlcData.push(...batchResults.filter(item => item !== null) as OHLCData[])
+    }
+
+    return ohlcData
+  } catch (error) {
+    logger.error('RUB/KRW OHLC 시뮬레이션 실패:', error)
+    return []
   }
 }
 
@@ -162,27 +217,31 @@ function formatDateForDisplay(date: Date): string {
   return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
 }
 
-// 대체 데이터 생성 (API 실패 시)
-function generateFallbackData(period: string, currency: string) {
-  const dataPoints =
-    period === 'week' ? 7 :
-    period === 'month' ? 30 :
-    period === 'quarter' ? 90 :
-    365 // year
-  const currentRate = currency === 'rub' ? 18 : 90
-  const data = []
+// 대체 OHLC 데이터 생성 (API 실패 시)
+function generateFallbackOHLCData(currency: string): OHLCData[] {
+  const dataPoints = 365
+  const baseRate = currency === 'rub' ? 18 : 90
+  const data: OHLCData[] = []
 
   for (let i = dataPoints - 1; i >= 0; i--) {
     const date = new Date()
     date.setDate(date.getDate() - i)
 
-    // 임시 변동 생성
-    const variation = (Math.random() - 0.5) * (currentRate * 0.05)
-    const rate = currentRate + variation
+    // 일별 변동 생성
+    const dailyVariation = (Math.random() - 0.5) * (baseRate * 0.05)
+    const close = parseFloat((baseRate + dailyVariation).toFixed(2))
+
+    const variation = baseRate * 0.02
+    const open = parseFloat((close + (Math.random() - 0.5) * variation).toFixed(2))
+    const high = parseFloat(Math.max(open, close, close + Math.random() * variation).toFixed(2))
+    const low = parseFloat(Math.min(open, close, close - Math.random() * variation).toFixed(2))
 
     data.push({
       date: formatDateForDisplay(date),
-      rate: parseFloat(rate.toFixed(2))
+      open,
+      high,
+      low,
+      close
     })
   }
 
