@@ -213,9 +213,9 @@ export default function ChatRoomPage() {
   }
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex-none bg-background border-b border-border">
+    <div className="h-full bg-background flex flex-col overflow-hidden">
+      {/* Header - 고정 */}
+      <div className="flex-none bg-background border-b border-border sticky top-0 z-10">
         <div className="flex items-center gap-3 px-4 py-3">
           <Button
             variant="ghost"
@@ -263,7 +263,7 @@ export default function ChatRoomPage() {
           )}
         </div>
 
-        {/* Related Post Banner */}
+        {/* Related Post Banner - 고정 */}
         {room.post && (
           <Link
             href={`/post/${room.post.id}`}
@@ -297,8 +297,8 @@ export default function ChatRoomPage() {
         )}
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4">
+      {/* Messages - 스크롤 영역 */}
+      <div className="flex-1 overflow-y-auto p-4" style={{ overscrollBehavior: 'contain' }}>
         {messages.length === 0 && !appointment ? (
           <div className="text-center py-16 text-muted-foreground h-full flex items-center justify-center">
             메시지를 보내서 대화를 시작해보세요
@@ -385,8 +385,8 @@ export default function ChatRoomPage() {
         )}
       </div>
 
-      {/* Message Input */}
-      <div className="flex-none bg-background border-t border-border p-4 safe-area-bottom">
+      {/* Message Input - 고정 */}
+      <div className="flex-none bg-background border-t border-border p-4 safe-area-bottom sticky bottom-0 z-10">
         <div className="flex flex-col gap-2">
           {/* 구매약속 잡기 버튼 (구매자만, 판매완료 아닐 때) */}
           {isBuyer && !isSold && currentUserId && room.post && room.post.author_id && (

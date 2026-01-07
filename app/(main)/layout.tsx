@@ -12,16 +12,17 @@ export default function MainLayout({
 }) {
   const pathname = usePathname()
 
-  // 채팅방 페이지에서는 하단 여백 제거
+  // 채팅방 페이지에서는 하단 여백 제거 및 전체 높이 사용
   const isChatRoomPage = pathname?.match(/^\/chats\/[^/]+$/)
   const paddingClass = isChatRoomPage ? 'pb-0' : 'pb-20'
+  const heightClass = isChatRoomPage ? 'h-screen' : ''
 
   return (
     <UserProvider>
       <div className="min-h-screen bg-background">
         <TopBar />
 
-        <main className={`${paddingClass} max-w-screen-xl mx-auto`}>
+        <main className={`${paddingClass} ${heightClass} max-w-screen-xl mx-auto`}>
           {children}
         </main>
 
