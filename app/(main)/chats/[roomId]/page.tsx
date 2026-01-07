@@ -213,10 +213,11 @@ export default function ChatRoomPage() {
   }
 
   return (
-    <div className="h-full bg-background flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-background">
       {/* Header - 고정 */}
-      <div className="flex-none bg-background border-b border-border sticky top-0 z-10">
-        <div className="flex items-center gap-3 px-4 py-3">
+      <div className="fixed top-0 left-0 right-0 bg-background border-b border-border z-40">
+        <div className="max-w-screen-xl mx-auto">
+          <div className="flex items-center gap-3 px-4 py-3">
           <Button
             variant="ghost"
             size="icon"
@@ -261,14 +262,14 @@ export default function ChatRoomPage() {
               onReviewRequest={() => setShowReviewModal(true)}
             />
           )}
-        </div>
+          </div>
 
-        {/* Related Post Banner - 고정 */}
-        {room.post && (
-          <Link
-            href={`/post/${room.post.id}`}
-            className="flex items-center gap-3 px-4 py-2 bg-muted/50 border-t border-border hover:bg-muted transition-colors"
-          >
+          {/* Related Post Banner */}
+          {room.post && (
+            <Link
+              href={`/post/${room.post.id}`}
+              className="flex items-center gap-3 px-4 py-2 bg-background border-t border-border hover:bg-muted transition-colors"
+            >
             {room.post.images && room.post.images.length > 0 ? (
               <img
                 src={room.post.images[0]}
@@ -293,12 +294,16 @@ export default function ChatRoomPage() {
                   : `${room.post.price.toLocaleString()}₽`}
               </div>
             </div>
-          </Link>
-        )}
+            </Link>
+          )}
+        </div>
       </div>
 
-      {/* Messages - 스크롤 영역 */}
-      <div className="flex-1 overflow-y-auto p-4" style={{ overscrollBehavior: 'contain' }}>
+      {/* Messages - 헤더와 입력창 사이 공간 확보 */}
+      <div className="max-w-screen-xl mx-auto p-4" style={{
+        paddingTop: room.post ? 'calc(56px + 64px + 16px)' : 'calc(56px + 16px)',
+        paddingBottom: 'calc(80px + 16px)'
+      }}>
         {messages.length === 0 && !appointment ? (
           <div className="text-center py-16 text-muted-foreground h-full flex items-center justify-center">
             메시지를 보내서 대화를 시작해보세요
@@ -386,8 +391,9 @@ export default function ChatRoomPage() {
       </div>
 
       {/* Message Input - 고정 */}
-      <div className="flex-none bg-background border-t border-border p-4 safe-area-bottom sticky bottom-0 z-10">
-        <div className="flex flex-col gap-2">
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-40">
+        <div className="max-w-screen-xl mx-auto p-4">
+          <div className="flex flex-col gap-2">
           {/* 구매약속 잡기 버튼 (구매자만, 판매완료 아닐 때) */}
           {isBuyer && !isSold && currentUserId && room.post && room.post.author_id && (
             <AppointmentProposalForm
@@ -432,6 +438,7 @@ export default function ChatRoomPage() {
             >
               <Send className="w-4 h-4" />
             </Button>
+          </div>
           </div>
         </div>
       </div>
