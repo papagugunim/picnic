@@ -3,7 +3,7 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('UseMessages')
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ChatMessageWithProfile } from '@/types/chat'
 
@@ -15,6 +15,7 @@ export function useMessages(roomId: string) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSending, setIsSending] = useState(false)
+  const isSendingRef = useRef(false)
 
   const fetchMessages = useCallback(async () => {
     if (!roomId) return
@@ -100,7 +101,7 @@ export function useMessages(roomId: string) {
 
         // Subscribe to new messages in this room
         subscription = supabase
-          .channel(`room-${roomId}-${user.id}`)
+          .channel(`chat-room:${roomId}`)
           .on(
             'postgres_changes',
             {
@@ -112,6 +113,20 @@ export function useMessages(roomId: string) {
             async (payload) => {
               logger.log('[Realtime] New message received:', payload.new)
               const newMessage = payload.new
+
+              // 본인이 보낸 메시지는 무시 (이미 낙관적 업데이트로 추가됨)
+              if (newMessage.sender_id === user.id) {
+                logger.log('[Realtime] Own message detected (optimistic update), updating with real ID')
+                // 낙관적 업데이트 메시지를 실제 ID로 교체
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id.toString().startsWith('temp-') && msg.content === newMessage.content
+                      ? { ...msg, id: newMessage.id, created_at: newMessage.created_at }
+                      : msg
+                  )
+                )
+                return
+              }
 
               // 프로필 정보 가져오기
               const { data: profileData } = await supabase
@@ -137,21 +152,11 @@ export function useMessages(roomId: string) {
                   return prev
                 }
 
-                const existsByContent = prev.some((msg) =>
-                  msg.content === newMessage.content &&
-                  msg.sender_id === newMessage.sender_id &&
-                  Math.abs(new Date(msg.created_at).getTime() - new Date(newMessage.created_at).getTime()) < 5000
-                )
-                if (existsByContent) {
-                  logger.log('[Realtime] Message already exists (by content), skipping')
-                  return prev
-                }
-
-                logger.log('[Realtime] Adding new message to state')
+                logger.log('[Realtime] Adding new message from other user')
                 return [...prev, messageWithProfile as ChatMessageWithProfile]
               })
 
-              // 읽음 표시
+              // 상대방 메시지만 읽음 표시
               await markMessagesAsRead()
             }
           )
@@ -234,10 +239,17 @@ export function useMessages(roomId: string) {
     async (content: string, senderId: string) => {
       if (!content.trim() || !roomId) return false
 
+      // 이미 전송 중이면 중복 방지 (useRef 사용으로 클로저 문제 해결)
+      if (isSendingRef.current) {
+        logger.log('[Send] Already sending, ignoring duplicate request')
+        return false
+      }
+
       // 임시 메시지 ID 생성 (낙관적 업데이트용)
-      const tempId = `temp-${Date.now()}`
+      const tempId = `temp-${Date.now()}-${Math.random()}`
 
       try {
+        isSendingRef.current = true
         setIsSending(true)
         const supabase = createClient()
 
@@ -282,6 +294,8 @@ export function useMessages(roomId: string) {
           // 실패 시 낙관적으로 추가한 메시지 제거
           setMessages((prev) => prev.filter((msg) => msg.id !== tempId))
           setError('메시지 전송에 실패했습니다')
+          isSendingRef.current = false
+          setIsSending(false)
           return false
         }
 
@@ -313,6 +327,7 @@ export function useMessages(roomId: string) {
         setError('메시지 전송에 실패했습니다')
         return false
       } finally {
+        isSendingRef.current = false
         setIsSending(false)
       }
     },

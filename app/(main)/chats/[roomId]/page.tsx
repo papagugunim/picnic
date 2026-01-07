@@ -417,7 +417,10 @@ export default function ChatRoomPage() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
-                  handleSendMessage()
+                  // 이미 전송 중이면 무시 (중복 전송 방지)
+                  if (!isSending && newMessage.trim()) {
+                    handleSendMessage()
+                  }
                 }
               }}
             />
