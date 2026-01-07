@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Bell, Menu, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -21,8 +21,15 @@ interface TopBarProps {
 
 export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { profile, refreshProfile } = useUser()
   const { unreadCount } = useNotifications()
+
+  // 채팅방 페이지에서는 TopBar 숨기기
+  const isChatRoomPage = pathname?.match(/^\/chats\/[^/]+$/)
+  if (isChatRoomPage) {
+    return null
+  }
 
   const currentCity = profile?.city
     ? (profile.city.toLowerCase() === 'moscow' ? '모스크바' : '상트페테르부르크')

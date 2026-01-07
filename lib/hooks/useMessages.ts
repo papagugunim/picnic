@@ -98,6 +98,7 @@ export function useMessages(roomId: string) {
         }
 
         logger.log(`[Realtime] Connecting to room ${roomId}...`)
+        logger.log(`[Realtime] User ID: ${user.id}`)
 
         // Subscribe to new messages in this room
         subscription = supabase
@@ -111,12 +112,13 @@ export function useMessages(roomId: string) {
               filter: `room_id=eq.${roomId}`,
             },
             async (payload) => {
-              logger.log('[Realtime] New message received:', payload.new)
+              logger.log('[Realtime] ✅ New message received:', payload.new)
+              logger.log(`[Realtime] Sender: ${payload.new.sender_id}, Current User: ${user.id}`)
               const newMessage = payload.new
 
               // 본인이 보낸 메시지는 무시 (이미 낙관적 업데이트로 추가됨)
               if (newMessage.sender_id === user.id) {
-                logger.log('[Realtime] Own message detected (optimistic update), updating with real ID')
+                logger.log('[Realtime] 📤 Own message detected (optimistic update), updating with real ID')
                 // 낙관적 업데이트 메시지를 실제 ID로 교체
                 setMessages((prev) =>
                   prev.map((msg) =>
@@ -148,11 +150,11 @@ export function useMessages(roomId: string) {
               setMessages((prev) => {
                 const existsById = prev.some((msg) => msg.id === newMessage.id)
                 if (existsById) {
-                  logger.log('[Realtime] Message already exists (by ID), skipping')
+                  logger.log('[Realtime] ⚠️ Message already exists (by ID), skipping')
                   return prev
                 }
 
-                logger.log('[Realtime] Adding new message from other user')
+                logger.log('[Realtime] 📥 Adding new message from other user')
                 return [...prev, messageWithProfile as ChatMessageWithProfile]
               })
 
@@ -181,19 +183,20 @@ export function useMessages(roomId: string) {
             }
           )
           .subscribe((status, err) => {
-            logger.log('[Realtime] Subscription status:', status)
+            logger.log(`[Realtime] 🔔 Subscription status: ${status}`)
 
             if (status === 'SUBSCRIBED') {
-              logger.log('[Realtime] Successfully connected!')
+              logger.log('[Realtime] ✅ Successfully connected! Ready to receive messages.')
               reconnectAttempts = 0
             } else if (status === 'CLOSED') {
-              logger.log('[Realtime] Connection closed')
+              logger.log('[Realtime] ❌ Connection closed')
               handleReconnect()
             } else if (status === 'CHANNEL_ERROR') {
-              logger.error('[Realtime] Channel error:', err)
+              logger.error('[Realtime] ❌ Channel error:', err)
+              logger.error('[Realtime] ⚠️ Make sure Realtime is enabled for chat_messages table in Supabase Dashboard')
               handleReconnect()
             } else if (status === 'TIMED_OUT') {
-              logger.error('[Realtime] Connection timed out')
+              logger.error('[Realtime] ⏱️ Connection timed out')
               handleReconnect()
             }
           })
@@ -241,7 +244,7 @@ export function useMessages(roomId: string) {
 
       // 이미 전송 중이면 중복 방지 (useRef 사용으로 클로저 문제 해결)
       if (isSendingRef.current) {
-        logger.log('[Send] Already sending, ignoring duplicate request')
+        logger.log('[Send] ⚠️ Already sending, ignoring duplicate request')
         return false
       }
 
@@ -252,6 +255,9 @@ export function useMessages(roomId: string) {
         isSendingRef.current = true
         setIsSending(true)
         const supabase = createClient()
+
+        logger.log('[Send] 📤 Sending message...')
+        logger.log(`[Send] Room: ${roomId}, Sender: ${senderId}`)
 
         // 발신자 프로필 정보 가져오기
         const { data: senderProfile } = await supabase
@@ -275,7 +281,7 @@ export function useMessages(roomId: string) {
           },
         }
 
-        logger.log('Adding optimistic message:', optimisticMessage)
+        logger.log('[Send] ➕ Adding optimistic message to UI:', tempId)
         setMessages((prev) => [...prev, optimisticMessage])
 
         // 메시지 전송
@@ -290,7 +296,7 @@ export function useMessages(roomId: string) {
           .single()
 
         if (error) {
-          logger.error('Send message error:', error)
+          logger.error('[Send] ❌ Send message error:', error)
           // 실패 시 낙관적으로 추가한 메시지 제거
           setMessages((prev) => prev.filter((msg) => msg.id !== tempId))
           setError('메시지 전송에 실패했습니다')
@@ -299,7 +305,7 @@ export function useMessages(roomId: string) {
           return false
         }
 
-        logger.log('Message sent successfully:', data)
+        logger.log('[Send] ✅ Message sent successfully! ID:', data?.id)
 
         // 성공 시 임시 메시지를 실제 메시지로 교체
         if (data) {
