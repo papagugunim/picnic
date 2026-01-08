@@ -5,9 +5,8 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('AppointmentCard')
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
-import { Calendar, MapPin, MessageSquare, CheckCircle2, XCircle, Clock } from 'lucide-react'
+import { Calendar, MapPin, MessageSquare, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import type { PurchaseAppointment } from '@/types/purchase'
 import { toast } from 'sonner'
 import {
@@ -38,22 +37,6 @@ export function AppointmentCard({
   const isSeller = currentUserId === appointment.responder_id
   const appointmentDate = new Date(appointment.appointment_date)
 
-  // 상태별 배지
-  const getStatusBadge = () => {
-    switch (appointment.status) {
-      case 'proposed':
-        return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" />제안 대기중</Badge>
-      case 'confirmed':
-        return <Badge className="bg-green-500 gap-1"><CheckCircle2 className="h-3 w-3" />약속 확정</Badge>
-      case 'cancelled':
-        return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" />취소됨</Badge>
-      case 'completed':
-        return <Badge className="bg-blue-500 gap-1"><CheckCircle2 className="h-3 w-3" />거래 완료</Badge>
-      default:
-        return null
-    }
-  }
-
   // 약속 응답 처리
   async function handleRespond(status: 'confirmed' | 'cancelled') {
     if (!onRespond) return
@@ -73,12 +56,9 @@ export function AppointmentCard({
   return (
     <div className="my-4 mx-auto max-w-md">
       <div className="glass-strong rounded-lg p-4 border border-white/20">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-blue-400" />
-            <span className="font-semibold">구매약속</span>
-          </div>
-          {getStatusBadge()}
+        <div className="flex items-center gap-2 mb-3">
+          <Calendar className="h-4 w-4 text-blue-400" />
+          <span className="font-semibold">구매약속</span>
         </div>
 
         <div className="space-y-2 text-sm">

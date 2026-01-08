@@ -73,6 +73,56 @@ export function useSale() {
     }
   }
 
+  // 리뷰 작성 및 판매완료 처리 (통합)
+  async function createReviewAndCompleteSale(
+    postId: string,
+    roomId: string,
+    buyerId: string,
+    sellerId: string,
+    rating: number,
+    comment?: string
+  ): Promise<void> {
+    const supabase = createClient()
+
+    try {
+      // 1. 리뷰 작성
+      const { error: reviewError } = await supabase
+        .from('reviews')
+        .insert({
+          post_id: postId,
+          reviewer_id: sellerId,
+          reviewee_id: buyerId,
+          rating,
+          comment: comment || null
+        })
+
+      if (reviewError) {
+        logger.error('Create review error:', reviewError)
+        throw new Error('리뷰 작성 실패')
+      }
+
+      // 2. 판매완료 처리
+      const { data, error: saleError } = await supabase.rpc('complete_sale', {
+        p_post_id: postId,
+        p_room_id: roomId,
+        p_buyer_id: buyerId,
+        p_seller_id: sellerId
+      })
+
+      if (saleError) {
+        logger.error('Complete sale error:', saleError)
+        throw new Error('판매완료 처리 실패')
+      }
+
+      if (!data) {
+        throw new Error('판매완료 처리에 실패했습니다')
+      }
+    } catch (err) {
+      logger.error('Create review and complete sale error:', err)
+      throw err
+    }
+  }
+
   // 리뷰 존재 여부 확인
   async function checkReviewExists(
     postId: string,
@@ -140,6 +190,7 @@ export function useSale() {
   return {
     completeSale,
     createReview,
+    createReviewAndCompleteSale,
     checkReviewExists,
     getPostReviews
   }

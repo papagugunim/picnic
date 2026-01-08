@@ -37,7 +37,7 @@ export default function ChatRoomPage() {
 
   const { messages, isSending, sendMessage } = useMessages(roomId)
   const { appointment, proposeAppointment, respondToAppointment } = useAppointment(roomId)
-  const { completeSale, createReview } = useSale()
+  const { createReviewAndCompleteSale } = useSale()
 
   useEffect(() => {
     fetchRoom()
@@ -144,23 +144,6 @@ export default function ChatRoomPage() {
     }
   }
 
-  async function handleCompleteSale() {
-    if (!room?.post || !currentUserId) return
-
-    try {
-      await completeSale(
-        room.post.id,
-        roomId,
-        room.other_user.id,
-        currentUserId
-      )
-      // 채팅방 정보 다시 불러오기
-      await fetchRoom()
-    } catch (error) {
-      throw error
-    }
-  }
-
   async function handleCreateReview(
     postId: string,
     reviewerId: string,
@@ -168,7 +151,23 @@ export default function ChatRoomPage() {
     rating: number,
     comment?: string
   ) {
-    await createReview(postId, reviewerId, revieweeId, rating, comment)
+    if (!room?.post || !currentUserId) return
+
+    try {
+      // 리뷰 작성 및 판매완료 처리를 동시에 수행
+      await createReviewAndCompleteSale(
+        room.post.id,
+        roomId,
+        room.other_user.id, // buyerId
+        currentUserId, // sellerId
+        rating,
+        comment
+      )
+      // 채팅방 정보 다시 불러오기
+      await fetchRoom()
+    } catch (error) {
+      throw error
+    }
   }
 
   const scrollToBottom = () => {
@@ -255,11 +254,6 @@ export default function ChatRoomPage() {
           {/* 판매완료 버튼 (판매자만, 약속 확정 후) */}
           {isSeller && isAppointmentConfirmed && !isSold && currentUserId && room.post && (
             <CompleteSaleButton
-              postId={room.post.id}
-              roomId={roomId}
-              buyerId={room.other_user.id}
-              sellerId={currentUserId}
-              onComplete={handleCompleteSale}
               onReviewRequest={() => setShowReviewModal(true)}
             />
           )}
