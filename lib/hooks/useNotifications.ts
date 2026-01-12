@@ -90,8 +90,12 @@ export function useNotifications(): UseNotificationsReturn {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
+      // RPC 대신 직접 UPDATE 쿼리 사용 (400 에러 방지)
       const { error: updateError } = await supabase
-        .rpc('mark_all_notifications_as_read', { p_user_id: user.id })
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false)
 
       if (updateError) throw updateError
 
