@@ -21,7 +21,6 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { createClient } from '@/lib/supabase/client'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 const loginSchema = z.object({
@@ -127,17 +126,11 @@ export default function LoginForm() {
         localStorage.removeItem('rememberedEmail')
       }
 
-      // 클라이언트의 Supabase 세션도 설정
-      if (result.data?.session) {
-        const supabase = createClient()
-        await supabase.auth.setSession({
-          access_token: result.data.session.access_token,
-          refresh_token: result.data.session.refresh_token,
-        })
-      }
+      // 서버에서 이미 쿠키 설정됨 - 중복 setSession 불필요
+      // UserContext가 자동으로 세션 감지하여 프로필 로드
 
       router.push('/feed')
-      router.refresh()
+      // router.refresh() 제거 - 불필요한 이중 네비게이션
     } catch (err) {
       logger.error('Login exception:', err)
       setError('로그인 중 오류가 발생했습니다')

@@ -29,6 +29,44 @@ const UserContext = createContext<UserContextType | undefined>(undefined)
 // 프로필 캐시 (메모리)
 const profileCache = new Map<string, { data: UserProfile; timestamp: number }>()
 const CACHE_TTL = 5 * 60 * 1000 // 5분
+const STORAGE_KEY = 'picnic_user_profile'
+
+// localStorage에서 프로필 로드
+function loadProfileFromStorage(userId: string): UserProfile | null {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (!stored) return null
+
+    const { data, userId: storedUserId, timestamp } = JSON.parse(stored)
+
+    // 같은 사용자이고 캐시가 유효한 경우
+    if (storedUserId === userId && (Date.now() - timestamp) < CACHE_TTL) {
+      logger.log('[UserContext] Using localStorage cached profile')
+      return data
+    }
+  } catch (error) {
+    logger.error('[UserContext] Failed to load from localStorage:', error)
+  }
+
+  return null
+}
+
+// localStorage에 프로필 저장
+function saveProfileToStorage(userId: string, data: UserProfile) {
+  if (typeof window === 'undefined') return
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      userId,
+      data,
+      timestamp: Date.now()
+    }))
+  } catch (error) {
+    logger.error('[UserContext] Failed to save to localStorage:', error)
+  }
+}
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -45,15 +83,30 @@ export function UserProvider({ children }: { children: ReactNode }) {
       if (userData) {
         setUser(userData)
 
-        // 캐시 확인
+        // 1. localStorage 캐시 확인 (가장 빠름)
+        if (!forceRefresh) {
+          const storageProfile = loadProfileFromStorage(userData.id)
+          if (storageProfile) {
+            setProfile(storageProfile)
+            setLoading(false) // 즉시 로딩 완료
+
+            // 백그라운드에서 업데이트 체크
+            setTimeout(() => {
+              fetchUserAndProfile(true)
+            }, 2000)
+            return
+          }
+        }
+
+        // 2. 메모리 캐시 확인
         const cached = profileCache.get(userData.id)
         const now = Date.now()
 
         if (!forceRefresh && cached && (now - cached.timestamp) < CACHE_TTL) {
-          logger.log('[UserContext] Using cached profile')
+          logger.log('[UserContext] Using memory cached profile')
           setProfile(cached.data)
         } else {
-          // 캐시 미스 또는 강제 새로고침 - DB에서 가져오기
+          // 3. DB에서 가져오기
           logger.log('[UserContext] Fetching profile from database')
           const { data: profileData } = await supabase
             .from('profiles')
@@ -63,16 +116,24 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
           if (profileData) {
             setProfile(profileData)
-            // 캐시에 저장
+
+            // 메모리 캐시에 저장
             profileCache.set(userData.id, {
               data: profileData,
               timestamp: now
             })
+
+            // localStorage에 저장
+            saveProfileToStorage(userData.id, profileData)
           }
         }
       } else {
         setUser(null)
         setProfile(null)
+        // 로그아웃 시 localStorage 캐시 삭제
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(STORAGE_KEY)
+        }
       }
     } catch (error) {
       logger.error('사용자 정보 로드 실패:', error)
