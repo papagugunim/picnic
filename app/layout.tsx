@@ -37,23 +37,6 @@ export default function RootLayout({
 
   return (
     <html lang="ko" suppressHydrationWarning>
-      <head>
-        {/* 폰트 preload - FOUT 방지 */}
-        <link
-          rel="preload"
-          href="/_next/static/media/geist-sans.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
-        <link
-          rel="preload"
-          href="/_next/static/media/geist-mono.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
