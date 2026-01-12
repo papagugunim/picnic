@@ -122,7 +122,12 @@ export default function SignupForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" name="signup">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="space-y-6"
+        name="signup"
+        id="signup-form"
+      >
         {/* Step 1: 이메일 */}
         <FormField
           control={form.control}
@@ -134,7 +139,7 @@ export default function SignupForm() {
                 <Input
                   type="email"
                   placeholder="name@example.com"
-                  autoComplete="username email"
+                  autoComplete="email"
                   {...field}
                   disabled={isLoading}
                   className="glass"

@@ -141,7 +141,12 @@ export default function LoginForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" name="login">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="space-y-6"
+        name="login"
+        id="login-form"
+      >
         <FormField
           control={form.control}
           name="email"
@@ -152,7 +157,7 @@ export default function LoginForm() {
                 <Input
                   type="email"
                   placeholder="name@example.com"
-                  autoComplete="username email"
+                  autoComplete="email"
                   {...field}
                   disabled={isLoading}
                   className="glass"
