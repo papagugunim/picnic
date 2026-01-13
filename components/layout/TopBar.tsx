@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Bell, Menu, Search } from 'lucide-react'
+import { Bell, Settings, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/contexts/UserContext'
@@ -93,7 +93,7 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
           </Link>
         )}
 
-        {/* 오른쪽: 검색, 알림, 메뉴 */}
+        {/* 오른쪽: 검색, 알림, 설정 */}
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -125,8 +125,8 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
             className="w-9 h-9"
             onClick={() => router.push('/settings')}
           >
-            <Menu className="w-5 h-5" />
-            <span className="sr-only">메뉴</span>
+            <Settings className="w-5 h-5" />
+            <span className="sr-only">설정</span>
           </Button>
         </div>
       </div>
