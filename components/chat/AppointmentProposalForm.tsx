@@ -21,7 +21,7 @@ import { Calendar } from 'lucide-react'
 import type { CreateAppointmentParams } from '@/types/purchase'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import { getMetroStationLabel } from '@/lib/metro-stations'
+import { MOSCOW_METRO_STATIONS, SPB_METRO_STATIONS } from '@/lib/constants'
 
 interface AppointmentProposalFormProps {
   roomId: string
@@ -43,6 +43,7 @@ export function AppointmentProposalForm({
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [preferredMetroStations, setPreferredMetroStations] = useState<string[]>([])
+  const [postCity, setPostCity] = useState<string>('')
   const [formData, setFormData] = useState({
     date: '',
     location: '',
@@ -55,12 +56,17 @@ export function AppointmentProposalForm({
       const supabase = createClient()
       const { data } = await supabase
         .from('posts')
-        .select('preferred_metro_stations')
+        .select('preferred_metro_stations, city')
         .eq('id', postId)
         .single()
 
-      if (data && data.preferred_metro_stations) {
-        setPreferredMetroStations(data.preferred_metro_stations)
+      if (data) {
+        if (data.preferred_metro_stations) {
+          setPreferredMetroStations(data.preferred_metro_stations)
+        }
+        if (data.city) {
+          setPostCity(data.city)
+        }
       }
     }
 
@@ -68,6 +74,22 @@ export function AppointmentProposalForm({
       fetchPreferredStations()
     }
   }, [open, postId])
+
+  // 지하철역 정보 가져오기 (한글 이름 + 노선 색상)
+  const getStationInfo = (stationValue: string) => {
+    const stations = postCity?.toLowerCase() === 'moscow' ? MOSCOW_METRO_STATIONS : SPB_METRO_STATIONS
+    const station = stations.find(s => s.value === stationValue)
+    if (!station) return null
+
+    // label 형식: "한글 / 러시아어 / 영어"에서 한글 부분만 추출
+    const koreanName = station.label.split(' / ')[0]
+
+    return {
+      koreanName,
+      lineColor: station.lineColor,
+      line: station.line
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -136,18 +158,30 @@ export function AppointmentProposalForm({
                 <div className="mb-2">
                   <p className="text-xs text-muted-foreground mb-2">판매자 추천 지하철역</p>
                   <div className="flex flex-wrap gap-2">
-                    {preferredMetroStations.map((station) => (
-                      <Button
-                        key={station}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => setFormData({ ...formData, location: getMetroStationLabel(station) })}
-                      >
-                        {getMetroStationLabel(station)}
-                      </Button>
-                    ))}
+                    {preferredMetroStations.map((station) => {
+                      const stationInfo = getStationInfo(station)
+                      if (!stationInfo) return null
+
+                      return (
+                        <button
+                          key={station}
+                          type="button"
+                          className="px-3 py-1.5 rounded-md text-xs flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                          style={{
+                            backgroundColor: `${stationInfo.lineColor}20`,
+                            border: `1px solid ${stationInfo.lineColor}`,
+                            color: stationInfo.lineColor
+                          }}
+                          onClick={() => setFormData({ ...formData, location: stationInfo.koreanName })}
+                        >
+                          <span
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ backgroundColor: stationInfo.lineColor }}
+                          />
+                          {stationInfo.koreanName}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               )}
