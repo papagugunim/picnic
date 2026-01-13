@@ -12,9 +12,12 @@ export default function MainLayout({
 }) {
   const pathname = usePathname()
 
-  // 채팅방 페이지에서는 하단 여백 제거
+  // 채팅방 페이지 확인
   const isChatRoomPage = pathname?.match(/^\/chats\/[^/]+$/)
-  const paddingClass = isChatRoomPage ? 'pb-0' : 'pb-20'
+
+  // 채팅방: pt-0 pb-0 (헤더/하단 메뉴 모두 숨김)
+  // 일반 페이지: pt-14 pb-20 (헤더 높이 + 하단 메뉴 높이)
+  const paddingClass = isChatRoomPage ? 'pt-0 pb-0' : 'pt-14 pb-20'
 
   return (
     <UserProvider>

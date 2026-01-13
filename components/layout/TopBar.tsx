@@ -55,7 +55,7 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background">
+    <header className="fixed top-0 left-0 right-0 z-40 border-b border-border bg-background">
       <div className="flex items-center justify-between h-14 px-4 max-w-screen-xl mx-auto">
         {/* 왼쪽: 지역 선택 */}
         {showLocationDropdown ? (
