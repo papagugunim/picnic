@@ -5,6 +5,32 @@ const logger = createNamespacedLogger('Route')
 import { createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+// 세션 쿠키를 포함한 리다이렉트 응답 생성
+function createRedirectWithCookies(url: string, session: any | null) {
+  const response = NextResponse.redirect(url)
+
+  if (session) {
+    // 세션 쿠키 설정
+    response.cookies.set('sb-access-token', session.access_token, {
+      path: '/',
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    })
+
+    response.cookies.set('sb-refresh-token', session.refresh_token, {
+      path: '/',
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+    })
+  }
+
+  return response
+}
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const token_hash = requestUrl.searchParams.get('token_hash')
@@ -61,27 +87,31 @@ export async function GET(request: Request) {
 
     logger.log(`Profile age: ${diffInMinutes} minutes`)
 
+    // 세션 정보 가져오기
+    const { data: { session } } = await supabase.auth.getSession()
+
     if (diffInMinutes < 30) {
       logger.log('New user detected, redirecting to step/1')
-      return NextResponse.redirect(`${origin}/onboarding/step/1`)
+      return createRedirectWithCookies(`${origin}/onboarding/step/1`, session)
     }
 
-    // 기존 회원은 welcome 페이지로
-    logger.log('Existing user, redirecting to welcome')
-    return NextResponse.redirect(`${origin}/welcome`)
+    // 기존 회원은 피드 페이지로 직접 이동
+    logger.log('Existing user, redirecting to feed')
+    return createRedirectWithCookies(`${origin}/feed`, session)
   }
 
   // OAuth 플로우 (code) - 이메일 인증도 code로 올 수 있음
   if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (error) {
       logger.error('Auth callback error:', error)
       return NextResponse.redirect(`${origin}/login?message=인증에 실패했습니다`)
     }
 
-    // 로그인 성공 후 프로필 확인
-    const { data: { user } } = await supabase.auth.getUser()
+    // 세션 정보 확인
+    const user = data?.user
+    const session = data?.session
 
     if (user) {
       logger.log('User authenticated via code:', user.id)
@@ -114,18 +144,18 @@ export async function GET(request: Request) {
 
         // 신규 OAuth 사용자는 닉네임 설정부터 시작 (step/1)
         logger.log('New OAuth user created, redirecting to step/1')
-        return NextResponse.redirect(`${origin}/onboarding/step/1`)
+        return createRedirectWithCookies(`${origin}/onboarding/step/1`, session)
       }
 
       // 프로필은 있지만 필수 정보가 없는 경우
       if (!profile.city) {
         logger.log('Profile incomplete (no city), redirecting to step/1')
-        return NextResponse.redirect(`${origin}/onboarding/step/1`)
+        return createRedirectWithCookies(`${origin}/onboarding/step/1`, session)
       }
 
       if (!profile.full_name) {
         logger.log('Profile incomplete (no full_name), redirecting to step/1')
-        return NextResponse.redirect(`${origin}/onboarding/step/1`)
+        return createRedirectWithCookies(`${origin}/onboarding/step/1`, session)
       }
 
       logger.log('Profile found:', profile)
@@ -139,18 +169,18 @@ export async function GET(request: Request) {
 
       // next 파라미터가 있으면 우선
       if (next) {
-        return NextResponse.redirect(`${origin}${next}`)
+        return createRedirectWithCookies(`${origin}${next}`, session)
       }
 
       // 신규 회원이면 온보딩으로 (step/1)
       if (diffInMinutes < 30) {
         logger.log('New user detected (code flow), redirecting to step/1')
-        return NextResponse.redirect(`${origin}/onboarding/step/1`)
+        return createRedirectWithCookies(`${origin}/onboarding/step/1`, session)
       }
 
-      // 기존 회원은 welcome 페이지로
-      logger.log('Existing user (code flow), redirecting to welcome')
-      return NextResponse.redirect(`${origin}/welcome`)
+      // 기존 회원은 피드 페이지로 직접 이동
+      logger.log('Existing user (code flow), redirecting to feed')
+      return createRedirectWithCookies(`${origin}/feed`, session)
     }
   }
 
