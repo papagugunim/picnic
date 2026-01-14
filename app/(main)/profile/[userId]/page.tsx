@@ -320,18 +320,8 @@ export default function ProfilePage() {
                 <h1 className="text-2xl font-bold">
                   {profile.full_name || '이름 없음'}
                 </h1>
-                {/* 설정 버튼 또는 채팅하기 버튼 */}
-                {isOwnProfile ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 flex-shrink-0"
-                    onClick={() => router.push('/settings')}
-                  >
-                    <Settings className="w-3.5 h-3.5" />
-                    <span className="text-xs">설정</span>
-                  </Button>
-                ) : (
+                {/* 채팅하기 버튼 (다른 사람 프로필일 경우만) */}
+                {!isOwnProfile && (
                   <Button
                     variant="default"
                     size="sm"
