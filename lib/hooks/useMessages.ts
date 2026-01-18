@@ -5,7 +5,10 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('UseMessages')
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { ChatMessageWithProfile } from '@/types/chat'
+import type { ChatMessageWithProfile, PollMessagesResponse } from '@/types/chat'
+
+// Feature Flag: Long Polling 사용 여부
+const USE_LONG_POLLING = process.env.NEXT_PUBLIC_USE_LONG_POLLING === 'true'
 
 /**
  * 특정 채팅방의 메시지를 가져오고 실시간 업데이트를 제공하는 훅
@@ -16,6 +19,14 @@ export function useMessages(roomId: string) {
   const [error, setError] = useState<string | null>(null)
   const [isSending, setIsSending] = useState(false)
   const isSendingRef = useRef(false)
+
+  // Long Polling 상태 관리
+  const [lastMessageId, setLastMessageId] = useState<string | null>(null)
+  const pollingRef = useRef<{
+    isPolling: boolean
+    abortController: AbortController | null
+    retryCount: number
+  }>({ isPolling: false, abortController: null, retryCount: 0 })
 
   const fetchMessages = useCallback(async () => {
     if (!roomId) return
@@ -60,6 +71,110 @@ export function useMessages(roomId: string) {
       setIsLoading(false)
     }
   }, [roomId])
+
+  // Long Polling 읽음 처리 함수
+  const markMessagesAsReadAPI = useCallback(async () => {
+    if (!roomId) return
+
+    try {
+      await fetch('/api/chat/messages/read', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_id: roomId }),
+      })
+    } catch (err) {
+      logger.error('[Long Polling] Mark as read error:', err)
+    }
+  }, [roomId])
+
+  // Long Polling 시작 함수
+  const startPolling = useCallback(async () => {
+    if (!roomId) return
+
+    pollingRef.current.isPolling = true
+    logger.log('[Long Polling] Starting poll loop')
+
+    while (pollingRef.current.isPolling) {
+      const abortController = new AbortController()
+      pollingRef.current.abortController = abortController
+
+      try {
+        const params = new URLSearchParams({
+          roomId,
+          timeout: '30000',
+          ...(lastMessageId && { lastMessageId }),
+        })
+
+        logger.log(`[Long Polling] Polling with lastMessageId: ${lastMessageId}`)
+
+        const response = await fetch(`/api/chat/poll?${params}`, {
+          signal: abortController.signal,
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+
+        const data: PollMessagesResponse = await response.json()
+
+        if (data.messages.length > 0) {
+          logger.log(`[Long Polling] Received ${data.messages.length} new messages`)
+
+          // 새 메시지 추가 (중복 방지)
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map((m) => m.id))
+            const newMessages = data.messages.filter((m) => !existingIds.has(m.id))
+
+            if (newMessages.length === 0) {
+              logger.log('[Long Polling] All messages already exist, skipping')
+              return prev
+            }
+
+            logger.log(`[Long Polling] Adding ${newMessages.length} new messages`)
+            return [...prev, ...newMessages]
+          })
+
+          setLastMessageId(data.lastMessageId)
+          pollingRef.current.retryCount = 0
+
+          // 읽음 처리
+          await markMessagesAsReadAPI()
+
+          // 즉시 재요청 (지연 없음)
+          continue
+        }
+
+        // 새 메시지 없음 - 1초 대기 후 재시도
+        logger.log('[Long Polling] No new messages, waiting 1s')
+        pollingRef.current.retryCount = 0
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          logger.log('[Long Polling] Poll aborted')
+          break
+        }
+
+        // 지수 백오프
+        pollingRef.current.retryCount++
+        const delay = Math.min(
+          1000 * Math.pow(2, pollingRef.current.retryCount),
+          30000
+        )
+
+        logger.error(`[Long Polling] Poll error, retry in ${delay}ms:`, error)
+
+        if (pollingRef.current.retryCount > 5) {
+          pollingRef.current.isPolling = false
+          setError('연결이 끊어졌습니다. 새로고침해주세요.')
+          break
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, delay))
+      }
+    }
+
+    logger.log('[Long Polling] Poll loop ended')
+  }, [roomId, lastMessageId, markMessagesAsReadAPI])
 
   useEffect(() => {
     if (!roomId) return
@@ -223,20 +338,46 @@ export function useMessages(roomId: string) {
       }, delay)
     }
 
-    fetchMessages()
-    markMessagesAsRead()
-    setupRealtimeSubscription()
+    // Feature Flag에 따라 Realtime 또는 Long Polling 선택
+    if (USE_LONG_POLLING) {
+      logger.log('[Mode] Using Long Polling')
+      fetchMessages().then(() => {
+        // 초기 메시지 로드 후 lastMessageId 설정
+        setMessages((prev) => {
+          if (prev.length > 0) {
+            setLastMessageId(prev[prev.length - 1].id)
+          }
+          return prev
+        })
+
+        // Long Polling 시작
+        startPolling()
+      })
+
+      markMessagesAsRead()
+    } else {
+      logger.log('[Mode] Using Realtime')
+      fetchMessages()
+      markMessagesAsRead()
+      setupRealtimeSubscription()
+    }
 
     return () => {
-      logger.log('[Realtime] Cleaning up subscription')
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer)
-      }
-      if (subscription) {
-        supabase.removeChannel(subscription)
+      if (USE_LONG_POLLING) {
+        logger.log('[Long Polling] Cleaning up')
+        pollingRef.current.isPolling = false
+        pollingRef.current.abortController?.abort()
+      } else {
+        logger.log('[Realtime] Cleaning up subscription')
+        if (reconnectTimer) {
+          clearTimeout(reconnectTimer)
+        }
+        if (subscription) {
+          supabase.removeChannel(subscription)
+        }
       }
     }
-  }, [roomId, fetchMessages])
+  }, [roomId, fetchMessages, startPolling])
 
   const sendMessage = useCallback(
     async (content: string, senderId: string) => {
@@ -254,12 +395,13 @@ export function useMessages(roomId: string) {
       try {
         isSendingRef.current = true
         setIsSending(true)
-        const supabase = createClient()
 
         logger.log('[Send] 📤 Sending message...')
+        logger.log(`[Send] Mode: ${USE_LONG_POLLING ? 'Long Polling' : 'Realtime'}`)
         logger.log(`[Send] Room: ${roomId}, Sender: ${senderId}`)
 
         // 발신자 프로필 정보 가져오기
+        const supabase = createClient()
         const { data: senderProfile } = await supabase
           .from('profiles')
           .select('id, full_name, avatar_url')
@@ -284,16 +426,47 @@ export function useMessages(roomId: string) {
         logger.log('[Send] ➕ Adding optimistic message to UI:', tempId)
         setMessages((prev) => [...prev, optimisticMessage])
 
-        // 메시지 전송
-        const { data, error } = await supabase
-          .from('chat_messages')
-          .insert({
-            room_id: roomId,
-            sender_id: senderId,
-            content: content.trim(),
-          })
-          .select()
-          .single()
+        let data: any = null
+        let error: any = null
+
+        // Feature Flag에 따라 API 또는 Supabase 직접 호출
+        if (USE_LONG_POLLING) {
+          logger.log('[Send] Using API endpoint')
+          try {
+            const response = await fetch('/api/chat/messages', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                room_id: roomId,
+                content: content.trim(),
+              }),
+            })
+
+            if (!response.ok) {
+              const errorData = await response.json()
+              throw new Error(errorData.error || 'API error')
+            }
+
+            const result = await response.json()
+            data = result.message
+          } catch (err: any) {
+            error = err
+          }
+        } else {
+          logger.log('[Send] Using Supabase direct')
+          const result = await supabase
+            .from('chat_messages')
+            .insert({
+              room_id: roomId,
+              sender_id: senderId,
+              content: content.trim(),
+            })
+            .select()
+            .single()
+
+          data = result.data
+          error = result.error
+        }
 
         if (error) {
           logger.error('[Send] ❌ Send message error:', error)
@@ -323,6 +496,11 @@ export function useMessages(roomId: string) {
                 : msg
             )
           )
+
+          // Long Polling 모드: lastMessageId 업데이트
+          if (USE_LONG_POLLING) {
+            setLastMessageId(data.id)
+          }
         }
 
         return true

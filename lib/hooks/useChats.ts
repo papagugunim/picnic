@@ -134,53 +134,13 @@ export function useChats() {
   }, [supabase])
 
   useEffect(() => {
-    let subscription: any = null
-
-    async function setupRealtimeSubscription() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      // Subscribe to changes in chat_rooms and chat_messages
-      subscription = supabase
-        .channel(`chat-rooms-${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'chat_rooms',
-          },
-          () => {
-            logger.log('Chat room changed, refetching...')
-            fetchChatRooms()
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'chat_messages',
-          },
-          () => {
-            logger.log('Chat message changed, refetching...')
-            fetchChatRooms()
-          }
-        )
-        .subscribe((status) => {
-          logger.log('Chat rooms subscription status:', status)
-        })
-    }
-
+    // Realtime 구독 제거 - 초기 로드만 수행
+    // 채팅방 목록은 실시간성이 덜 중요하므로 수동 새로고침으로 충분
+    logger.log('Loading chat rooms (no realtime subscription)')
     fetchChatRooms()
-    setupRealtimeSubscription()
 
-    return () => {
-      if (subscription) {
-        supabase.removeChannel(subscription)
-      }
-    }
-  }, [fetchChatRooms, supabase])
+    // Cleanup 불필요 (구독 없음)
+  }, [fetchChatRooms])
 
   return { chatRooms, isLoading, error, mutate: fetchChatRooms }
 }
