@@ -3,7 +3,7 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('LoginForm')
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -36,6 +36,7 @@ export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPasswordField, setShowPasswordField] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const passwordInputRef = useRef<HTMLInputElement | null>(null)
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -65,6 +66,13 @@ export default function LoginForm() {
         const email = value.email || ''
         const isValidEmail = z.string().email().safeParse(email).success
         setShowPasswordField(isValidEmail)
+
+        // 유효한 이메일이 입력되면 비밀번호 필드로 자동 포커스
+        if (isValidEmail) {
+          setTimeout(() => {
+            passwordInputRef.current?.focus()
+          }, 100)
+        }
       }
     })
     return () => subscription.unsubscribe()
@@ -155,6 +163,7 @@ export default function LoginForm() {
               <FormLabel>이메일</FormLabel>
               <FormControl>
                 <Input
+                  id="email"
                   type="email"
                   placeholder="name@example.com"
                   autoComplete="email"
@@ -186,10 +195,15 @@ export default function LoginForm() {
                   </div>
                   <FormControl>
                     <Input
+                      id="current-password"
                       type="password"
                       placeholder="••••••••"
                       autoComplete="current-password"
                       {...field}
+                      ref={(e) => {
+                        field.ref(e)
+                        passwordInputRef.current = e
+                      }}
                       disabled={isLoading}
                       className="glass"
                     />
