@@ -70,3 +70,35 @@ export interface SendMessageParams {
   sender_id: string
   content: string
 }
+
+/**
+ * Long Polling API 요청/응답 타입
+ */
+
+// Polling 메시지 조회 응답
+export interface PollMessagesResponse {
+  messages: ChatMessageWithProfile[]
+  hasMore: boolean
+  lastMessageId: string | null
+}
+
+// 메시지 전송 요청
+export interface SendMessageRequest {
+  room_id: string
+  content: string
+}
+
+// 메시지 전송 응답
+export interface SendMessageResponse {
+  message: ChatMessageWithProfile
+}
+
+// 읽음 처리 요청
+export interface MarkAsReadRequest {
+  room_id: string
+}
+
+// 읽음 처리 응답
+export interface MarkAsReadResponse {
+  updated_count: number
+}
