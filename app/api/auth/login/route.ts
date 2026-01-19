@@ -3,7 +3,7 @@ import { createServerClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json()
+    const { email, password, rememberMe } = await request.json()
 
     const supabase = await createServerClient()
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -41,6 +41,11 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({ data })
 
     if (data.session) {
+      // 로그인 기억하기에 따라 세션 기간 설정
+      // rememberMe: true -> 90일, false -> 7일
+      const accessTokenMaxAge = rememberMe ? 60 * 60 * 24 * 90 : 60 * 60 * 24 * 7  // 90일 또는 7일
+      const refreshTokenMaxAge = rememberMe ? 60 * 60 * 24 * 180 : 60 * 60 * 24 * 30  // 180일 또는 30일
+
       // access_token과 refresh_token을 쿠키에 저장
       // httpOnly를 false로 설정하여 클라이언트에서도 접근 가능하게 함
       response.cookies.set('sb-access-token', data.session.access_token, {
@@ -48,7 +53,7 @@ export async function POST(request: NextRequest) {
         httpOnly: false,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
+        maxAge: accessTokenMaxAge,
       })
 
       response.cookies.set('sb-refresh-token', data.session.refresh_token, {
@@ -56,7 +61,7 @@ export async function POST(request: NextRequest) {
         httpOnly: false,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 30, // 30 days
+        maxAge: refreshTokenMaxAge,
       })
     }
 

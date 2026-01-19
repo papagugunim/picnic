@@ -59,20 +59,14 @@ export default function LoginForm() {
     }
   }, [])
 
-  // 이메일 필드 감시
+  // 이메일 필드 감시 (자동 포커스 제거 - 사용자가 명시적으로 Enter 누를 때만)
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === 'email') {
         const email = value.email || ''
         const isValidEmail = z.string().email().safeParse(email).success
         setShowPasswordField(isValidEmail)
-
-        // 유효한 이메일이 입력되면 비밀번호 필드로 자동 포커스
-        if (isValidEmail) {
-          setTimeout(() => {
-            passwordInputRef.current?.focus()
-          }, 100)
-        }
+        // 자동 포커스 제거: 사용자가 Enter 키로 명시적으로 이동하도록 함
       }
     })
     return () => subscription.unsubscribe()
@@ -91,6 +85,7 @@ export default function LoginForm() {
         body: JSON.stringify({
           email: values.email,
           password: values.password,
+          rememberMe, // 로그인 기억하기 옵션 전달
         }),
       })
 
@@ -154,6 +149,7 @@ export default function LoginForm() {
         className="space-y-6"
         name="login"
         id="login-form"
+        autoComplete="on"
       >
         <FormField
           control={form.control}
@@ -163,13 +159,20 @@ export default function LoginForm() {
               <FormLabel>이메일</FormLabel>
               <FormControl>
                 <Input
+                  {...field}
                   id="email"
                   type="email"
                   placeholder="name@example.com"
-                  autoComplete="email"
-                  {...field}
+                  autoComplete="email username"
                   disabled={isLoading}
                   className="glass"
+                  onKeyDown={(e) => {
+                    // Enter 키를 누르면 비밀번호 필드로 이동
+                    if (e.key === 'Enter' && showPasswordField) {
+                      e.preventDefault()
+                      passwordInputRef.current?.focus()
+                    }
+                  }}
                 />
               </FormControl>
               <FormMessage />
@@ -195,11 +198,11 @@ export default function LoginForm() {
                   </div>
                   <FormControl>
                     <Input
+                      {...field}
                       id="current-password"
                       type="password"
                       placeholder="••••••••"
                       autoComplete="current-password"
-                      {...field}
                       ref={(e) => {
                         field.ref(e)
                         passwordInputRef.current = e
