@@ -2,16 +2,16 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 /**
- * 최적화된 미들웨어
- * - 세션 검증 제거 (클라이언트/서버 컴포넌트에서 처리)
+ * 인증 미들웨어
+ * - 모든 내부 페이지 보호
+ * - 공개 페이지만 명시적으로 허용
  * - 성능 헤더 추가
- * - 캐싱 전략 적용
  */
 export async function middleware(request: NextRequest) {
   const startTime = Date.now()
   const pathname = request.nextUrl.pathname
 
-  // 1. 공개 페이지 정의 (로그인 없이 접근 가능)
+  // 1. 공개 페이지 정의 (로그인 없이 접근 가능한 페이지만 나열)
   const publicPaths = [
     '/',
     '/login',
@@ -23,21 +23,41 @@ export async function middleware(request: NextRequest) {
     '/api/auth',
   ]
 
-  // 공개 페이지인지 확인
+  // 2. 정적 리소스는 통과
+  if (
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/favicon') ||
+    pathname.match(/\.(jpg|jpeg|png|gif|ico|svg|webp|js|css|woff|woff2|ttf)$/)
+  ) {
+    return NextResponse.next()
+  }
+
+  // 3. 공개 페이지인지 확인
   const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith(path))
 
-  // 공개 페이지가 아니면 인증 필요
+  // 4. 공개 페이지가 아니면 인증 필수
   if (!isPublicPath) {
-    // Supabase 인증 쿠키 확인 (정확한 토큰 체크)
-    const supabaseCookies = request.cookies.getAll()
-    const hasAuthToken = supabaseCookies.some(cookie =>
-      cookie.name.startsWith('sb-') && cookie.name.includes('auth-token')
-    )
+    // Supabase 인증 쿠키 확인
+    const cookies = request.cookies.getAll()
+
+    // 모든 Supabase 관련 쿠키 체크 (더 넓은 범위)
+    const hasAuthToken = cookies.some(cookie => {
+      const name = cookie.name.toLowerCase()
+      return (
+        name.includes('sb-') &&
+        (name.includes('auth-token') || name.includes('access-token'))
+      ) || name.includes('supabase-auth-token')
+    })
 
     // 인증 토큰이 없으면 로그인 페이지로 리다이렉트
     if (!hasAuthToken) {
-      return NextResponse.redirect(new URL('/login', request.url))
+      console.log(`[Auth Middleware] Redirecting unauthenticated request: ${pathname}`)
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('redirect', pathname)
+      return NextResponse.redirect(loginUrl)
     }
+
+    console.log(`[Auth Middleware] Authenticated request: ${pathname}`)
   }
 
   // 2. 응답 생성
