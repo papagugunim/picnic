@@ -11,19 +11,33 @@ export async function middleware(request: NextRequest) {
   const startTime = Date.now()
   const pathname = request.nextUrl.pathname
 
-  // 1. 인증이 필요한 페이지 체크 (토큰 존재 여부만 확인)
-  const protectedPaths = ['/feed', '/profile', '/settings', '/post/new', '/community/new', '/chats', '/onboarding', '/welcome', '/notifications']
-  const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path))
+  // 1. 공개 페이지 정의 (로그인 없이 접근 가능)
+  const publicPaths = [
+    '/',
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/verify-email',
+    '/reset-password',
+    '/auth/callback',
+    '/api/auth',
+  ]
 
-  // Supabase 쿠키 확인 (프로젝트별 쿠키 이름)
-  const supabaseCookies = request.cookies.getAll()
-  const hasAuthToken = supabaseCookies.some(cookie =>
-    cookie.name.includes('auth-token') || cookie.name.includes('sb-')
-  )
+  // 공개 페이지인지 확인
+  const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith(path))
 
-  // 인증 필요한 페이지인데 토큰이 없으면 리다이렉트
-  if (isProtectedPath && !hasAuthToken) {
-    return NextResponse.redirect(new URL('/login', request.url))
+  // 공개 페이지가 아니면 인증 필요
+  if (!isPublicPath) {
+    // Supabase 인증 쿠키 확인 (정확한 토큰 체크)
+    const supabaseCookies = request.cookies.getAll()
+    const hasAuthToken = supabaseCookies.some(cookie =>
+      cookie.name.startsWith('sb-') && cookie.name.includes('auth-token')
+    )
+
+    // 인증 토큰이 없으면 로그인 페이지로 리다이렉트
+    if (!hasAuthToken) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
   }
 
   // 2. 응답 생성
