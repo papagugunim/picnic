@@ -81,10 +81,10 @@ export default function ImageUpload({
           <input {...getInputProps()} />
           <Upload className="w-12 h-12 text-muted-foreground mb-4" />
           <p className="text-sm text-foreground font-medium mb-1">
-            {isDragActive ? '이미지를 놓아주세요' : '이미지를 드래그하거나 클릭하세요'}
+            {isDragActive ? '이미지를 놓아주세요' : '사진 촬영 또는 앨범 선택'}
           </p>
           <p className="text-xs text-muted-foreground">
-            JPG, PNG, WEBP, GIF (최대 {maxSize / 1024 / 1024}MB, {maxFiles}개까지)
+            (최대 {maxSize / 1024 / 1024}MB, {maxFiles}개까지 업로드 가능)
           </p>
         </div>
       )}
@@ -111,16 +111,15 @@ export default function ImageUpload({
                 />
               </div>
 
-              {/* 삭제 버튼 */}
-              <Button
+              {/* 삭제 버튼 (항상 표시) */}
+              <button
                 type="button"
-                variant="destructive"
-                size="icon"
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
                 onClick={() => removeImage(index)}
+                className="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10 shadow-lg"
+                title="삭제"
               >
                 <X className="h-4 w-4" />
-              </Button>
+              </button>
 
               {/* 순서 표시 */}
               <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">

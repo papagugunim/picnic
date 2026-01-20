@@ -328,11 +328,11 @@ export default function NewCommunityPostPage() {
               >
                 <div className="text-center">
                   <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    사진 추가
+                  <p className="text-sm text-foreground font-medium mb-1">
+                    사진 촬영 또는 앨범 선택
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    갤러리 또는 카메라 (최대 5MB, 5개까지)
+                  <p className="text-xs text-muted-foreground">
+                    (최대 5MB, 5개까지 업로드 가능)
                   </p>
                 </div>
                 <input
