@@ -102,6 +102,14 @@ export default function NewCommunityPostPage() {
         }
       }
 
+      logger.log('Inserting post with data:', {
+        user_id: user.id,
+        title: title.trim(),
+        content: content.trim(),
+        category: selectedCategory,
+        images: imageUrls.length > 0 ? imageUrls : null,
+      })
+
       const { data, error: insertError } = await supabase
         .from('community_posts')
         .insert({
@@ -116,14 +124,30 @@ export default function NewCommunityPostPage() {
 
       if (insertError) {
         logger.error('Insert error:', insertError)
-        setError('게시글 작성 중 오류가 발생했습니다')
+        logger.error('Insert error details:', {
+          message: insertError.message,
+          code: insertError.code,
+          details: insertError.details,
+          hint: insertError.hint,
+        })
+        setError(`게시글 작성 중 오류가 발생했습니다: ${insertError.message}`)
         return
       }
 
-      router.push(`/community/${data.id}`)
+      if (!data) {
+        logger.error('No data returned after insert')
+        setError('게시글이 작성되지 않았습니다')
+        return
+      }
+
+      logger.log('Post created successfully:', data)
+
+      // 동네생활 목록으로 리다이렉트
+      router.push('/community')
+      router.refresh()
     } catch (err) {
       logger.error('Submit error:', err)
-      setError('게시글 작성 중 오류가 발생했습니다')
+      setError(err instanceof Error ? err.message : '게시글 작성 중 오류가 발생했습니다')
     } finally {
       setIsSubmitting(false)
     }
