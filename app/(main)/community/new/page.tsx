@@ -5,11 +5,12 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Image as ImageIcon, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
+import Image from 'next/image'
 
 const categories = [
   { id: 'question', name: '질문', emoji: '❓' },
@@ -24,130 +25,118 @@ export default function NewCommunityPostPage() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('question')
-  const [images, setImages] = useState<string[]>([])
+  const [images, setImages] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
 
     // 입력 필드 초기화 (같은 파일 다시 선택 가능하도록)
     e.target.value = ''
 
-    if (images.length + files.length > 5) {
+    const newFiles = Array.from(files)
+
+    // 파일 개수 검증
+    if (images.length + newFiles.length > 5) {
       setError('이미지는 최대 5개까지 업로드할 수 있습니다')
       setTimeout(() => setError(null), 3000)
       return
     }
 
-    try {
-      setIsUploadingImage(true)
-      setError(null)
+    // 파일 크기 및 타입 검증
+    let errorCount = 0
+    const validFiles: File[] = []
 
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setError('로그인이 필요합니다')
-        return
+    for (const file of newFiles) {
+      // 파일 타입 검증
+      if (!file.type.startsWith('image/')) {
+        logger.error(`Invalid file type: ${file.type}`)
+        errorCount++
+        continue
       }
 
-      const newImages: string[] = []
-      let successCount = 0
-      let errorCount = 0
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
-
-        // 파일 타입 검증
-        if (!file.type.startsWith('image/')) {
-          logger.error(`Invalid file type: ${file.type}`)
-          errorCount++
-          continue
-        }
-
-        // 파일 크기 검증
-        if (file.size > 5 * 1024 * 1024) {
-          logger.error(`File too large: ${(file.size / 1024 / 1024).toFixed(2)}MB`)
-          errorCount++
-          continue
-        }
-
-        const fileExt = file.name.split('.').pop()
-        const fileName = `${user.id}_${Date.now()}_${i}.${fileExt}`
-        const filePath = `community/${fileName}`
-
-        logger.log(`Uploading: ${fileName}`)
-
-        const { error: uploadError } = await supabase.storage
-          .from('profile-images')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false,
-          })
-
-        if (uploadError) {
-          logger.error('Upload error:', uploadError)
-          errorCount++
-          continue
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('profile-images')
-          .getPublicUrl(filePath)
-
-        newImages.push(publicUrl)
-        successCount++
-        logger.log(`Upload success: ${publicUrl}`)
+      // 파일 크기 검증 (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        logger.error(`File too large: ${(file.size / 1024 / 1024).toFixed(2)}MB`)
+        errorCount++
+        continue
       }
 
-      // 성공한 이미지만 추가
-      if (newImages.length > 0) {
-        const updatedImages = [...images, ...newImages]
-        setImages(updatedImages)
-        logger.log(`Total images after upload: ${updatedImages.length}`)
-      }
+      validFiles.push(file)
+    }
 
-      // 결과 피드백
-      if (errorCount > 0 && successCount === 0) {
-        setError(`이미지 업로드 실패: ${errorCount}개 (5MB 이하의 이미지 파일만 가능)`)
-      } else if (errorCount > 0) {
-        setError(`${successCount}개 업로드 성공, ${errorCount}개 실패`)
-        setTimeout(() => setError(null), 3000)
-      } else if (successCount > 0) {
-        // 모두 성공 시 성공 메시지
-        setError(`✅ ${successCount}개 사진 업로드 완료`)
-        setTimeout(() => setError(null), 2000)
-      }
-    } catch (err) {
-      logger.error('Image upload exception:', err)
-      setError('이미지 업로드 중 오류가 발생했습니다')
-    } finally {
-      setIsUploadingImage(false)
+    if (validFiles.length > 0) {
+      setImages([...images, ...validFiles])
+      setError(`✅ ${validFiles.length}개 사진 추가됨`)
+      setTimeout(() => setError(null), 2000)
+    }
+
+    if (errorCount > 0) {
+      setError(`${errorCount}개 파일 실패 (5MB 이하의 이미지 파일만 가능)`)
+      setTimeout(() => setError(null), 3000)
     }
   }
 
+  // 이미지 업로드 함수 (submit 시 호출)
+  async function uploadImages(userId: string): Promise<string[]> {
+    const supabase = createClient()
+    const imageUrls: string[] = []
+
+    for (let i = 0; i < images.length; i++) {
+      const file = images[i]
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${userId}_${Date.now()}_${i}.${fileExt}`
+      const filePath = `community/${fileName}`
+
+      logger.log(`Uploading: ${fileName}`)
+
+      const { error: uploadError } = await supabase.storage
+        .from('post-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        })
+
+      if (uploadError) {
+        logger.error('Upload error:', uploadError)
+        throw new Error('이미지 업로드 중 오류가 발생했습니다')
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('post-images')
+        .getPublicUrl(filePath)
+
+      imageUrls.push(publicUrl)
+      logger.log(`Upload success: ${publicUrl}`)
+    }
+
+    return imageUrls
+  }
+
   const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index))
+    const newFiles = images.filter((_, i) => i !== index)
+    setImages(newFiles)
+    setError(null)
   }
 
   const moveImageLeft = (index: number) => {
     if (index === 0) return
-    const newImages = [...images]
-    const temp = newImages[index]
-    newImages[index] = newImages[index - 1]
-    newImages[index - 1] = temp
-    setImages(newImages)
+    const newFiles = [...images]
+    const temp = newFiles[index]
+    newFiles[index] = newFiles[index - 1]
+    newFiles[index - 1] = temp
+    setImages(newFiles)
   }
 
   const moveImageRight = (index: number) => {
     if (index === images.length - 1) return
-    const newImages = [...images]
-    const temp = newImages[index]
-    newImages[index] = newImages[index + 1]
-    newImages[index + 1] = temp
-    setImages(newImages)
+    const newFiles = [...images]
+    const temp = newFiles[index]
+    newFiles[index] = newFiles[index + 1]
+    newFiles[index + 1] = temp
+    setImages(newFiles)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -175,6 +164,18 @@ export default function NewCommunityPostPage() {
         return
       }
 
+      // 이미지 업로드 (있는 경우)
+      let imageUrls: string[] = []
+      if (images.length > 0) {
+        try {
+          imageUrls = await uploadImages(user.id)
+        } catch (err) {
+          logger.error('Image upload error:', err)
+          setError('이미지 업로드 중 오류가 발생했습니다')
+          return
+        }
+      }
+
       const { data, error: insertError } = await supabase
         .from('community_posts')
         .insert({
@@ -182,7 +183,7 @@ export default function NewCommunityPostPage() {
           title: title.trim(),
           content: content.trim(),
           category: selectedCategory,
-          images: images.length > 0 ? images : null,
+          images: imageUrls.length > 0 ? imageUrls : null,
         })
         .select()
         .single()
@@ -303,26 +304,56 @@ export default function NewCommunityPostPage() {
               사진 ({images.length}/5)
             </label>
 
+            {/* 업로드 영역 */}
+            {images.length < 5 && (
+              <label
+                htmlFor="image-upload"
+                className="flex items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg transition-colors cursor-pointer hover:bg-muted/50 hover:border-primary/50 mb-4"
+              >
+                <div className="text-center">
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    사진 추가
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    갤러리 또는 카메라 (최대 5MB, 5개까지)
+                  </p>
+                </div>
+                <input
+                  id="image-upload"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </label>
+            )}
+
+            {/* 업로드된 이미지 미리보기 */}
             {images.length > 0 && (
-              <div className="space-y-2 mb-3">
+              <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
                   📌 첫 번째 사진이 대표 이미지로 표시됩니다
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {images.map((image, index) => (
+                  {images.map((file, index) => (
                     <div key={index} className="relative aspect-square group">
                       {/* 순서 번호 */}
                       <div className="absolute top-2 left-2 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold z-10">
                         {index + 1}
                       </div>
 
-                      {/* 이미지 */}
-                      <img
-                        src={image}
-                        alt={`이미지 ${index + 1}`}
-                        className="w-full h-full object-cover rounded-lg border-2 border-border"
-                        loading="lazy"
-                      />
+                      {/* 이미지 미리보기 */}
+                      <div className="w-full h-full rounded-lg overflow-hidden border-2 border-border">
+                        <Image
+                          src={URL.createObjectURL(file)}
+                          alt={`미리보기 ${index + 1}`}
+                          width={200}
+                          height={200}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
 
                       {/* 컨트롤 버튼들 */}
                       <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -366,45 +397,12 @@ export default function NewCommunityPostPage() {
               </div>
             )}
 
-            {images.length < 5 && (
-              <label
-                htmlFor="image-upload"
-                className={`flex items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg transition-colors ${
-                  isUploadingImage
-                    ? 'cursor-not-allowed opacity-50'
-                    : 'cursor-pointer hover:bg-muted/50'
-                }`}
-              >
-                <div className="text-center">
-                  {isUploadingImage ? (
-                    <>
-                      <div className="w-8 h-8 mx-auto mb-2 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                      <p className="text-sm text-muted-foreground">
-                        업로드 중...
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <ImageIcon className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        사진 추가
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        갤러리 또는 카메라 (최대 5MB)
-                      </p>
-                    </>
-                  )}
-                </div>
-                <input
-                  id="image-upload"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  disabled={isUploadingImage}
-                  className="hidden"
-                />
-              </label>
+            {/* 안내 메시지 */}
+            {images.length > 0 && (
+              <p className="text-xs text-muted-foreground text-center mt-3">
+                {images.length}/5개 선택됨
+                {images.length < 5 && ' • 추가 선택 가능'}
+              </p>
             )}
           </div>
 
