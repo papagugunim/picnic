@@ -31,12 +31,19 @@ export default function NewCommunityPostPage() {
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
-    if (!files || files.length === 0) return
+    logger.log('handleImageUpload called, files:', files)
+
+    if (!files || files.length === 0) {
+      logger.log('No files selected')
+      return
+    }
+
+    const newFiles = Array.from(files)
+    logger.log('New files count:', newFiles.length)
+    logger.log('Files info:', newFiles.map(f => ({ name: f.name, type: f.type, size: f.size })))
 
     // 입력 필드 초기화 (같은 파일 다시 선택 가능하도록)
     e.target.value = ''
-
-    const newFiles = Array.from(files)
 
     // 파일 개수 검증
     if (images.length + newFiles.length > 5) {
@@ -50,9 +57,14 @@ export default function NewCommunityPostPage() {
     const validFiles: File[] = []
 
     for (const file of newFiles) {
-      // 파일 타입 검증
-      if (!file.type.startsWith('image/')) {
-        logger.error(`Invalid file type: ${file.type}`)
+      logger.log(`Processing file: ${file.name}, type: ${file.type}, size: ${file.size}`)
+
+      // 파일 타입 검증 (확장자로도 체크)
+      const isImageByType = file.type.startsWith('image/')
+      const isImageByExt = /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(file.name)
+
+      if (!isImageByType && !isImageByExt) {
+        logger.error(`Invalid file type: ${file.type}, name: ${file.name}`)
         errorCount++
         continue
       }
@@ -64,13 +76,17 @@ export default function NewCommunityPostPage() {
         continue
       }
 
+      logger.log(`File validated: ${file.name}`)
       validFiles.push(file)
     }
+
+    logger.log('Valid files count:', validFiles.length)
 
     if (validFiles.length > 0) {
       setImages([...images, ...validFiles])
       setError(`✅ ${validFiles.length}개 사진 추가됨`)
       setTimeout(() => setError(null), 2000)
+      logger.log('Images state updated, new length:', images.length + validFiles.length)
     }
 
     if (errorCount > 0) {
