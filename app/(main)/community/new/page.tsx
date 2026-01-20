@@ -317,10 +317,10 @@ export default function NewCommunityPostPage() {
                     <>
                       <ImageIcon className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">
-                        사진 추가 또는 촬영
+                        사진 추가
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        JPG, PNG, HEIC (최대 5MB)
+                        갤러리 또는 카메라 (최대 5MB)
                       </p>
                     </>
                   )}
@@ -330,7 +330,6 @@ export default function NewCommunityPostPage() {
                   type="file"
                   accept="image/*"
                   multiple
-                  capture="environment"
                   onChange={handleImageUpload}
                   disabled={isUploadingImage}
                   className="hidden"
