@@ -5,12 +5,12 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Upload, X } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
-import Image from 'next/image'
+import ImageUpload from '@/components/post/ImageUpload'
 
 const categories = [
   { id: 'question', name: '질문', emoji: '❓' },
@@ -28,72 +28,6 @@ export default function NewCommunityPostPage() {
   const [images, setImages] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    logger.log('handleImageUpload called, files:', files)
-
-    if (!files || files.length === 0) {
-      logger.log('No files selected')
-      return
-    }
-
-    const newFiles = Array.from(files)
-    logger.log('New files count:', newFiles.length)
-    logger.log('Files info:', newFiles.map(f => ({ name: f.name, type: f.type, size: f.size })))
-
-    // 입력 필드 초기화 (같은 파일 다시 선택 가능하도록)
-    e.target.value = ''
-
-    // 파일 개수 검증
-    if (images.length + newFiles.length > 5) {
-      setError('이미지는 최대 5개까지 업로드할 수 있습니다')
-      setTimeout(() => setError(null), 3000)
-      return
-    }
-
-    // 파일 크기 및 타입 검증
-    let errorCount = 0
-    const validFiles: File[] = []
-
-    for (const file of newFiles) {
-      logger.log(`Processing file: ${file.name}, type: ${file.type}, size: ${file.size}`)
-
-      // 파일 타입 검증 (확장자로도 체크)
-      const isImageByType = file.type.startsWith('image/')
-      const isImageByExt = /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(file.name)
-
-      if (!isImageByType && !isImageByExt) {
-        logger.error(`Invalid file type: ${file.type}, name: ${file.name}`)
-        errorCount++
-        continue
-      }
-
-      // 파일 크기 검증 (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        logger.error(`File too large: ${(file.size / 1024 / 1024).toFixed(2)}MB`)
-        errorCount++
-        continue
-      }
-
-      logger.log(`File validated: ${file.name}`)
-      validFiles.push(file)
-    }
-
-    logger.log('Valid files count:', validFiles.length)
-
-    if (validFiles.length > 0) {
-      setImages([...images, ...validFiles])
-      setError(`✅ ${validFiles.length}개 사진 추가됨`)
-      setTimeout(() => setError(null), 2000)
-      logger.log('Images state updated, new length:', images.length + validFiles.length)
-    }
-
-    if (errorCount > 0) {
-      setError(`${errorCount}개 파일 실패 (5MB 이하의 이미지 파일만 가능)`)
-      setTimeout(() => setError(null), 3000)
-    }
-  }
 
   // 이미지 업로드 함수 (submit 시 호출)
   async function uploadImages(userId: string): Promise<string[]> {
@@ -129,30 +63,6 @@ export default function NewCommunityPostPage() {
     }
 
     return imageUrls
-  }
-
-  const removeImage = (index: number) => {
-    const newFiles = images.filter((_, i) => i !== index)
-    setImages(newFiles)
-    setError(null)
-  }
-
-  const moveImageLeft = (index: number) => {
-    if (index === 0) return
-    const newFiles = [...images]
-    const temp = newFiles[index]
-    newFiles[index] = newFiles[index - 1]
-    newFiles[index - 1] = temp
-    setImages(newFiles)
-  }
-
-  const moveImageRight = (index: number) => {
-    if (index === images.length - 1) return
-    const newFiles = [...images]
-    const temp = newFiles[index]
-    newFiles[index] = newFiles[index + 1]
-    newFiles[index + 1] = temp
-    setImages(newFiles)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -317,109 +227,9 @@ export default function NewCommunityPostPage() {
           {/* Images */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              사진 ({images.length}/5)
+              사진 (최대 5개)
             </label>
-
-            {/* 업로드 영역 */}
-            {images.length < 5 && (
-              <label
-                htmlFor="image-upload"
-                className="flex items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg transition-colors cursor-pointer hover:bg-muted/50 hover:border-primary/50 mb-4"
-              >
-                <div className="text-center">
-                  <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-foreground font-medium mb-1">
-                    사진 촬영 또는 앨범 선택
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    (최대 5MB, 5개까지 업로드 가능)
-                  </p>
-                </div>
-                <input
-                  id="image-upload"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-              </label>
-            )}
-
-            {/* 업로드된 이미지 미리보기 */}
-            {images.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  📌 첫 번째 사진이 대표 이미지로 표시됩니다
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {images.map((file, index) => (
-                    <div key={index} className="relative aspect-square group">
-                      {/* 순서 번호 */}
-                      <div className="absolute top-2 left-2 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold z-10">
-                        {index + 1}
-                      </div>
-
-                      {/* 삭제 버튼 (항상 표시) */}
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10 shadow-lg"
-                        title="삭제"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-
-                      {/* 이미지 미리보기 */}
-                      <div className="w-full h-full rounded-lg overflow-hidden border-2 border-border">
-                        <Image
-                          src={URL.createObjectURL(file)}
-                          alt={`미리보기 ${index + 1}`}
-                          width={200}
-                          height={200}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-
-                      {/* 순서 변경 버튼들 (hover 시 표시) */}
-                      <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        {/* 왼쪽으로 이동 */}
-                        {index > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => moveImageLeft(index)}
-                            className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
-                            title="왼쪽으로 이동"
-                          >
-                            <ChevronLeft className="w-5 h-5" />
-                          </button>
-                        )}
-
-                        {/* 오른쪽으로 이동 */}
-                        {index < images.length - 1 && (
-                          <button
-                            type="button"
-                            onClick={() => moveImageRight(index)}
-                            className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
-                            title="오른쪽으로 이동"
-                          >
-                            <ChevronRight className="w-5 h-5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 안내 메시지 */}
-            {images.length > 0 && (
-              <p className="text-xs text-muted-foreground text-center mt-3">
-                {images.length}/5개 선택됨
-                {images.length < 5 && ' • 추가 선택 가능'}
-              </p>
-            )}
+            <ImageUpload value={images} onChange={setImages} maxFiles={5} />
           </div>
 
           {/* Tips */}
