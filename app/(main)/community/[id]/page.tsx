@@ -449,14 +449,21 @@ export default function CommunityPostDetailPage() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {isAuthor && (
-                    <DropdownMenuItem
-                      onClick={deletePost}
-                      disabled={isDeleting}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      {isDeleting ? '삭제 중...' : '삭제'}
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem onClick={() => router.push(`/community/${postId}/edit`)}>
+                        <Edit className="w-4 h-4 mr-2" />
+                        수정
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={deletePost}
+                        disabled={isDeleting}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        {isDeleting ? '삭제 중...' : '삭제'}
+                      </DropdownMenuItem>
+                    </>
                   )}
                   {isAdmin && (
                     <>
