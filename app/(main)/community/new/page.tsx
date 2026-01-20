@@ -360,6 +360,16 @@ export default function NewCommunityPostPage() {
                         {index + 1}
                       </div>
 
+                      {/* 삭제 버튼 (항상 표시) */}
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10 shadow-lg"
+                        title="삭제"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+
                       {/* 이미지 미리보기 */}
                       <div className="w-full h-full rounded-lg overflow-hidden border-2 border-border">
                         <Image
@@ -371,7 +381,7 @@ export default function NewCommunityPostPage() {
                         />
                       </div>
 
-                      {/* 컨트롤 버튼들 */}
+                      {/* 순서 변경 버튼들 (hover 시 표시) */}
                       <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         {/* 왼쪽으로 이동 */}
                         {index > 0 && (
@@ -396,16 +406,6 @@ export default function NewCommunityPostPage() {
                             <ChevronRight className="w-5 h-5" />
                           </button>
                         )}
-
-                        {/* 삭제 */}
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                          title="삭제"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
                       </div>
                     </div>
                   ))}
