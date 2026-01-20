@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Image as ImageIcon, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Image as ImageIcon, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -104,7 +104,9 @@ export default function NewCommunityPostPage() {
 
       // 성공한 이미지만 추가
       if (newImages.length > 0) {
-        setImages([...images, ...newImages])
+        const updatedImages = [...images, ...newImages]
+        setImages(updatedImages)
+        logger.log(`Total images after upload: ${updatedImages.length}`)
       }
 
       // 결과 피드백
@@ -113,6 +115,10 @@ export default function NewCommunityPostPage() {
       } else if (errorCount > 0) {
         setError(`${successCount}개 업로드 성공, ${errorCount}개 실패`)
         setTimeout(() => setError(null), 3000)
+      } else if (successCount > 0) {
+        // 모두 성공 시 성공 메시지
+        setError(`✅ ${successCount}개 사진 업로드 완료`)
+        setTimeout(() => setError(null), 2000)
       }
     } catch (err) {
       logger.error('Image upload exception:', err)
@@ -124,6 +130,24 @@ export default function NewCommunityPostPage() {
 
   const removeImage = (index: number) => {
     setImages(images.filter((_, i) => i !== index))
+  }
+
+  const moveImageLeft = (index: number) => {
+    if (index === 0) return
+    const newImages = [...images]
+    const temp = newImages[index]
+    newImages[index] = newImages[index - 1]
+    newImages[index - 1] = temp
+    setImages(newImages)
+  }
+
+  const moveImageRight = (index: number) => {
+    if (index === images.length - 1) return
+    const newImages = [...images]
+    const temp = newImages[index]
+    newImages[index] = newImages[index + 1]
+    newImages[index + 1] = temp
+    setImages(newImages)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -206,7 +230,11 @@ export default function NewCommunityPostPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-4 space-y-6">
           {error && (
-            <div className="p-4 bg-destructive/10 text-destructive rounded-lg text-sm">
+            <div className={`p-4 rounded-lg text-sm ${
+              error.startsWith('✅')
+                ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                : 'bg-destructive/10 text-destructive'
+            }`}>
               {error}
             </div>
           )}
@@ -272,27 +300,69 @@ export default function NewCommunityPostPage() {
           {/* Images */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              사진 (선택, 최대 5개)
+              사진 ({images.length}/5)
             </label>
 
             {images.length > 0 && (
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                {images.map((image, index) => (
-                  <div key={index} className="relative aspect-square">
-                    <img
-                      src={image}
-                      alt={`이미지 ${index + 1}`}
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute top-1 right-1 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+              <div className="space-y-2 mb-3">
+                <p className="text-xs text-muted-foreground">
+                  📌 첫 번째 사진이 대표 이미지로 표시됩니다
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {images.map((image, index) => (
+                    <div key={index} className="relative aspect-square group">
+                      {/* 순서 번호 */}
+                      <div className="absolute top-2 left-2 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold z-10">
+                        {index + 1}
+                      </div>
+
+                      {/* 이미지 */}
+                      <img
+                        src={image}
+                        alt={`이미지 ${index + 1}`}
+                        className="w-full h-full object-cover rounded-lg border-2 border-border"
+                        loading="lazy"
+                      />
+
+                      {/* 컨트롤 버튼들 */}
+                      <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        {/* 왼쪽으로 이동 */}
+                        {index > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => moveImageLeft(index)}
+                            className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+                            title="왼쪽으로 이동"
+                          >
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
+                        )}
+
+                        {/* 오른쪽으로 이동 */}
+                        {index < images.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={() => moveImageRight(index)}
+                            className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+                            title="오른쪽으로 이동"
+                          >
+                            <ChevronRight className="w-5 h-5" />
+                          </button>
+                        )}
+
+                        {/* 삭제 */}
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                          title="삭제"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
