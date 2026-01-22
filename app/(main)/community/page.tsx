@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Heart, MessageCircle, Plus, Search, Eye } from 'lucide-react'
+import { Heart, MessageCircle, Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
@@ -402,7 +402,7 @@ export default function CommunityPage() {
                       </Link>
 
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Eye className="w-5 h-5" />
+                        <span>조회</span>
                         <span>{post.view_count || 0}</span>
                       </div>
                     </div>

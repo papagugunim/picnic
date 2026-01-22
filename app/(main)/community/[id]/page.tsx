@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, Heart, MessageCircle, Send, MoreVertical, Trash2, EyeOff, Eye, Edit, Eye as EyeIcon } from 'lucide-react'
+import { ChevronLeft, Heart, MessageCircle, Send, MoreVertical, Trash2, EyeOff, Eye, Edit } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
@@ -601,8 +601,8 @@ export default function CommunityPostDetailPage() {
               <span>{post.comments_count}</span>
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Eye className="w-6 h-6" />
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <span>조회</span>
               <span>{post.view_count || 0}</span>
             </div>
           </div>

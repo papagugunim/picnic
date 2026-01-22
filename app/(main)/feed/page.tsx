@@ -4,7 +4,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
-import { Plus, Heart, Bookmark, Eye } from 'lucide-react'
+import { Plus, Heart, Bookmark } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -518,8 +518,8 @@ export default function FeedPage() {
                   )}
                 </button>
 
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Eye className="w-5 h-5" />
+                <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                  <span>조회</span>
                   <span>{post.view_count || 0}</span>
                 </div>
               </div>

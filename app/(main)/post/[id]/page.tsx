@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, MapPin, Clock, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye, Eye as EyeIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MapPin, Clock, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -785,16 +785,16 @@ export default function PostDetailPage() {
 
           {/* 좋아요/관심/조회수 버튼 */}
           <div className="border-t border-border pt-4 mb-6">
-            <div className="flex gap-4">
+            <div className="flex gap-4 items-center">
               <button
                 onClick={toggleLike}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors"
+                className="flex items-center gap-2 hover:opacity-70 transition-opacity"
               >
                 <Heart
-                  className={`w-5 h-5 ${post.user_liked ? 'fill-red-500 text-red-500' : ''}`}
+                  className={`w-5 h-5 ${post.user_liked ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`}
                 />
                 {post.likes_count > 0 && (
-                  <span className={post.user_liked ? 'text-red-500 font-medium' : ''}>
+                  <span className={post.user_liked ? 'text-red-500 font-medium' : 'text-muted-foreground'}>
                     {post.likes_count}
                   </span>
                 )}
@@ -802,20 +802,20 @@ export default function PostDetailPage() {
 
               <button
                 onClick={toggleInterest}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors"
+                className="flex items-center gap-2 hover:opacity-70 transition-opacity"
               >
                 <Bookmark
-                  className={`w-5 h-5 ${post.user_interested ? 'fill-primary text-primary' : ''}`}
+                  className={`w-5 h-5 ${post.user_interested ? 'fill-primary text-primary' : 'text-muted-foreground'}`}
                 />
                 {post.interests_count > 0 && (
-                  <span className={post.user_interested ? 'text-primary font-medium' : ''}>
+                  <span className={post.user_interested ? 'text-primary font-medium' : 'text-muted-foreground'}>
                     {post.interests_count}
                   </span>
                 )}
               </button>
 
-              <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-muted-foreground">
-                <Eye className="w-5 h-5" />
+              <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                <span>조회</span>
                 <span>{post.view_count || 0}</span>
               </div>
             </div>
