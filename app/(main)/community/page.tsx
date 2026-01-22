@@ -3,9 +3,9 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('Page')
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Heart, MessageCircle, Plus, Search } from 'lucide-react'
+import { Heart, MessageCircle, Plus, Search, BarChart2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
@@ -52,6 +52,21 @@ export default function CommunityPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set())
+
+  const toggleExpand = useCallback((postId: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setExpandedPosts(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(postId)) {
+        newSet.delete(postId)
+      } else {
+        newSet.add(postId)
+      }
+      return newSet
+    })
+  }, [])
 
   useEffect(() => {
     fetchPosts()
@@ -290,7 +305,7 @@ export default function CommunityPage() {
         </div>
 
         {/* Posts List */}
-        <div className="px-4 py-4">
+        <div className="py-2">
           {isLoading ? (
             <div className="text-center py-16 text-muted-foreground">
               {getRandomLoadingMessage()}
@@ -309,82 +324,146 @@ export default function CommunityPage() {
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {filteredPosts.map((post) => (
-                <Link
-                  key={post.id}
-                  href={`/community/${post.id}`}
-                  className="flex gap-3 py-3 hover:bg-muted/30 transition-colors"
-                >
-                  {/* 이미지 (있는 경우만) */}
-                  {post.images && post.images.length > 0 && (
-                    <div className="flex-shrink-0 w-20 h-20 bg-muted rounded-lg overflow-hidden relative">
-                      <img
-                        src={post.images[0]}
-                        alt={post.title}
-                        className="w-full h-full object-cover"
-                      />
-                      {post.images.length > 1 && (
-                        <div className="absolute bottom-1 right-1 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
-                          +{post.images.length - 1}
-                        </div>
-                      )}
-                    </div>
-                  )}
+              {filteredPosts.map((post) => {
+                const isExpanded = expandedPosts.has(post.id)
+                const contentLength = post.content.length
+                const shouldTruncate = contentLength > 150
 
-                  {/* 내용 */}
-                  <div className="flex-1 flex flex-col justify-between min-w-0">
-                    <div>
-                      {/* 카테고리 + 제목 */}
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-xs text-muted-foreground">
+                return (
+                  <article
+                    key={post.id}
+                    className="flex gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => router.push(`/community/${post.id}`)}
+                  >
+                    {/* 프로필 사진 */}
+                    <Link
+                      href={`/profile/${post.user_id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-shrink-0"
+                    >
+                      <UserAvatar
+                        src={post.profiles.avatar_url}
+                        alt={post.profiles.full_name || '사용자'}
+                        matryoshkaLevel={post.profiles.matryoshka_level}
+                        size="md"
+                      />
+                    </Link>
+
+                    {/* 콘텐츠 영역 */}
+                    <div className="flex-1 min-w-0">
+                      {/* 상단: 이름 + 카테고리 + 시간 */}
+                      <div className="flex items-center gap-1 text-sm mb-1">
+                        <Link
+                          href={`/profile/${post.user_id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-bold hover:underline truncate"
+                        >
+                          {post.profiles.full_name || '익명'}
+                        </Link>
+                        <span className="text-base flex-shrink-0">
+                          {getBreadEmoji(post.profiles.matryoshka_level, post.profiles.user_role || undefined)}
+                        </span>
+                        <span className="text-muted-foreground flex-shrink-0">·</span>
+                        <span className="text-xs px-1.5 py-0.5 bg-secondary rounded-full text-muted-foreground flex-shrink-0">
                           {getCategoryEmoji(post.category)} {getCategoryName(post.category)}
                         </span>
+                        <span className="text-muted-foreground flex-shrink-0">·</span>
+                        <span className="text-muted-foreground flex-shrink-0">
+                          {formatTimeAgo(post.created_at)}
+                        </span>
                       </div>
-                      <h3 className="text-base font-medium line-clamp-1 mb-0.5">
+
+                      {/* 제목 */}
+                      <h3 className="font-semibold text-[15px] mb-1">
                         {post.title}
                       </h3>
-                      <p className="text-sm text-muted-foreground line-clamp-1 mb-1">
-                        {post.content}
-                      </p>
-                      <div className="text-xs text-muted-foreground">
-                        <span>{post.profiles.full_name || '익명'}</span>
-                        <span> · </span>
-                        <span>{formatTimeAgo(post.created_at)}</span>
+
+                      {/* 본문 */}
+                      <div className="text-[15px] leading-relaxed mb-2">
+                        {shouldTruncate && !isExpanded ? (
+                          <>
+                            <span className="whitespace-pre-wrap">{post.content.slice(0, 150)}...</span>
+                            <button
+                              onClick={(e) => toggleExpand(post.id, e)}
+                              className="text-primary hover:underline ml-1"
+                            >
+                              더 보기
+                            </button>
+                          </>
+                        ) : (
+                          <span className="whitespace-pre-wrap">{post.content}</span>
+                        )}
+                      </div>
+
+                      {/* 이미지 */}
+                      {post.images && post.images.length > 0 && (
+                        <div className={`mb-3 rounded-2xl overflow-hidden border border-border ${
+                          post.images.length === 1 ? '' :
+                          post.images.length === 2 ? 'grid grid-cols-2 gap-0.5' :
+                          post.images.length === 3 ? 'grid grid-cols-2 gap-0.5' :
+                          'grid grid-cols-2 gap-0.5'
+                        }`}>
+                          {post.images.slice(0, 4).map((image, idx) => (
+                            <div
+                              key={idx}
+                              className={`relative bg-muted ${
+                                post.images!.length === 1 ? 'aspect-video' :
+                                post.images!.length === 3 && idx === 0 ? 'row-span-2 aspect-square' :
+                                'aspect-square'
+                              }`}
+                            >
+                              <img
+                                src={image}
+                                alt={`이미지 ${idx + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                              {idx === 3 && post.images!.length > 4 && (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-xl">
+                                  +{post.images!.length - 4}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 액션 버튼들 */}
+                      <div className="flex items-center justify-between max-w-md text-muted-foreground">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            router.push(`/community/${post.id}`)
+                          }}
+                          className="flex items-center gap-2 p-2 -ml-2 rounded-full hover:bg-primary/10 hover:text-primary transition-colors group"
+                        >
+                          <MessageCircle className="w-[18px] h-[18px]" />
+                          <span className="text-sm">{post.comments_count || 0}</span>
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            toggleLike(post.id, post.is_liked)
+                          }}
+                          className={`flex items-center gap-2 p-2 rounded-full hover:bg-red-500/10 transition-colors group ${
+                            post.is_liked ? 'text-red-500' : 'hover:text-red-500'
+                          }`}
+                        >
+                          <Heart className={`w-[18px] h-[18px] ${post.is_liked ? 'fill-current' : ''}`} />
+                          <span className="text-sm">{post.likes_count || 0}</span>
+                        </button>
+
+                        <div className="flex items-center gap-2 p-2 rounded-full">
+                          <BarChart2 className="w-[18px] h-[18px]" />
+                          <span className="text-sm">{post.view_count || 0}</span>
+                        </div>
                       </div>
                     </div>
-
-                    {/* 좋아요/댓글/조회수 - 오른쪽 정렬 */}
-                    <div className="flex gap-3 items-center justify-end text-xs text-muted-foreground mt-1">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          toggleLike(post.id, post.is_liked)
-                        }}
-                        className="flex items-center gap-1 hover:text-foreground transition-colors"
-                      >
-                        <Heart
-                          className={`w-4 h-4 ${
-                            post.is_liked
-                              ? 'fill-red-500 text-red-500'
-                              : ''
-                          }`}
-                        />
-                        <span className={post.is_liked ? 'text-red-500' : ''}>
-                          {post.likes_count || 0}
-                        </span>
-                      </button>
-
-                      <span className="flex items-center gap-1">
-                        <MessageCircle className="w-4 h-4" />
-                        {post.comments_count || 0}
-                      </span>
-
-                      <span>조회 {post.view_count || 0}</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
+                  </article>
+                )
+              })}
             </div>
           )}
         </div>
