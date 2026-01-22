@@ -428,7 +428,7 @@ export default function CommunityPage() {
                       )}
 
                       {/* 액션 버튼들 */}
-                      <div className="flex items-center justify-between max-w-md text-muted-foreground">
+                      <div className="flex items-center justify-end gap-4 text-muted-foreground">
                         <button
                           onClick={(e) => {
                             e.preventDefault()
