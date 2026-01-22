@@ -308,106 +308,82 @@ export default function CommunityPage() {
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="divide-y divide-border">
               {filteredPosts.map((post) => (
-                <div
+                <Link
                   key={post.id}
-                  className="bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow"
+                  href={`/community/${post.id}`}
+                  className="flex gap-3 py-3 hover:bg-muted/30 transition-colors"
                 >
-                  {/* Post Header */}
-                  <div className="p-4">
-                    <div className="flex items-start gap-3 mb-3">
-                      {/* Avatar */}
-                      <Link href={`/profile/${post.user_id}`}>
-                        <UserAvatar
-                          src={post.profiles.avatar_url}
-                          alt={post.profiles.full_name || '사용자'}
-                          matryoshkaLevel={post.profiles.matryoshka_level}
-                          size="md"
-                        />
-                      </Link>
+                  {/* 이미지 (있는 경우만) */}
+                  {post.images && post.images.length > 0 && (
+                    <div className="flex-shrink-0 w-20 h-20 bg-muted rounded-lg overflow-hidden relative">
+                      <img
+                        src={post.images[0]}
+                        alt={post.title}
+                        className="w-full h-full object-cover"
+                      />
+                      {post.images.length > 1 && (
+                        <div className="absolute bottom-1 right-1 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
+                          +{post.images.length - 1}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <Link
-                            href={`/profile/${post.user_id}`}
-                            className="font-medium hover:underline flex items-center gap-1"
-                          >
-                            <span>{post.profiles.full_name || '익명'}</span>
-                            <span className="text-base">{getBreadEmoji(post.profiles.matryoshka_level, post.profiles.user_role || undefined)}</span>
-                          </Link>
-                          <span className="text-xs px-2 py-0.5 bg-secondary rounded-full">
-                            {getCategoryEmoji(post.category)} {getCategoryName(post.category)}
-                          </span>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatTimeAgo(post.created_at)}
-                        </div>
+                  {/* 내용 */}
+                  <div className="flex-1 flex flex-col justify-between min-w-0">
+                    <div>
+                      {/* 카테고리 + 제목 */}
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-xs text-muted-foreground">
+                          {getCategoryEmoji(post.category)} {getCategoryName(post.category)}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-medium line-clamp-1 mb-0.5">
+                        {post.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground line-clamp-1 mb-1">
+                        {post.content}
+                      </p>
+                      <div className="text-xs text-muted-foreground">
+                        <span>{post.profiles.full_name || '익명'}</span>
+                        <span> · </span>
+                        <span>{formatTimeAgo(post.created_at)}</span>
                       </div>
                     </div>
 
-                    {/* Post Content */}
-                    <Link href={`/community/${post.id}`}>
-                      <h3 className="font-semibold text-lg mb-2 hover:underline">
-                        {post.title}
-                      </h3>
-                      <p className="text-muted-foreground line-clamp-3 mb-3">
-                        {post.content}
-                      </p>
-
-                      {/* Images */}
-                      {post.images && post.images.length > 0 && (
-                        <div className="flex gap-2 mb-3 overflow-x-auto">
-                          {post.images.slice(0, 3).map((image, idx) => (
-                            <img
-                              key={idx}
-                              src={image}
-                              alt={`이미지 ${idx + 1}`}
-                              className="w-24 h-24 rounded-lg object-cover flex-shrink-0"
-                            />
-                          ))}
-                          {post.images.length > 3 && (
-                            <div className="w-24 h-24 rounded-lg bg-muted flex items-center justify-center text-muted-foreground font-medium">
-                              +{post.images.length - 3}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </Link>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-4 pt-3 border-t border-border">
+                    {/* 좋아요/댓글/조회수 - 오른쪽 정렬 */}
+                    <div className="flex gap-3 items-center justify-end text-xs text-muted-foreground mt-1">
                       <button
-                        onClick={() => toggleLike(post.id, post.is_liked)}
-                        className="flex items-center gap-1 text-sm hover:text-primary transition-colors"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          toggleLike(post.id, post.is_liked)
+                        }}
+                        className="flex items-center gap-1 hover:text-foreground transition-colors"
                       >
                         <Heart
-                          className={`w-5 h-5 ${
+                          className={`w-4 h-4 ${
                             post.is_liked
                               ? 'fill-red-500 text-red-500'
-                              : 'text-muted-foreground'
+                              : ''
                           }`}
                         />
-                        <span className={post.is_liked ? 'text-red-500' : 'text-muted-foreground'}>
-                          {post.likes_count}
+                        <span className={post.is_liked ? 'text-red-500' : ''}>
+                          {post.likes_count || 0}
                         </span>
                       </button>
 
-                      <Link
-                        href={`/community/${post.id}`}
-                        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors"
-                      >
-                        <MessageCircle className="w-5 h-5" />
-                        <span>{post.comments_count}</span>
-                      </Link>
+                      <span className="flex items-center gap-1">
+                        <MessageCircle className="w-4 h-4" />
+                        {post.comments_count || 0}
+                      </span>
 
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <span>조회</span>
-                        <span>{post.view_count || 0}</span>
-                      </div>
+                      <span>조회 {post.view_count || 0}</span>
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
