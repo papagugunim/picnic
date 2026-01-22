@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, Heart, MessageCircle, Send, MoreVertical, Trash2, EyeOff, Eye, Edit } from 'lucide-react'
+import { ChevronLeft, Heart, MessageCircle, Send, MoreVertical, Trash2, EyeOff, Eye, Edit, Eye as EyeIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
@@ -31,6 +31,7 @@ interface CommunityPost {
   is_hidden: boolean
   hidden_at: string | null
   hidden_by: string | null
+  view_count: number
   profiles: {
     full_name: string | null
     avatar_url: string | null
@@ -119,6 +120,7 @@ export default function CommunityPostDetailPage() {
           is_hidden,
           hidden_at,
           hidden_by,
+          view_count,
           profiles!community_posts_user_id_fkey (
             full_name,
             avatar_url,
@@ -165,6 +167,14 @@ export default function CommunityPostDetailPage() {
         comments_count: commentsCount || 0,
         is_liked: !!userLike,
       } as CommunityPost)
+
+      // 조회수 증가 (본인 게시글이 아닌 경우에만)
+      if (postData.user_id !== user.id) {
+        await supabase
+          .from('community_posts')
+          .update({ view_count: (postData.view_count || 0) + 1 })
+          .eq('id', postId)
+      }
 
       // Get comments
       const { data: commentsData, error: commentsError } = await supabase
@@ -589,6 +599,11 @@ export default function CommunityPostDetailPage() {
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <MessageCircle className="w-6 h-6" />
               <span>{post.comments_count}</span>
+            </div>
+
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Eye className="w-6 h-6" />
+              <span>{post.view_count || 0}</span>
             </div>
           </div>
         </div>

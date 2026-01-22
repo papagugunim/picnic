@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Heart, MessageCircle, Plus, Search } from 'lucide-react'
+import { Heart, MessageCircle, Plus, Search, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
@@ -23,6 +23,7 @@ interface CommunityPost {
   category: string
   created_at: string
   user_id: string
+  view_count: number
   profiles: {
     full_name: string | null
     avatar_url: string | null
@@ -99,6 +100,7 @@ export default function CommunityPage() {
           category,
           created_at,
           user_id,
+          view_count,
           profiles!community_posts_user_id_fkey (
             full_name,
             avatar_url,
@@ -398,6 +400,11 @@ export default function CommunityPage() {
                         <MessageCircle className="w-5 h-5" />
                         <span>{post.comments_count}</span>
                       </Link>
+
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Eye className="w-5 h-5" />
+                        <span>{post.view_count || 0}</span>
+                      </div>
                     </div>
                   </div>
                 </div>

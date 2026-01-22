@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, MapPin, Clock, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MapPin, Clock, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye, Eye as EyeIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -40,6 +40,7 @@ interface Post {
   is_hidden: boolean
   hidden_at: string | null
   hidden_by: string | null
+  view_count: number
   profiles: {
     full_name: string | null
     avatar_url: string | null
@@ -123,6 +124,7 @@ export default function PostDetailPage() {
           is_hidden,
           hidden_at,
           hidden_by,
+          view_count,
           profiles!posts_author_id_fkey (
             full_name,
             avatar_url,
@@ -184,6 +186,14 @@ export default function PostDetailPage() {
       setCache(cacheKey, postWithDetails, 5 * 60 * 1000)
 
       setPost(postWithDetails)
+
+      // 조회수 증가 (본인 게시글이 아닌 경우에만)
+      if (postData.author_id !== user.id) {
+        await supabase
+          .from('posts')
+          .update({ view_count: (postData.view_count || 0) + 1 })
+          .eq('id', postId)
+      }
     } catch (err) {
       logger.error('Fetch error:', err)
     } finally {
@@ -773,7 +783,7 @@ export default function PostDetailPage() {
             </div>
           </div>
 
-          {/* 좋아요/관심 버튼 */}
+          {/* 좋아요/관심/조회수 버튼 */}
           <div className="border-t border-border pt-4 mb-6">
             <div className="flex gap-4">
               <button
@@ -803,6 +813,11 @@ export default function PostDetailPage() {
                   </span>
                 )}
               </button>
+
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-muted-foreground">
+                <Eye className="w-5 h-5" />
+                <span>{post.view_count || 0}</span>
+              </div>
             </div>
           </div>
         </div>

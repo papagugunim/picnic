@@ -4,7 +4,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
-import { Plus, Heart, Bookmark } from 'lucide-react'
+import { Plus, Heart, Bookmark, Eye } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,7 @@ interface Post {
   created_at: string
   images: string[]
   status: string
+  view_count: number
   profiles: {
     full_name: string | null
   }
@@ -106,6 +107,7 @@ export default function FeedPage() {
           created_at,
           images,
           status,
+          view_count,
           profiles:author_id (
             full_name
           )
@@ -478,7 +480,7 @@ export default function FeedPage() {
                 </div>
               </Link>
 
-              {/* 좋아요/관심 버튼 */}
+              {/* 좋아요/관심/조회수 버튼 */}
               <div className="px-4 pb-3 flex gap-4 items-center text-sm">
                 <button
                   onClick={(e) => {
@@ -515,6 +517,11 @@ export default function FeedPage() {
                     </span>
                   )}
                 </button>
+
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Eye className="w-5 h-5" />
+                  <span>{post.view_count || 0}</span>
+                </div>
               </div>
             </div>
           ))}
