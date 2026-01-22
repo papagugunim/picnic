@@ -427,103 +427,95 @@ export default function FeedPage() {
       ) : (
         <div className="divide-y divide-border">
           {posts.map((post) => (
-            <div key={post.id} className="hover:bg-muted/30 transition-colors">
-              <Link
-                href={`/post/${post.id}`}
-                className="flex gap-4 p-4"
-              >
-                {/* 이미지 */}
-                <div className="flex-shrink-0 w-28 h-28 bg-muted rounded-xl overflow-hidden relative">
-                  {post.images && post.images.length > 0 ? (
-                    <Image
-                      src={post.images[0]}
-                      alt={post.title}
-                      fill
-                      sizes="(max-width: 768px) 112px, 128px"
-                      className="object-cover"
-                      loading="lazy"
-                      quality={75}
-                      placeholder="blur"
-                      blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-                      이미지 없음
-                    </div>
-                  )}
-                </div>
+            <Link
+              key={post.id}
+              href={`/post/${post.id}`}
+              className="flex gap-3 p-3 hover:bg-muted/30 transition-colors"
+            >
+              {/* 이미지 */}
+              <div className="flex-shrink-0 w-24 h-24 bg-muted rounded-lg overflow-hidden relative">
+                {post.images && post.images.length > 0 ? (
+                  <Image
+                    src={post.images[0]}
+                    alt={post.title}
+                    fill
+                    sizes="(max-width: 768px) 96px, 96px"
+                    className="object-cover"
+                    loading="lazy"
+                    quality={75}
+                    placeholder="blur"
+                    blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                    이미지 없음
+                  </div>
+                )}
+              </div>
 
-                {/* 내용 */}
-                <div className="flex-1 flex flex-col justify-between min-w-0">
-                  <div>
-                    <h3 className="text-base font-normal line-clamp-2 mb-1">
-                      {post.title}
-                    </h3>
-                    <div className="text-sm text-muted-foreground mb-1">
-                      <span>{getCityNameInKorean(post.city)}</span>
-                      <span> · </span>
-                      <span>{formatTimeAgo(post.created_at)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-lg font-bold">
-                        {post.price === 0 || post.price === null
-                          ? '무료나눔'
-                          : `${post.price.toLocaleString()}₽`}
-                      </p>
-                      {post.status && post.status !== 'active' && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${getPostStatusInfo(post.status as PostStatus).bgColor} ${getPostStatusInfo(post.status as PostStatus).textColor} font-medium`}>
-                          {getPostStatusInfo(post.status as PostStatus).label}
-                        </span>
-                      )}
-                    </div>
+              {/* 내용 */}
+              <div className="flex-1 flex flex-col justify-between min-w-0">
+                <div>
+                  <h3 className="text-base font-normal line-clamp-2 mb-0.5">
+                    {post.title}
+                  </h3>
+                  <div className="text-xs text-muted-foreground mb-0.5">
+                    <span>{getCityNameInKorean(post.city)}</span>
+                    <span> · </span>
+                    <span>{formatTimeAgo(post.created_at)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-base font-bold">
+                      {post.price === 0 || post.price === null
+                        ? '무료나눔'
+                        : `${post.price.toLocaleString()}₽`}
+                    </p>
+                    {post.status && post.status !== 'active' && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${getPostStatusInfo(post.status as PostStatus).bgColor} ${getPostStatusInfo(post.status as PostStatus).textColor} font-medium`}>
+                        {getPostStatusInfo(post.status as PostStatus).label}
+                      </span>
+                    )}
                   </div>
                 </div>
-              </Link>
 
-              {/* 좋아요/관심/조회수 버튼 */}
-              <div className="px-4 pb-3 flex gap-4 items-center text-sm">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    toggleLike(post.id, post.user_liked)
-                  }}
-                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Heart
-                    className={`w-5 h-5 ${post.user_liked ? 'fill-red-500 text-red-500' : ''}`}
-                  />
-                  {post.likes_count > 0 && (
+                {/* 좋아요/관심/조회수 - 오른쪽 정렬 */}
+                <div className="flex gap-3 items-center justify-end text-xs text-muted-foreground">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      toggleLike(post.id, post.user_liked)
+                    }}
+                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                  >
+                    <Heart
+                      className={`w-4 h-4 ${post.user_liked ? 'fill-red-500 text-red-500' : ''}`}
+                    />
                     <span className={post.user_liked ? 'text-red-500' : ''}>
-                      {post.likes_count}
+                      {post.likes_count || 0}
                     </span>
-                  )}
-                </button>
+                  </button>
 
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    toggleInterest(post.id, post.user_interested)
-                  }}
-                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Bookmark
-                    className={`w-5 h-5 ${post.user_interested ? 'fill-primary text-primary' : ''}`}
-                  />
-                  {post.interests_count > 0 && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      toggleInterest(post.id, post.user_interested)
+                    }}
+                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                  >
+                    <Bookmark
+                      className={`w-4 h-4 ${post.user_interested ? 'fill-primary text-primary' : ''}`}
+                    />
                     <span className={post.user_interested ? 'text-primary' : ''}>
-                      {post.interests_count}
+                      {post.interests_count || 0}
                     </span>
-                  )}
-                </button>
+                  </button>
 
-                <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                  <span>조회</span>
-                  <span>{post.view_count || 0}</span>
+                  <span>조회 {post.view_count || 0}</span>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
