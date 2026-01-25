@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Heart, MessageCircle, Plus, Search, BarChart2 } from 'lucide-react'
+import { Heart, MessageCircle, Plus, Search, BarChart2, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
@@ -54,6 +54,13 @@ export default function CommunityPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set())
 
+  // 이미지 갤러리 상태
+  const [galleryImages, setGalleryImages] = useState<string[]>([])
+  const [galleryIndex, setGalleryIndex] = useState(0)
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false)
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+
   const toggleExpand = useCallback((postId: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -67,6 +74,66 @@ export default function CommunityPage() {
       return newSet
     })
   }, [])
+
+  const openGallery = useCallback((images: string[], index: number, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setGalleryImages(images)
+    setGalleryIndex(index)
+    setIsGalleryOpen(true)
+    document.body.style.overflow = 'hidden'
+  }, [])
+
+  const closeGallery = useCallback(() => {
+    setIsGalleryOpen(false)
+    document.body.style.overflow = ''
+  }, [])
+
+  const goToPrevImage = useCallback(() => {
+    setGalleryIndex(prev => (prev === 0 ? galleryImages.length - 1 : prev - 1))
+  }, [galleryImages.length])
+
+  const goToNextImage = useCallback(() => {
+    setGalleryIndex(prev => (prev === galleryImages.length - 1 ? 0 : prev + 1))
+  }, [galleryImages.length])
+
+  // 스와이프 핸들러
+  const minSwipeDistance = 50
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe) {
+      goToNextImage()
+    }
+    if (isRightSwipe) {
+      goToPrevImage()
+    }
+  }
+
+  // 키보드 이벤트
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isGalleryOpen) return
+      if (e.key === 'Escape') closeGallery()
+      if (e.key === 'ArrowLeft') goToPrevImage()
+      if (e.key === 'ArrowRight') goToNextImage()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isGalleryOpen, closeGallery, goToPrevImage, goToNextImage])
 
   useEffect(() => {
     fetchPosts()
@@ -406,7 +473,8 @@ export default function CommunityPage() {
                           {post.images.slice(0, 4).map((image, idx) => (
                             <div
                               key={idx}
-                              className={`relative bg-muted ${
+                              onClick={(e) => openGallery(post.images!, idx, e)}
+                              className={`relative bg-muted cursor-pointer hover:opacity-90 transition-opacity ${
                                 post.images!.length === 1 ? 'aspect-video' :
                                 post.images!.length === 3 && idx === 0 ? 'row-span-2 aspect-square' :
                                 'aspect-square'
@@ -476,6 +544,87 @@ export default function CommunityPage() {
           <Plus className="w-6 h-6" />
         </button>
       </div>
+
+      {/* 이미지 갤러리 모달 */}
+      {isGalleryOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black"
+          onClick={closeGallery}
+        >
+          {/* 헤더 */}
+          <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent">
+            <span className="text-white text-sm">
+              {galleryIndex + 1} / {galleryImages.length}
+            </span>
+            <button
+              onClick={closeGallery}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* 이미지 영역 */}
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={galleryImages[galleryIndex]}
+              alt={`이미지 ${galleryIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+
+          {/* 이전 버튼 */}
+          {galleryImages.length > 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                goToPrevImage()
+              }}
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+            >
+              <ChevronLeft className="w-8 h-8" />
+            </button>
+          )}
+
+          {/* 다음 버튼 */}
+          {galleryImages.length > 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                goToNextImage()
+              }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+            >
+              <ChevronRight className="w-8 h-8" />
+            </button>
+          )}
+
+          {/* 하단 인디케이터 */}
+          {galleryImages.length > 1 && (
+            <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-2">
+              {galleryImages.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setGalleryIndex(idx)
+                  }}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    idx === galleryIndex ? 'bg-white' : 'bg-white/50'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
