@@ -1,6 +1,6 @@
 export default function FeedLoading() {
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="bg-background">
       <div className="max-w-4xl mx-auto px-4 py-4 space-y-4">
         {/* 스켈레톤 카드들 */}
         {[1, 2, 3].map((i) => (

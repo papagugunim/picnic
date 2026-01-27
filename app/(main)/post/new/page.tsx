@@ -4,7 +4,7 @@ import Link from 'next/link'
 
 export default function NewPostPage() {
   return (
-    <div className="min-h-screen bg-background py-8">
+    <div className="bg-background py-8">
       <div className="max-w-3xl mx-auto px-4">
         {/* 헤더 */}
         <div className="mb-6">

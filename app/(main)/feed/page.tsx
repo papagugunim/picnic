@@ -367,7 +367,7 @@ export default function FeedPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen">
+      <div>
         {/* Skeleton 로딩 */}
         <div className="divide-y divide-border">
           {[...Array(5)].map((_, index) => (
@@ -393,9 +393,9 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div>
       {/* 카테고리 필터 */}
-      <div className="sticky top-14 z-30 bg-background border-b border-border">
+      <div className="bg-background border-b border-border">
         <div className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide">
           {categories.map((category) => (
             <button

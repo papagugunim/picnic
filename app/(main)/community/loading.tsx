@@ -1,6 +1,6 @@
 export default function CommunityLoading() {
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="bg-background">
       <div className="max-w-4xl mx-auto px-4 py-4 space-y-3">
         {/* 스켈레톤 게시글들 */}
         {[1, 2, 3, 4, 5].map((i) => (

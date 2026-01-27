@@ -154,10 +154,10 @@ export default function NewCommunityPostPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="bg-background">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="sticky top-0 z-40 bg-background border-b border-border">
+        <div className="bg-background border-b border-border">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-2">
               <Button

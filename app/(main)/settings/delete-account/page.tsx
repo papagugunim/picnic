@@ -91,7 +91,7 @@ export default function DeleteAccountPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">

@@ -1,6 +1,6 @@
 export default function ChatsLoading() {
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="bg-background">
       <div className="max-w-4xl mx-auto px-4 py-4 space-y-2">
         {/* 스켈레톤 채팅방 목록 */}
         {[1, 2, 3, 4, 5, 6].map((i) => (

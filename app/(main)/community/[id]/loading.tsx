@@ -1,6 +1,6 @@
 export default function CommunityDetailLoading() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       <div className="max-w-4xl mx-auto px-4 py-4 animate-pulse">
         {/* 작성자 정보 */}
         <div className="flex items-center gap-3 mb-4">

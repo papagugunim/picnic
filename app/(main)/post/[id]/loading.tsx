@@ -1,6 +1,6 @@
 export default function PostDetailLoading() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       <div className="max-w-4xl mx-auto animate-pulse">
         {/* 이미지 */}
         <div className="w-full aspect-square bg-muted" />

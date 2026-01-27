@@ -1,9 +1,9 @@
 export default function TodayLoading() {
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="bg-background">
       <div className="max-w-4xl mx-auto">
         {/* Header 스켈레톤 */}
-        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
+        <div className="bg-background border-b border-border">
           <div className="px-4 py-4 space-y-2 animate-pulse">
             <div className="flex items-center justify-between">
               <div className="h-8 bg-muted rounded w-40" />

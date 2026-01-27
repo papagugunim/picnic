@@ -502,10 +502,10 @@ export default function CommunityPostDetailPage() {
   const category = categories[post.category as keyof typeof categories]
 
   return (
-    <div className="min-h-screen bg-background pb-32">
+    <div className="bg-background pb-20">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="sticky top-0 z-40 bg-background border-b border-border">
+        <div className="bg-background border-b border-border">
           <div className="flex items-center justify-between px-4 py-3">
             <Button
               variant="ghost"

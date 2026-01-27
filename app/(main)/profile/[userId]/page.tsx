@@ -296,7 +296,7 @@ export default function ProfilePage() {
   const isDark = mounted && (resolvedTheme === 'dark' || (!resolvedTheme && theme === 'dark'))
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       {/* 프로필 헤더 */}
       <div className="pb-4 pt-2 bg-card border-b border-border">
         <div className="max-w-4xl mx-auto px-4">

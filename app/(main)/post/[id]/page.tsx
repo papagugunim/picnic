@@ -482,10 +482,10 @@ export default function PostDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background pb-32">
+      <div className="bg-background pb-20">
         <div className="max-w-4xl mx-auto">
           {/* Header Skeleton */}
-          <div className="sticky top-0 z-40 bg-background border-b border-border">
+          <div className="bg-background border-b border-border">
             <div className="flex items-center justify-between px-4 py-3">
               <div className="w-10 h-10 bg-muted rounded animate-pulse" />
               <div className="h-6 bg-muted rounded w-24 animate-pulse" />
@@ -543,10 +543,10 @@ export default function PostDetailPage() {
   const canManage = isAuthor || isAdmin
 
   return (
-    <div className="min-h-screen bg-background pb-32">
+    <div className="bg-background pb-20">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="sticky top-0 z-40 bg-background border-b border-border">
+        <div className="bg-background border-b border-border">
           <div className="flex items-center justify-between px-4 py-3">
             <Button
               variant="ghost"

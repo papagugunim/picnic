@@ -103,7 +103,7 @@ export default function WelcomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       {/* 환영 헤더 */}
       <div className="bg-primary text-primary-foreground px-4 py-8">
         <div className="max-w-2xl mx-auto">

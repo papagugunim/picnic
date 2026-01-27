@@ -11,9 +11,9 @@ export default function EditPostPage() {
   const postId = params.id as string
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-background border-b border-border">
+      <div className="bg-background border-b border-border">
         <div className="max-w-4xl mx-auto flex items-center justify-between px-4 py-3">
           <Button
             variant="ghost"

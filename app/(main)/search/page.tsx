@@ -272,9 +272,9 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       {/* Header */}
-      <div className="sticky top-14 z-30 bg-background border-b border-border">
+      <div className="bg-background border-b border-border">
         <div className="px-4 py-3">
           <div className="flex items-center gap-3 mb-3">
             <Button
