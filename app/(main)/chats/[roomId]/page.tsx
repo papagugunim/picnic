@@ -21,11 +21,13 @@ import { AppointmentCard } from '@/components/chat/AppointmentCard'
 import { CompleteSaleButton } from '@/components/chat/CompleteSaleButton'
 import { ReviewModal } from '@/components/review/ReviewModal'
 import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
+import { useScrollDirection } from '@/lib/hooks/useScrollDirection'
 
 export default function ChatRoomPage() {
   const params = useParams()
   const router = useRouter()
   const roomId = params.roomId as string
+  const scrollHidden = useScrollDirection({ threshold: 10, topOffset: 50 })
 
   const [room, setRoom] = useState<ChatRoomWithProfile | null>(null)
   const [newMessage, setNewMessage] = useState('')
@@ -214,8 +216,8 @@ export default function ChatRoomPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header - 고정 */}
-      <div className="fixed top-0 left-0 right-0 bg-background border-b border-border z-40">
+      {/* Header - 스크롤 시 숨김 */}
+      <div className={`fixed top-0 left-0 right-0 bg-background border-b border-border z-40 transition-transform duration-300 ease-in-out ${scrollHidden ? '-translate-y-full' : 'translate-y-0'}`}>
         <div className="max-w-screen-xl mx-auto">
           <div className="flex items-center gap-3 px-4 py-3">
           <Button

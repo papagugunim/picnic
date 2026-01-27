@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Bell, Settings, Search } from 'lucide-react'
@@ -8,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/contexts/UserContext'
 import { useNotifications } from '@/lib/hooks/useNotifications'
+import { useScrollDirection } from '@/lib/hooks/useScrollDirection'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +24,7 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
   const pathname = usePathname()
   const { profile, refreshProfile } = useUser()
   const { unreadCount } = useNotifications()
+  const scrollHidden = useScrollDirection({ threshold: 10, topOffset: 50 })
 
   // 채팅방 페이지에서는 TopBar 숨기기
   const isChatRoomPage = pathname?.match(/^\/chats\/[^/]+$/)
@@ -55,7 +56,7 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
   }
 
   return (
-    <header className="border-b border-border bg-background">
+    <header className={`fixed top-0 left-0 right-0 z-40 border-b border-border bg-background transition-transform duration-300 ease-in-out ${scrollHidden ? '-translate-y-full' : 'translate-y-0'}`}>
       <div className="flex items-center justify-between h-14 px-4 max-w-screen-xl mx-auto">
         {/* 왼쪽: 지역 선택 */}
         {showLocationDropdown ? (

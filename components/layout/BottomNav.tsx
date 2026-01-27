@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { Home, Users, Calendar, MessageCircle, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUnreadCount } from '@/lib/hooks/useUnreadCount'
+import { useScrollDirection } from '@/lib/hooks/useScrollDirection'
 
 const navItems = [
   {
@@ -38,6 +39,7 @@ const navItems = [
 function BottomNav() {
   const pathname = usePathname()
   const { unreadCount } = useUnreadCount()
+  const scrollHidden = useScrollDirection({ threshold: 10, topOffset: 50 })
 
   // 채팅방 페이지에서는 네비게이션바 숨기기
   const isChatRoomPage = pathname?.match(/^\/chats\/[^/]+$/)
@@ -46,7 +48,7 @@ function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background">
+    <nav className={`fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background transition-transform duration-300 ease-in-out ${scrollHidden ? 'translate-y-full' : 'translate-y-0'}`}>
       <div className="flex items-center justify-around h-16 max-w-screen-xl mx-auto">
         {navItems.map((item) => {
           const isActive = pathname?.startsWith(item.href)
