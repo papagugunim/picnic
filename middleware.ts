@@ -84,22 +84,9 @@ export async function middleware(request: NextRequest) {
     headers.set('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400')
   }
 
-  // 압축 지원
-  const acceptEncoding = request.headers.get('accept-encoding') || ''
-  if (acceptEncoding.includes('br')) {
-    headers.set('Content-Encoding', 'br')
-  } else if (acceptEncoding.includes('gzip')) {
-    headers.set('Content-Encoding', 'gzip')
-  }
-
   // 성능 메트릭
   const duration = Date.now() - startTime
   headers.set('Server-Timing', `middleware;dur=${duration}`)
-
-  // Preload 힌트 (중요 리소스)
-  if (pathname === '/') {
-    headers.set('Link', '</_next/static/css/main.css>; rel=preload; as=style')
-  }
 
   return new NextResponse(response.body, {
     status: response.status,

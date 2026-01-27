@@ -2,8 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatDistanceToNow } from 'date-fns'
-import { ko } from 'date-fns/locale'
+import { fromNow } from '@/lib/utils/date'
 import { Bell, Check, CheckCheck } from 'lucide-react'
 import { useNotifications } from '@/lib/hooks/useNotifications'
 import { Button } from '@/components/ui/button'
@@ -108,10 +107,7 @@ export default function NotificationsPage() {
                     {notification.message}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(notification.created_at), {
-                      addSuffix: true,
-                      locale: ko,
-                    })}
+                    {fromNow(notification.created_at)}
                   </p>
                 </div>
 

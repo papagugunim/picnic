@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadEmoji } from '@/lib/bread'
 import { getCache, setCache } from '@/lib/cache'
@@ -279,27 +280,51 @@ export default function CommunityPage() {
   async function toggleLike(postId: string, currentlyLiked: boolean) {
     if (!currentUserId) return
 
-    const supabase = createClient()
+    // 낙관적 업데이트: UI 먼저 업데이트
+    setPosts(prevPosts =>
+      prevPosts.map(post =>
+        post.id === postId
+          ? {
+              ...post,
+              is_liked: !currentlyLiked,
+              likes_count: currentlyLiked ? post.likes_count - 1 : post.likes_count + 1
+            }
+          : post
+      )
+    )
 
-    if (currentlyLiked) {
-      // Unlike
-      await supabase
-        .from('community_likes')
-        .delete()
-        .eq('post_id', postId)
-        .eq('user_id', currentUserId)
-    } else {
-      // Like
-      await supabase
-        .from('community_likes')
-        .insert({
-          post_id: postId,
-          user_id: currentUserId,
-        })
+    try {
+      const supabase = createClient()
+
+      if (currentlyLiked) {
+        await supabase
+          .from('community_likes')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', currentUserId)
+      } else {
+        await supabase
+          .from('community_likes')
+          .insert({
+            post_id: postId,
+            user_id: currentUserId,
+          })
+      }
+    } catch (err) {
+      logger.error('Toggle like error:', err)
+      // 실패 시 원래 상태로 복구
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === postId
+            ? {
+                ...post,
+                is_liked: currentlyLiked,
+                likes_count: currentlyLiked ? post.likes_count + 1 : post.likes_count - 1
+              }
+            : post
+        )
+      )
     }
-
-    // Refresh posts
-    fetchPosts()
   }
 
   const formatTimeAgo = (dateString: string) => {
@@ -480,10 +505,14 @@ export default function CommunityPage() {
                                 'aspect-square'
                               }`}
                             >
-                              <img
+                              <Image
                                 src={image}
                                 alt={`이미지 ${idx + 1}`}
-                                className="w-full h-full object-cover"
+                                fill
+                                sizes="(max-width: 768px) 50vw, 400px"
+                                className="object-cover"
+                                loading="lazy"
+                                quality={75}
                               />
                               {idx === 3 && post.images!.length > 4 && (
                                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-xl">
@@ -572,10 +601,14 @@ export default function CommunityPage() {
             onTouchEnd={onTouchEnd}
             onClick={(e) => e.stopPropagation()}
           >
-            <img
+            <Image
               src={galleryImages[galleryIndex]}
               alt={`이미지 ${galleryIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
+              fill
+              sizes="100vw"
+              className="object-contain"
+              quality={85}
+              priority
               onClick={(e) => e.stopPropagation()}
             />
           </div>

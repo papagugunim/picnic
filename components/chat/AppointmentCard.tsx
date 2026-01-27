@@ -3,8 +3,7 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('AppointmentCard')
-import { format } from 'date-fns'
-import { ko } from 'date-fns/locale'
+import { formatDate } from '@/lib/utils/date'
 import { Calendar, MapPin, MessageSquare, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { PurchaseAppointment } from '@/types/purchase'
@@ -67,10 +66,10 @@ export function AppointmentCard({
             <Clock className="h-4 w-4 text-gray-400 mt-0.5" />
             <div>
               <div className="font-medium">
-                {format(appointmentDate, 'yyyy년 M월 d일 (EEE)', { locale: ko })}
+                {formatDate(appointmentDate, 'YYYY년 M월 D일 (ddd)')}
               </div>
               <div className="text-gray-400">
-                {format(appointmentDate, 'HH:mm')}
+                {formatDate(appointmentDate, 'HH:mm')}
               </div>
             </div>
           </div>
