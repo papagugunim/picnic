@@ -19,7 +19,6 @@ import {
   Briefcase,
   Package,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES } from '@/lib/constants'
 import OnboardingLayout from '@/components/onboarding/OnboardingLayout'

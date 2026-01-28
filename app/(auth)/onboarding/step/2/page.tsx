@@ -5,7 +5,6 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import OnboardingLayout from '@/components/onboarding/OnboardingLayout'
 

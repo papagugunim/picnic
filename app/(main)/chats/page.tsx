@@ -5,15 +5,13 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { MessageCircle, Package } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useChats } from '@/lib/hooks/useChats'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
-import { getBreadInfo, getBreadEmoji } from '@/lib/bread'
+import { getBreadEmoji } from '@/lib/bread'
 import { SwipeableChatItem } from '@/components/chat/SwipeableChatItem'
 import { toast } from 'sonner'
 
 export default function ChatsPage() {
-  const router = useRouter()
   const { chatRooms, isLoading, error, mutate } = useChats()
 
   const handleDeleteRoom = async (roomId: string) => {
@@ -85,7 +83,7 @@ export default function ChatsPage() {
               <MessageCircle className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">아직 채팅이 없습니다</p>
               <p className="text-sm text-muted-foreground mt-2">
-                게시글에서 "채팅하기" 버튼을 눌러 대화를 시작해보세요
+                게시글에서 &quot;채팅하기&quot; 버튼을 눌러 대화를 시작해보세요
               </p>
             </div>
           ) : (

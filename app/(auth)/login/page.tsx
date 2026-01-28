@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import LoginForm from '@/components/auth/LoginForm'
 import SocialLogin from '@/components/auth/SocialLogin'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 
 export const metadata = {
   title: '로그인 - picnic',

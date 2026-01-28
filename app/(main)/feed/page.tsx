@@ -9,7 +9,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
-import { MOSCOW_METRO_STATIONS, SPB_METRO_STATIONS } from '@/lib/constants'
 import { getCache, setCache, CACHE_KEYS } from '@/lib/cache'
 import { getNearbyMetroStations, hasNearbyStation } from '@/lib/metro-utils'
 import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
@@ -247,22 +246,6 @@ export default function FeedPage() {
       'irkutsk': '이르쿠츠크',
     }
     return cityMap[city.toLowerCase()] || city
-  }
-
-  const getMetroStationInfo = (value: string, city: string) => {
-    const stations = city.toLowerCase() === 'moscow' ? MOSCOW_METRO_STATIONS : SPB_METRO_STATIONS
-    const station = stations.find((s) => s.value === value)
-
-    if (!station) return null
-
-    // label 형식: "한글 / 러시아어 / 영어"에서 한글 부분만 추출
-    const koreanName = station.label.split(' / ')[0]
-
-    return {
-      koreanName,
-      lineColor: station.lineColor,
-      line: station.line,
-    }
   }
 
   async function toggleLike(postId: string, currentlyLiked: boolean) {
