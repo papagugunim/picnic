@@ -91,3 +91,24 @@ export interface Notification {
   is_read: boolean
   created_at: string
 }
+
+export interface ThreadedComment {
+  id: string
+  post_id: string
+  user_id: string
+  content: string
+  parent_id: string | null
+  depth: number
+  reply_count: number
+  created_at: string
+  updated_at: string
+  profiles: {
+    full_name: string | null
+    avatar_url: string | null
+    matryoshka_level: number
+    user_role: string | null
+  }
+  likes_count: number
+  is_liked: boolean
+  replies?: ThreadedComment[]
+}

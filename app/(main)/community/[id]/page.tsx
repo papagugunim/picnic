@@ -2,16 +2,17 @@
 
 import { createNamespacedLogger } from '@/lib/logger'
 
-const logger = createNamespacedLogger('Page')
+const logger = createNamespacedLogger('CommunityDetailPage')
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Heart, MessageCircle, Send, MoreVertical, Trash2, EyeOff, Eye, Edit, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Heart, MessageCircle, MoreVertical, Trash2, EyeOff, Eye, Edit, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadEmoji } from '@/lib/bread'
+import { CommentSection } from '@/components/comment/CommentSection'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,21 +44,6 @@ interface CommunityPost {
   is_liked: boolean
 }
 
-interface Comment {
-  id: string
-  content: string
-  created_at: string
-  user_id: string
-  profiles: {
-    full_name: string | null
-    avatar_url: string | null
-    matryoshka_level: number
-    user_role: string | null
-  }
-  likes_count: number
-  is_liked: boolean
-}
-
 const categories = {
   question: { name: '질문', emoji: '❓' },
   info: { name: '정보', emoji: '💡' },
@@ -72,15 +58,13 @@ export default function CommunityPostDetailPage() {
   const postId = params.id as string
 
   const [post, setPost] = useState<CommunityPost | null>(null)
-  const [comments, setComments] = useState<Comment[]>([])
-  const [newComment, setNewComment] = useState('')
   const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [commentCount, setCommentCount] = useState(0)
 
-  // 이미지 갤러리 상태
+  // Image gallery state
   const [galleryImages, setGalleryImages] = useState<string[]>([])
   const [galleryIndex, setGalleryIndex] = useState(0)
   const [isGalleryOpen, setIsGalleryOpen] = useState(false)
@@ -107,7 +91,7 @@ export default function CommunityPostDetailPage() {
     setGalleryIndex(prev => (prev === galleryImages.length - 1 ? 0 : prev + 1))
   }, [galleryImages.length])
 
-  // 스와이프 핸들러
+  // Swipe handlers
   const minSwipeDistance = 50
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -133,7 +117,7 @@ export default function CommunityPostDetailPage() {
     }
   }
 
-  // 키보드 이벤트
+  // Keyboard events
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isGalleryOpen) return
@@ -146,10 +130,10 @@ export default function CommunityPostDetailPage() {
   }, [isGalleryOpen, closeGallery, goToPrevImage, goToNextImage])
 
   useEffect(() => {
-    fetchPostAndComments()
+    fetchPost()
   }, [postId])
 
-  async function fetchPostAndComments() {
+  async function fetchPost() {
     try {
       setIsLoading(true)
       const supabase = createClient()
@@ -202,25 +186,24 @@ export default function CommunityPostDetailPage() {
       }
 
       // Get likes count and check if user liked
-      const { count: likesCount } = await supabase
-        .from('community_likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('post_id', postId)
+      const [likesResult, userLikeResult, commentsResult] = await Promise.all([
+        supabase
+          .from('community_likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', postId),
+        supabase
+          .from('community_likes')
+          .select('id')
+          .eq('post_id', postId)
+          .eq('user_id', user.id)
+          .single(),
+        supabase
+          .from('community_comments')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', postId)
+      ])
 
-      const { data: userLike } = await supabase
-        .from('community_likes')
-        .select('id')
-        .eq('post_id', postId)
-        .eq('user_id', user.id)
-        .single()
-
-      // Get comments count
-      const { count: commentsCount } = await supabase
-        .from('community_comments')
-        .select('*', { count: 'exact', head: true })
-        .eq('post_id', postId)
-
-      // Extract author profile (Supabase returns it as array)
+      // Extract author profile
       const author = Array.isArray(postData.profiles)
         ? postData.profiles[0]
         : postData.profiles
@@ -228,72 +211,20 @@ export default function CommunityPostDetailPage() {
       setPost({
         ...postData,
         profiles: author,
-        likes_count: likesCount || 0,
-        comments_count: commentsCount || 0,
-        is_liked: !!userLike,
+        likes_count: likesResult.count || 0,
+        comments_count: commentsResult.count || 0,
+        is_liked: !!userLikeResult.data,
       } as CommunityPost)
 
-      // 조회수 증가 (본인 게시글이 아닌 경우에만)
+      setCommentCount(commentsResult.count || 0)
+
+      // Increment view count (only if not author)
       if (postData.user_id !== user.id) {
         await supabase
           .from('community_posts')
           .update({ view_count: (postData.view_count || 0) + 1 })
           .eq('id', postId)
       }
-
-      // Get comments
-      const { data: commentsData, error: commentsError } = await supabase
-        .from('community_comments')
-        .select(`
-          id,
-          content,
-          created_at,
-          user_id,
-          profiles!community_comments_user_id_fkey (
-            full_name,
-            avatar_url,
-            matryoshka_level,
-            user_role
-          )
-        `)
-        .eq('post_id', postId)
-        .order('created_at', { ascending: true })
-
-      if (commentsError) {
-        logger.error('Comments fetch error:', commentsError)
-        return
-      }
-
-      // For each comment, get likes count and check if user liked
-      const commentsWithLikes = await Promise.all(
-        (commentsData || []).map(async (comment) => {
-          const { count: commentLikesCount } = await supabase
-            .from('community_likes')
-            .select('*', { count: 'exact', head: true })
-            .eq('comment_id', comment.id)
-
-          const { data: userCommentLike } = await supabase
-            .from('community_likes')
-            .select('id')
-            .eq('comment_id', comment.id)
-            .eq('user_id', user.id)
-            .single()
-
-          // Extract author profile (Supabase returns it as array)
-          const commentAuthor = Array.isArray(comment.profiles)
-            ? comment.profiles[0]
-            : comment.profiles
-
-          return {
-            ...comment,
-            profiles: commentAuthor,
-            likes_count: commentLikesCount || 0,
-            is_liked: !!userCommentLike,
-          }
-        })
-      )
-
-      setComments(commentsWithLikes as Comment[])
     } catch (err) {
       logger.error('Fetch error:', err)
     } finally {
@@ -304,99 +235,38 @@ export default function CommunityPostDetailPage() {
   async function togglePostLike() {
     if (!currentUserId || !post) return
 
-    const supabase = createClient()
-
-    if (post.is_liked) {
-      await supabase
-        .from('community_likes')
-        .delete()
-        .eq('post_id', postId)
-        .eq('user_id', currentUserId)
-    } else {
-      await supabase
-        .from('community_likes')
-        .insert({
-          post_id: postId,
-          user_id: currentUserId,
-        })
-    }
-
-    fetchPostAndComments()
-  }
-
-  async function toggleCommentLike(commentId: string, currentlyLiked: boolean) {
-    if (!currentUserId) return
-
-    const supabase = createClient()
-
-    if (currentlyLiked) {
-      await supabase
-        .from('community_likes')
-        .delete()
-        .eq('comment_id', commentId)
-        .eq('user_id', currentUserId)
-    } else {
-      await supabase
-        .from('community_likes')
-        .insert({
-          comment_id: commentId,
-          user_id: currentUserId,
-        })
-    }
-
-    fetchPostAndComments()
-  }
-
-  async function submitComment() {
-    if (!newComment.trim() || !currentUserId) return
-
-    try {
-      setIsSubmitting(true)
-      const supabase = createClient()
-
-      const { error } = await supabase
-        .from('community_comments')
-        .insert({
-          post_id: postId,
-          user_id: currentUserId,
-          content: newComment.trim(),
-        })
-
-      if (error) {
-        logger.error('Comment submit error:', error)
-        return
-      }
-
-      setNewComment('')
-      fetchPostAndComments()
-    } catch (err) {
-      logger.error('Submit error:', err)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  async function deleteComment(commentId: string) {
-    if (!confirm('정말로 이 댓글을 삭제하시겠습니까?')) return
+    // Optimistic update
+    setPost(prev => prev ? {
+      ...prev,
+      is_liked: !prev.is_liked,
+      likes_count: prev.is_liked ? prev.likes_count - 1 : prev.likes_count + 1,
+    } : null)
 
     try {
       const supabase = createClient()
 
-      const { error } = await supabase
-        .from('community_comments')
-        .delete()
-        .eq('id', commentId)
-
-      if (error) {
-        logger.error('Comment delete error:', error)
-        alert('댓글 삭제 중 오류가 발생했습니다')
-        return
+      if (post.is_liked) {
+        await supabase
+          .from('community_likes')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', currentUserId)
+      } else {
+        await supabase
+          .from('community_likes')
+          .insert({
+            post_id: postId,
+            user_id: currentUserId,
+          })
       }
-
-      fetchPostAndComments()
     } catch (err) {
-      logger.error('Delete error:', err)
-      alert('댓글 삭제 중 오류가 발생했습니다')
+      logger.error('Toggle like error:', err)
+      // Revert on error
+      setPost(prev => prev ? {
+        ...prev,
+        is_liked: post.is_liked,
+        likes_count: post.likes_count,
+      } : null)
     }
   }
 
@@ -456,7 +326,7 @@ export default function CommunityPostDetailPage() {
         return
       }
 
-      fetchPostAndComments()
+      fetchPost()
     } catch (err) {
       logger.error('Toggle hidden error:', err)
       alert('게시글 숨김 처리 중 오류가 발생했습니다')
@@ -582,10 +452,12 @@ export default function CommunityPostDetailPage() {
           <div className="flex items-start gap-3 mb-4">
             <Link href={`/profile/${post.user_id}`}>
               {post.profiles.avatar_url ? (
-                <img
+                <Image
                   src={post.profiles.avatar_url}
                   alt={post.profiles.full_name || '사용자'}
-                  className="w-12 h-12 rounded-full object-cover"
+                  width={48}
+                  height={48}
+                  className="rounded-full object-cover"
                 />
               ) : (
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-bold">
@@ -633,13 +505,19 @@ export default function CommunityPostDetailPage() {
           {post.images && post.images.length > 0 && (
             <div className="grid grid-cols-2 gap-2 mb-6">
               {post.images.map((image, idx) => (
-                <img
+                <div
                   key={idx}
-                  src={image}
-                  alt={`이미지 ${idx + 1}`}
                   onClick={() => openGallery(post.images!, idx)}
-                  className="w-full rounded-lg object-cover aspect-square cursor-pointer hover:opacity-90 transition-opacity"
-                />
+                  className="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                >
+                  <Image
+                    src={image}
+                    alt={`이미지 ${idx + 1}`}
+                    fill
+                    sizes="(max-width: 768px) 50vw, 400px"
+                    className="object-cover"
+                  />
+                </div>
               ))}
             </div>
           )}
@@ -664,7 +542,7 @@ export default function CommunityPostDetailPage() {
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <MessageCircle className="w-6 h-6" />
-              <span>{post.comments_count}</span>
+              <span>{commentCount}</span>
             </div>
 
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -674,120 +552,22 @@ export default function CommunityPostDetailPage() {
           </div>
         </div>
 
-        {/* Comments */}
-        <div className="px-4 py-4">
-          <h2 className="text-lg font-bold mb-4">
-            댓글 {comments.length}개
-          </h2>
-
-          {comments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              첫 댓글을 작성해보세요
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {comments.map((comment) => (
-                <div key={comment.id} className="flex items-start gap-3">
-                  <Link href={`/profile/${comment.user_id}`}>
-                    {comment.profiles.avatar_url ? (
-                      <img
-                        src={comment.profiles.avatar_url}
-                        alt={comment.profiles.full_name || '사용자'}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                        {comment.profiles.full_name?.charAt(0).toUpperCase() || '?'}
-                      </div>
-                    )}
-                  </Link>
-
-                  <div className="flex-1">
-                    <div className="bg-secondary rounded-lg p-3">
-                      <Link
-                        href={`/profile/${comment.user_id}`}
-                        className="font-semibold text-sm hover:underline flex items-center gap-1 inline-flex"
-                      >
-                        <span>{comment.profiles.full_name || '익명'}</span>
-                        <span className="text-sm">{getBreadEmoji(comment.profiles.matryoshka_level, comment.profiles.user_role || undefined)}</span>
-                      </Link>
-                      <p className="text-sm mt-1 whitespace-pre-wrap">{comment.content}</p>
-                    </div>
-
-                    <div className="flex items-center gap-4 mt-2 px-2">
-                      <button
-                        onClick={() => toggleCommentLike(comment.id, comment.is_liked)}
-                        className="flex items-center gap-1 text-xs hover:text-primary transition-colors"
-                      >
-                        <Heart
-                          className={`w-4 h-4 ${
-                            comment.is_liked
-                              ? 'fill-red-500 text-red-500'
-                              : 'text-muted-foreground'
-                          }`}
-                        />
-                        <span className={comment.is_liked ? 'text-red-500' : 'text-muted-foreground'}>
-                          {comment.likes_count}
-                        </span>
-                      </button>
-
-                      <span className="text-xs text-muted-foreground">
-                        {formatTimeAgo(comment.created_at)}
-                      </span>
-
-                      {/* 삭제 버튼 - 본인 댓글 또는 관리자인 경우 표시 */}
-                      {(currentUserId === comment.user_id || isAdmin) && (
-                        <button
-                          onClick={() => deleteComment(comment.id)}
-                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors ml-auto"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          <span>{currentUserId === comment.user_id ? '삭제' : '관리자 삭제'}</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Comment Input */}
-        <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-30">
-          <div className="max-w-4xl mx-auto flex gap-2">
-            <Textarea
-              placeholder="댓글을 입력하세요..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              rows={1}
-              className="resize-none"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  submitComment()
-                }
-              }}
-            />
-            <Button
-              onClick={submitComment}
-              disabled={!newComment.trim() || isSubmitting}
-              size="icon"
-              className="flex-shrink-0"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+        {/* Comments Section */}
+        <CommentSection
+          postId={postId}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
+          onCommentCountChange={setCommentCount}
+        />
       </div>
 
-      {/* 이미지 갤러리 모달 */}
+      {/* Image gallery modal */}
       {isGalleryOpen && (
         <div
           className="fixed inset-0 z-50 bg-black"
           onClick={closeGallery}
         >
-          {/* 헤더 */}
+          {/* Header */}
           <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent">
             <span className="text-white text-sm">
               {galleryIndex + 1} / {galleryImages.length}
@@ -800,7 +580,7 @@ export default function CommunityPostDetailPage() {
             </button>
           </div>
 
-          {/* 이미지 영역 */}
+          {/* Image area */}
           <div
             className="absolute inset-0 flex items-center justify-center"
             onTouchStart={onTouchStart}
@@ -808,15 +588,19 @@ export default function CommunityPostDetailPage() {
             onTouchEnd={onTouchEnd}
             onClick={(e) => e.stopPropagation()}
           >
-            <img
+            <Image
               src={galleryImages[galleryIndex]}
               alt={`이미지 ${galleryIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
+              fill
+              sizes="100vw"
+              className="object-contain"
+              quality={85}
+              priority
               onClick={(e) => e.stopPropagation()}
             />
           </div>
 
-          {/* 이전 버튼 */}
+          {/* Previous button */}
           {galleryImages.length > 1 && (
             <button
               onClick={(e) => {
@@ -829,7 +613,7 @@ export default function CommunityPostDetailPage() {
             </button>
           )}
 
-          {/* 다음 버튼 */}
+          {/* Next button */}
           {galleryImages.length > 1 && (
             <button
               onClick={(e) => {
@@ -842,7 +626,7 @@ export default function CommunityPostDetailPage() {
             </button>
           )}
 
-          {/* 하단 인디케이터 */}
+          {/* Bottom indicators */}
           {galleryImages.length > 1 && (
             <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-2">
               {galleryImages.map((_, idx) => (
