@@ -92,6 +92,18 @@ export default function PostDetailPage() {
         logger.log('게시글 상세 캐시 히트')
         setPost(cached)
         setIsLoading(false)
+
+        // 캐시 히트해도 조회수는 증가 (본인 게시글이 아닌 경우)
+        if (cached.author_id !== user.id) {
+          supabase
+            .from('posts')
+            .update({ view_count: (cached.view_count || 0) + 1 })
+            .eq('id', postId)
+            .then(() => {
+              // 캐시 무효화 (다음에 최신 조회수 반영)
+              setCache(cacheKey, { ...cached, view_count: (cached.view_count || 0) + 1 }, 5 * 60 * 1000)
+            })
+        }
         return
       }
 
