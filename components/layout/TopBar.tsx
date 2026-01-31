@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Bell, Settings, Search } from 'lucide-react'
+import { Bell, Settings, Search, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/contexts/UserContext'
@@ -94,7 +94,7 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
           </Link>
         )}
 
-        {/* 오른쪽: 검색, 알림, 설정 */}
+        {/* 오른쪽: 검색, 알림, 관리자, 설정 */}
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -119,6 +119,19 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
             )}
           </Button>
+
+          {/* 관리자 메뉴 (admin/developer만 표시) */}
+          {profile?.user_role && ['admin', 'developer'].includes(profile.user_role) && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-9 h-9"
+              onClick={() => router.push('/admin')}
+            >
+              <Shield className="w-5 h-5" />
+              <span className="sr-only">관리자</span>
+            </Button>
+          )}
 
           <Button
             variant="ghost"

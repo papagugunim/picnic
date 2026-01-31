@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { AdminProfile, UserFilters, UserRole } from '@/types/admin'
 
@@ -10,13 +10,17 @@ export function useAdminUsers() {
   const [users, setUsers] = useState<AdminProfile[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
-  const [page, setPage] = useState(0)
+  const pageRef = useRef(0)
 
   const fetchUsers = useCallback(async (filters: UserFilters, reset = false) => {
     const supabase = createClient()
     setIsLoading(true)
 
-    const currentPage = reset ? 0 : page
+    if (reset) {
+      pageRef.current = 0
+    }
+
+    const currentPage = pageRef.current
     const from = currentPage * PAGE_SIZE
     const to = from + PAGE_SIZE - 1
 
@@ -69,15 +73,14 @@ export function useAdminUsers() {
 
     if (reset) {
       setUsers(newUsers)
-      setPage(1)
     } else {
       setUsers((prev) => [...prev, ...newUsers])
-      setPage((prev) => prev + 1)
     }
 
+    pageRef.current += 1
     setHasMore(newUsers.length === PAGE_SIZE)
     setIsLoading(false)
-  }, [page])
+  }, [])
 
   const updateUserRole = useCallback(async (
     userId: string,
@@ -207,7 +210,7 @@ export function useAdminUsers() {
 
   const reset = useCallback(() => {
     setUsers([])
-    setPage(0)
+    pageRef.current = 0
     setHasMore(true)
   }, [])
 
