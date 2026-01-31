@@ -101,7 +101,7 @@ export function CommentSection({
           profiles!community_comments_user_id_fkey (
             full_name,
             avatar_url,
-            matryoshka_level,
+            bread_level,
             user_role
           )
         `)
@@ -150,7 +150,7 @@ export function CommentSection({
           profiles: author || {
             full_name: null,
             avatar_url: null,
-            matryoshka_level: 0,
+            bread_level: 0,
             user_role: null,
           },
           likes_count: likesCountMap.get(comment.id) || 0,

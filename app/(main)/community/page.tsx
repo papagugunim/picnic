@@ -30,7 +30,7 @@ interface CommunityPost {
   profiles: {
     full_name: string | null
     avatar_url: string | null
-    matryoshka_level: number
+    bread_level: number
     city: string | null
     user_role: string | null
   }
@@ -192,7 +192,7 @@ export default function CommunityPage() {
         profiles!community_posts_user_id_fkey (
           full_name,
           avatar_url,
-          matryoshka_level,
+          bread_level,
           city,
           user_role
         )
@@ -478,7 +478,7 @@ export default function CommunityPage() {
                         <UserAvatar
                           src={post.profiles.avatar_url}
                           alt={post.profiles.full_name || '사용자'}
-                          matryoshkaLevel={post.profiles.matryoshka_level}
+                          breadLevel={post.profiles.bread_level}
                           size="md"
                         />
                       </Link>
@@ -495,7 +495,7 @@ export default function CommunityPage() {
                             {post.profiles.full_name || '익명'}
                           </Link>
                           <span className="text-base flex-shrink-0">
-                            {getBreadEmoji(post.profiles.matryoshka_level, post.profiles.user_role || undefined)}
+                            {getBreadEmoji(post.profiles.bread_level, post.profiles.user_role || undefined)}
                           </span>
                           <span className="text-muted-foreground flex-shrink-0">·</span>
                           <span className="text-xs px-1.5 py-0.5 bg-secondary rounded-full text-muted-foreground flex-shrink-0">

@@ -14,7 +14,7 @@ interface UserProfile {
   city: string
   avatar_url?: string
   preferred_metro_stations?: string[]
-  matryoshka_level?: number
+  bread_level?: number
 }
 
 interface UserContextType {
@@ -110,7 +110,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           logger.log('[UserContext] Fetching profile from database')
           const { data: profileData } = await supabase
             .from('profiles')
-            .select('id, full_name, city, avatar_url, preferred_metro_stations, matryoshka_level')
+            .select('id, full_name, city, avatar_url, preferred_metro_stations, bread_level')
             .eq('id', userData.id)
             .single()
 

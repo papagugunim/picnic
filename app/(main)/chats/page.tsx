@@ -132,7 +132,7 @@ export default function ChatsPage() {
                               {room.other_user.full_name || '익명'}
                             </span>
                             <span className="text-sm">
-                              {getBreadEmoji(room.other_user.matryoshka_level || 1, room.other_user.user_role || undefined)}
+                              {getBreadEmoji(room.other_user.bread_level || 1, room.other_user.user_role || undefined)}
                             </span>
                           </div>
                           {room.post?.price !== null && room.post?.price !== undefined && (

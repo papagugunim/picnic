@@ -27,7 +27,7 @@ interface Profile {
   created_at: string
   email: string
   preferred_metro_stations: string[] | null
-  matryoshka_level: number
+  bread_level: number
   user_role: string | null
 }
 
@@ -92,7 +92,7 @@ export default function ProfilePage() {
         // 프로필 정보 가져오기
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, city, created_at, email, preferred_metro_stations, matryoshka_level, user_role')
+          .select('id, full_name, avatar_url, city, created_at, email, preferred_metro_stations, bread_level, user_role')
           .eq('id', userId)
           .single()
 
@@ -308,7 +308,7 @@ export default function ProfilePage() {
               <UserAvatar
                 src={profile.avatar_url}
                 alt={profile.full_name || '프로필'}
-                matryoshkaLevel={profile.matryoshka_level || 1}
+                breadLevel={profile.bread_level || 1}
                 size="xl"
                 className="border-2 border-border"
               />
@@ -350,15 +350,15 @@ export default function ProfilePage() {
               <div className="mb-2">
                 {(() => {
                   const breadInfo = getBreadInfo(
-                    profile.matryoshka_level || 1,
+                    profile.bread_level || 1,
                     profile.user_role || undefined
                   )
                   const description = getBreadDescription(
-                    profile.matryoshka_level || 1,
+                    profile.bread_level || 1,
                     profile.user_role || undefined
                   )
                   const emoji = getBreadEmoji(
-                    profile.matryoshka_level || 1,
+                    profile.bread_level || 1,
                     profile.user_role || undefined
                   )
                   return (

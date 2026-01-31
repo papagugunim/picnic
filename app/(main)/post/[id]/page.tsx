@@ -44,7 +44,7 @@ interface Post {
   profiles: {
     full_name: string | null
     avatar_url: string | null
-    matryoshka_level: number
+    bread_level: number
     user_role: string | null
   }
   likes_count: number
@@ -140,7 +140,7 @@ export default function PostDetailPage() {
           profiles!posts_author_id_fkey (
             full_name,
             avatar_url,
-            matryoshka_level,
+            bread_level,
             user_role
           )
         `)
@@ -705,7 +705,7 @@ export default function PostDetailPage() {
             <UserAvatar
               src={post.profiles.avatar_url}
               alt={post.profiles.full_name || '사용자'}
-              matryoshkaLevel={post.profiles.matryoshka_level}
+              breadLevel={post.profiles.bread_level}
               size="lg"
             />
 
@@ -715,7 +715,7 @@ export default function PostDetailPage() {
                   {post.profiles.full_name || '익명'}
                 </span>
                 <span className="text-lg">
-                  {getBreadEmoji(post.profiles.matryoshka_level, post.profiles.user_role || undefined)}
+                  {getBreadEmoji(post.profiles.bread_level, post.profiles.user_role || undefined)}
                 </span>
               </div>
               <div className="text-sm text-muted-foreground">

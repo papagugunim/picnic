@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 interface UserAvatarProps {
   src?: string | null
   alt?: string
-  matryoshkaLevel?: number
+  breadLevel?: number
   size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }
@@ -22,12 +22,12 @@ const sizeClasses = {
 export function UserAvatar({
   src,
   alt = '프로필',
-  matryoshkaLevel = 0,
+  breadLevel = 0,
   size = 'md',
   className
 }: UserAvatarProps) {
-  const breadInfo = getBreadInfo(matryoshkaLevel)
-  const breadEmoji = getBreadEmoji(matryoshkaLevel)
+  const breadInfo = getBreadInfo(breadLevel)
+  const breadEmoji = getBreadEmoji(breadLevel)
 
   return (
     <Avatar className={cn(sizeClasses[size], className)}>

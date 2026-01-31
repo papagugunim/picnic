@@ -36,7 +36,7 @@ interface CommunityPost {
   profiles: {
     full_name: string | null
     avatar_url: string | null
-    matryoshka_level: number
+    bread_level: number
     user_role: string | null
   }
   likes_count: number
@@ -173,7 +173,7 @@ export default function CommunityPostDetailPage() {
           profiles!community_posts_user_id_fkey (
             full_name,
             avatar_url,
-            matryoshka_level,
+            bread_level,
             user_role
           )
         `)
@@ -473,7 +473,7 @@ export default function CommunityPostDetailPage() {
                   className="font-semibold hover:underline flex items-center gap-1"
                 >
                   <span>{post.profiles.full_name || '익명'}</span>
-                  <span className="text-base">{getBreadEmoji(post.profiles.matryoshka_level, post.profiles.user_role || undefined)}</span>
+                  <span className="text-base">{getBreadEmoji(post.profiles.bread_level, post.profiles.user_role || undefined)}</span>
                 </Link>
                 <span className="text-xs px-2 py-0.5 bg-secondary rounded-full">
                   {category.emoji} {category.name}

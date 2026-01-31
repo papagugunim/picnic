@@ -75,7 +75,7 @@ export function CommentThread({
           <UserAvatar
             src={comment.profiles.avatar_url}
             alt={comment.profiles.full_name || '사용자'}
-            matryoshkaLevel={comment.profiles.matryoshka_level}
+            breadLevel={comment.profiles.bread_level}
             size="sm"
           />
         </Link>
@@ -89,7 +89,7 @@ export function CommentThread({
             >
               <span>{comment.profiles.full_name || '익명'}</span>
               <span className="text-sm">
-                {getBreadEmoji(comment.profiles.matryoshka_level, comment.profiles.user_role || undefined)}
+                {getBreadEmoji(comment.profiles.bread_level, comment.profiles.user_role || undefined)}
               </span>
             </Link>
             <p className="text-sm mt-1 whitespace-pre-wrap break-words">

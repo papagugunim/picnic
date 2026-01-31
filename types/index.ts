@@ -105,7 +105,7 @@ export interface ThreadedComment {
   profiles: {
     full_name: string | null
     avatar_url: string | null
-    matryoshka_level: number
+    bread_level: number
     user_role: string | null
   }
   likes_count: number

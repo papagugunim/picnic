@@ -68,7 +68,7 @@ export function useChats() {
         // 1. 모든 사용자 프로필 한번에 조회
         supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, matryoshka_level, user_role')
+          .select('id, full_name, avatar_url, bread_level, user_role')
           .in('id', otherUserIds),
 
         // 2. 모든 unread 메시지 한번에 조회
@@ -114,7 +114,7 @@ export function useChats() {
             id: otherUserId,
             full_name: null,
             avatar_url: null,
-            matryoshka_level: 0
+            bread_level: 0
           },
           unread_count: unreadCountMap.get(room.id) || 0,
           post: post || null,

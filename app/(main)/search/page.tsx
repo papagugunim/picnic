@@ -26,7 +26,7 @@ interface PostSearchResult {
   profiles: {
     full_name: string | null
     avatar_url: string | null
-    matryoshka_level: number
+    bread_level: number
   }
 }
 
@@ -42,7 +42,7 @@ interface CommunitySearchResult {
   profiles: {
     full_name: string | null
     avatar_url: string | null
-    matryoshka_level: number
+    bread_level: number
     user_role: string | null
   }
   likes_count: number
@@ -114,7 +114,7 @@ export default function SearchPage() {
             profiles:author_id (
               full_name,
               avatar_url,
-              matryoshka_level
+              bread_level
             )
           `)
           .eq('status', 'active')
@@ -164,7 +164,7 @@ export default function SearchPage() {
             profiles!community_posts_user_id_fkey (
               full_name,
               avatar_url,
-              matryoshka_level,
+              bread_level,
               city,
               user_role
             )
@@ -420,7 +420,7 @@ export default function SearchPage() {
                         <UserAvatar
                           src={result.profiles.avatar_url}
                           alt={result.profiles.full_name || '사용자'}
-                          matryoshkaLevel={result.profiles.matryoshka_level}
+                          breadLevel={result.profiles.bread_level}
                           size="sm"
                         />
 
@@ -430,7 +430,7 @@ export default function SearchPage() {
                               {result.profiles.full_name || '익명'}
                             </span>
                             <span className="text-sm">
-                              {getBreadEmoji(result.profiles.matryoshka_level, result.profiles.user_role || undefined)}
+                              {getBreadEmoji(result.profiles.bread_level, result.profiles.user_role || undefined)}
                             </span>
                             <span className="text-xs px-2 py-0.5 bg-secondary rounded-full">
                               {communityCategories[result.category]?.emoji} {communityCategories[result.category]?.name || result.category}

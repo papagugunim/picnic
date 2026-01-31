@@ -99,7 +99,7 @@ export default function ChatRoomPage() {
 
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, matryoshka_level, user_role')
+        .select('id, full_name, avatar_url, bread_level, user_role')
         .eq('id', otherUserId)
         .single()
 
@@ -121,7 +121,7 @@ export default function ChatRoomPage() {
           id: otherUserId,
           full_name: null,
           avatar_url: null,
-          matryoshka_level: 0,
+          bread_level: 0,
           user_role: null
         },
         unread_count: 0,
@@ -244,11 +244,11 @@ export default function ChatRoomPage() {
               <div className="font-semibold flex items-center gap-1">
                 {room.other_user.full_name || '익명'}
                 <span className="text-base">
-                  {getBreadEmoji(room.other_user.matryoshka_level || 1, room.other_user.user_role || undefined)}
+                  {getBreadEmoji(room.other_user.bread_level || 1, room.other_user.user_role || undefined)}
                 </span>
               </div>
               <div className="text-xs text-muted-foreground">
-                {getBreadInfo(room.other_user.matryoshka_level || 1, room.other_user.user_role || undefined).name}
+                {getBreadInfo(room.other_user.bread_level || 1, room.other_user.user_role || undefined).name}
               </div>
             </div>
           </Link>
