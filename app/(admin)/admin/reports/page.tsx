@@ -67,10 +67,13 @@ export default function AdminReportsPage() {
       return
     }
 
-    const newReports = (data || []).map((r) => ({
-      ...r,
-      reporter: r.reporter as { full_name: string | null; avatar_url: string | null } | null,
-    })) as Report[]
+    const newReports = (data || []).map((r) => {
+      const reporterData = r.reporter as { full_name: string | null; avatar_url: string | null } | { full_name: string | null; avatar_url: string | null }[] | null
+      return {
+        ...r,
+        reporter: Array.isArray(reporterData) ? reporterData[0] : reporterData,
+      }
+    }) as Report[]
 
     if (reset) {
       setReports(newReports)

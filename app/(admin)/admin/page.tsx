@@ -179,7 +179,8 @@ export default async function AdminDashboardPage() {
                 <p className="text-sm text-muted-foreground">최근 신고가 없습니다.</p>
               ) : (
                 recentReports.map((report) => {
-                  const reporter = report.reporter as { full_name: string | null; avatar_url: string | null } | null
+                  const reporterData = report.reporter as { full_name: string | null; avatar_url: string | null } | { full_name: string | null; avatar_url: string | null }[] | null
+                  const reporter = Array.isArray(reporterData) ? reporterData[0] : reporterData
                   return (
                     <div key={report.id} className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
