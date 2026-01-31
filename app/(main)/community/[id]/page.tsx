@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('CommunityDetailPage')
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Heart, MessageCircle, MoreVertical, Trash2, EyeOff, Eye, Edit, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Heart, MessageCircle, MoreVertical, Trash2, EyeOff, Eye, Edit, X, Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import { ReportDialog } from '@/components/admin/ReportDialog'
 
 interface CommunityPost {
   id: string
@@ -70,6 +71,7 @@ export default function CommunityPostDetailPage() {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false)
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
 
   const openGallery = useCallback((images: string[], index: number) => {
     setGalleryImages(images)
@@ -385,8 +387,7 @@ export default function CommunityPostDetailPage() {
               <ChevronLeft className="w-5 h-5" />
             </Button>
             <h1 className="text-lg font-semibold">동네생활</h1>
-            {canManage ? (
-              <DropdownMenu>
+            <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">
                     <MoreVertical className="w-5 h-5" />
@@ -438,11 +439,17 @@ export default function CommunityPostDetailPage() {
                       )}
                     </>
                   )}
+                  {!isAuthor && (
+                    <>
+                      {(isAdmin || canManage) && <DropdownMenuSeparator />}
+                      <DropdownMenuItem onClick={() => setIsReportDialogOpen(true)}>
+                        <Flag className="w-4 h-4 mr-2" />
+                        신고하기
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
-            ) : (
-              <div className="w-10" />
-            )}
           </div>
         </div>
 
@@ -645,6 +652,14 @@ export default function CommunityPostDetailPage() {
           )}
         </div>
       )}
+
+      {/* 신고 다이얼로그 */}
+      <ReportDialog
+        open={isReportDialogOpen}
+        onOpenChange={setIsReportDialogOpen}
+        targetType="community_post"
+        targetId={postId}
+      />
     </div>
   )
 }

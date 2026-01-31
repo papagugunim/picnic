@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, MapPin, Clock, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MapPin, Clock, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye, Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -22,6 +22,7 @@ import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadInfo, getBreadEmoji } from '@/lib/bread'
 import { getCache, setCache } from '@/lib/cache'
 import { UserAvatar } from '@/components/ui/user-avatar'
+import { ReportDialog } from '@/components/admin/ReportDialog'
 
 interface Post {
   id: string
@@ -67,6 +68,7 @@ export default function PostDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
 
   useEffect(() => {
     fetchPost()
@@ -568,8 +570,7 @@ export default function PostDetailPage() {
               <ChevronLeft className="w-5 h-5" />
             </Button>
             <h1 className="text-lg font-semibold">중고거래</h1>
-            {canManage ? (
-              <DropdownMenu>
+            <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">
                     <MoreVertical className="w-5 h-5" />
@@ -620,11 +621,17 @@ export default function PostDetailPage() {
                       )}
                     </>
                   )}
+                  {!isAuthor && (
+                    <>
+                      {(isAdmin || canManage) && <DropdownMenuSeparator />}
+                      <DropdownMenuItem onClick={() => setIsReportDialogOpen(true)}>
+                        <Flag className="w-4 h-4 mr-2" />
+                        신고하기
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
-            ) : (
-              <div className="w-10" />
-            )}
           </div>
         </div>
 
@@ -850,6 +857,14 @@ export default function PostDetailPage() {
           </div>
         )}
       </div>
+
+      {/* 신고 다이얼로그 */}
+      <ReportDialog
+        open={isReportDialogOpen}
+        onOpenChange={setIsReportDialogOpen}
+        targetType="post"
+        targetId={postId}
+      />
     </div>
   )
 }

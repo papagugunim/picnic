@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Heart, MessageCircle, Trash2, ChevronDown, ChevronUp, Send } from 'lucide-react'
+import { Heart, MessageCircle, Trash2, ChevronDown, ChevronUp, Send, Flag } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -9,6 +9,7 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import { getBreadEmoji } from '@/lib/bread'
 import { cn } from '@/lib/utils'
 import type { ThreadedComment } from '@/types'
+import { ReportDialog } from '@/components/admin/ReportDialog'
 
 interface CommentThreadProps {
   comment: ThreadedComment
@@ -33,6 +34,7 @@ export function CommentThread({
   const [showReplyInput, setShowReplyInput] = useState(false)
   const [replyContent, setReplyContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
 
   const canReply = comment.depth < 2
   const canDelete = currentUserId === comment.user_id || isAdmin
@@ -126,6 +128,16 @@ export function CommentThread({
               {formatTimeAgo(comment.created_at)}
             </span>
 
+            {currentUserId !== comment.user_id && (
+              <button
+                onClick={() => setIsReportDialogOpen(true)}
+                className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
+              >
+                <Flag className="w-4 h-4" />
+                <span>신고</span>
+              </button>
+            )}
+
             {canDelete && (
               <button
                 onClick={handleDeleteClick}
@@ -203,6 +215,14 @@ export function CommentThread({
           )}
         </div>
       </div>
+
+      {/* 신고 다이얼로그 */}
+      <ReportDialog
+        open={isReportDialogOpen}
+        onOpenChange={setIsReportDialogOpen}
+        targetType="comment"
+        targetId={comment.id}
+      />
     </div>
   )
 }

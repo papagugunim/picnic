@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Settings, MapPin, Calendar, Package, Train, Users, MessageCircle, Heart, Bookmark } from 'lucide-react'
+import { Settings, MapPin, Calendar, Package, Train, Users, MessageCircle, Heart, Bookmark, Flag } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -18,6 +18,7 @@ import { getBreadInfo, getBreadDescription, getBreadEmoji } from '@/lib/bread'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { BreadLevelModal } from '@/components/bread-level-modal'
+import { ReportDialog } from '@/components/admin/ReportDialog'
 
 interface Profile {
   id: string
@@ -66,6 +67,7 @@ export default function ProfilePage() {
   const [isStartingChat, setIsStartingChat] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [isBreadModalOpen, setIsBreadModalOpen] = useState(false)
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -320,18 +322,29 @@ export default function ProfilePage() {
                 <h1 className="text-2xl font-bold">
                   {profile.full_name || '이름 없음'}
                 </h1>
-                {/* 채팅하기 버튼 (다른 사람 프로필일 경우만) */}
+                {/* 채팅하기/신고 버튼 (다른 사람 프로필일 경우만) */}
                 {!isOwnProfile && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="gap-1.5 flex-shrink-0"
-                    onClick={startChat}
-                    disabled={isStartingChat}
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span className="text-xs">{isStartingChat ? '로딩중' : '채팅'}</span>
-                  </Button>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={startChat}
+                      disabled={isStartingChat}
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span className="text-xs">{isStartingChat ? '로딩중' : '채팅'}</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => setIsReportDialogOpen(true)}
+                    >
+                      <Flag className="w-3.5 h-3.5" />
+                      <span className="text-xs">신고</span>
+                    </Button>
+                  </div>
                 )}
               </div>
 
@@ -748,6 +761,14 @@ export default function ProfilePage() {
       <BreadLevelModal
         open={isBreadModalOpen}
         onOpenChange={setIsBreadModalOpen}
+      />
+
+      {/* 신고 다이얼로그 */}
+      <ReportDialog
+        open={isReportDialogOpen}
+        onOpenChange={setIsReportDialogOpen}
+        targetType="user"
+        targetId={userId}
       />
     </div>
   )
