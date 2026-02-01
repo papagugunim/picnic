@@ -20,7 +20,7 @@ export default function MainLayout({
       <div className="min-h-screen bg-background">
         <TopBar />
 
-        <main className={`${isChatRoomPage ? '' : 'pt-14 pb-16'} max-w-screen-xl mx-auto`}>
+        <main className={`${isChatRoomPage ? '' : 'pt-14 pb-12'} max-w-screen-xl mx-auto`}>
           {children}
         </main>
 

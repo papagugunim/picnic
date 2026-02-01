@@ -49,7 +49,7 @@ function BottomNav() {
 
   return (
     <nav className={`fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background transition-transform duration-300 ease-in-out ${scrollHidden ? 'translate-y-full' : 'translate-y-0'}`}>
-      <div className="flex items-center justify-around h-16 max-w-screen-xl mx-auto">
+      <div className="flex items-center justify-around h-12 max-w-screen-xl mx-auto">
         {navItems.map((item) => {
           const isActive = pathname?.startsWith(item.href)
           const Icon = item.icon
@@ -61,11 +61,12 @@ function BottomNav() {
               href={item.href}
               prefetch={true}
               className={cn(
-                'flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors relative',
+                'flex items-center justify-center flex-1 h-full transition-colors relative',
                 isActive
                   ? 'text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               )}
+              aria-label={item.name}
             >
               <div className="relative">
                 <Icon
@@ -78,14 +79,6 @@ function BottomNav() {
                   </div>
                 )}
               </div>
-              <span
-                className={cn(
-                  'text-xs',
-                  isActive ? 'font-semibold' : 'font-normal'
-                )}
-              >
-                {item.name}
-              </span>
             </Link>
           )
         })}
