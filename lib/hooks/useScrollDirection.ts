@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface UseScrollDirectionOptions {
   /** 스크롤 감지 임계값 (px). 이 값 이상 스크롤해야 방향 전환 */
@@ -10,55 +10,58 @@ interface UseScrollDirectionOptions {
 }
 
 /**
- * X.com 스타일 스크롤 방향 감지 훅
+ * 스크롤 방향 감지 훅
  * - 아래로 스크롤: hidden = true (헤더/네비 숨김)
  * - 위로 스크롤: hidden = false (헤더/네비 표시)
  * - 페이지 상단: 항상 표시
  */
 export function useScrollDirection({
-  threshold = 10,
-  topOffset = 50,
+  threshold = 5,
+  topOffset = 100,
 }: UseScrollDirectionOptions = {}) {
   const [hidden, setHidden] = useState(false)
   const lastScrollY = useRef(0)
-  const ticking = useRef(false)
-
-  const updateScrollDirection = useCallback(() => {
-    const scrollY = window.scrollY
-
-    // 페이지 상단 근처: 항상 표시
-    if (scrollY < topOffset) {
-      setHidden(false)
-      lastScrollY.current = scrollY
-      ticking.current = false
-      return
-    }
-
-    const diff = scrollY - lastScrollY.current
-
-    // 임계값 이상 스크롤했을 때만 방향 전환
-    if (Math.abs(diff) < threshold) {
-      ticking.current = false
-      return
-    }
-
-    // 아래로 스크롤: 숨김 / 위로 스크롤: 표시
-    setHidden(diff > 0)
-    lastScrollY.current = scrollY
-    ticking.current = false
-  }, [threshold, topOffset])
+  const rafId = useRef<number | null>(null)
 
   useEffect(() => {
-    const onScroll = () => {
-      if (!ticking.current) {
-        ticking.current = true
-        requestAnimationFrame(updateScrollDirection)
+    // 초기값 설정
+    lastScrollY.current = window.scrollY
+
+    const handleScroll = () => {
+      if (rafId.current) {
+        cancelAnimationFrame(rafId.current)
       }
+
+      rafId.current = requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY
+
+        // 페이지 상단 근처: 항상 표시
+        if (currentScrollY < topOffset) {
+          setHidden(false)
+          lastScrollY.current = currentScrollY
+          return
+        }
+
+        const diff = currentScrollY - lastScrollY.current
+
+        // 임계값 이상 스크롤했을 때만 방향 전환
+        if (Math.abs(diff) >= threshold) {
+          // 아래로 스크롤: 숨김 / 위로 스크롤: 표시
+          setHidden(diff > 0)
+          lastScrollY.current = currentScrollY
+        }
+      })
     }
 
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [updateScrollDirection])
+    window.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      if (rafId.current) {
+        cancelAnimationFrame(rafId.current)
+      }
+    }
+  }, [threshold, topOffset])
 
   return hidden
 }
