@@ -66,8 +66,7 @@ export function ReportList({ reports, onUpdateStatus }: ReportListProps) {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'short',
+      month: 'numeric',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
@@ -121,7 +120,83 @@ export function ReportList({ reports, onUpdateStatus }: ReportListProps) {
 
   return (
     <>
-      <div className="rounded-md border">
+      {/* 모바일 카드 뷰 */}
+      <div className="md:hidden space-y-2">
+        {reports.map((report) => (
+          <div key={report.id} className="bg-card border rounded-lg p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Avatar className="h-8 w-8 flex-shrink-0">
+                  <AvatarImage src={report.reporter?.avatar_url || undefined} />
+                  <AvatarFallback className="text-xs">
+                    {(report.reporter?.full_name || '?').slice(0, 2)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">
+                    {report.reporter?.full_name || '알 수 없음'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(report.created_at)}
+                  </p>
+                </div>
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={report.status !== 'pending'}
+                  >
+                    <DotsHorizontalIcon className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>처리</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleAction(report, 'reviewed')}>
+                    검토 완료
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAction(report, 'resolved')}>
+                    처리 완료
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleAction(report, 'dismissed')}
+                    className="text-muted-foreground"
+                  >
+                    기각
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="mt-2 space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="outline" className="text-xs">
+                  {TARGET_TYPE_LABELS[report.target_type as ReportTargetType]}
+                </Badge>
+                <Badge variant={getStatusBadgeVariant(report.status as ReportStatus)} className="text-xs">
+                  {REPORT_STATUS_LABELS[report.status as ReportStatus]}
+                </Badge>
+              </div>
+              <p className="text-xs">
+                <span className="text-muted-foreground">사유: </span>
+                {REPORT_REASONS[report.reason as ReportReason]}
+              </p>
+              {report.details && (
+                <p className="text-xs text-muted-foreground line-clamp-2">
+                  {report.details}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* 데스크톱 테이블 뷰 */}
+      <div className="hidden md:block rounded-md border">
         <table className="w-full">
           <thead>
             <tr className="border-b bg-muted/50">
@@ -129,13 +204,10 @@ export function ReportList({ reports, onUpdateStatus }: ReportListProps) {
                 신고자
               </th>
               <th className="h-10 px-4 text-left text-sm font-medium text-muted-foreground">
-                대상 유형
+                대상
               </th>
               <th className="h-10 px-4 text-left text-sm font-medium text-muted-foreground">
-                신고 사유
-              </th>
-              <th className="h-10 px-4 text-left text-sm font-medium text-muted-foreground">
-                상세 내용
+                사유
               </th>
               <th className="h-10 px-4 text-left text-sm font-medium text-muted-foreground">
                 상태
@@ -171,11 +243,6 @@ export function ReportList({ reports, onUpdateStatus }: ReportListProps) {
                 </td>
                 <td className="p-4 text-sm">
                   {REPORT_REASONS[report.reason as ReportReason]}
-                </td>
-                <td className="p-4">
-                  <p className="text-sm text-muted-foreground max-w-[200px] truncate">
-                    {report.details || '-'}
-                  </p>
                 </td>
                 <td className="p-4">
                   <Badge variant={getStatusBadgeVariant(report.status as ReportStatus)}>
@@ -224,7 +291,7 @@ export function ReportList({ reports, onUpdateStatus }: ReportListProps) {
         open={!!actionDialogReport}
         onOpenChange={(open) => !open && setActionDialogReport(null)}
       >
-        <DialogContent>
+        <DialogContent className="max-w-[90vw] sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>신고 처리</DialogTitle>
             <DialogDescription>
@@ -244,7 +311,7 @@ export function ReportList({ reports, onUpdateStatus }: ReportListProps) {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => setActionDialogReport(null)}

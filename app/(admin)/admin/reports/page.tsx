@@ -141,18 +141,18 @@ export default function AdminReportsPage() {
   }, [isLoading, hasMore, fetchReports])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">신고 관리</h2>
-        <p className="text-muted-foreground">사용자 신고를 검토하고 처리합니다.</p>
+        <h2 className="text-xl md:text-2xl font-bold">신고 관리</h2>
+        <p className="text-sm md:text-base text-muted-foreground">사용자 신고를 검토하고 처리합니다.</p>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex gap-2 md:gap-4">
         <Select
           value={statusFilter}
           onValueChange={(value) => setStatusFilter(value as ReportStatus | 'all')}
         >
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="flex-1 md:flex-none md:w-[150px]">
             <SelectValue placeholder="상태" />
           </SelectTrigger>
           <SelectContent>
@@ -168,14 +168,14 @@ export default function AdminReportsPage() {
           value={typeFilter}
           onValueChange={(value) => setTypeFilter(value as ReportTargetType | 'all')}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="flex-1 md:flex-none md:w-[180px]">
             <SelectValue placeholder="대상 유형" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">모든 유형</SelectItem>
             <SelectItem value="user">사용자</SelectItem>
-            <SelectItem value="post">중고거래 게시글</SelectItem>
-            <SelectItem value="community_post">동네생활 게시글</SelectItem>
+            <SelectItem value="post">중고거래</SelectItem>
+            <SelectItem value="community_post">동네생활</SelectItem>
             <SelectItem value="comment">댓글</SelectItem>
           </SelectContent>
         </Select>

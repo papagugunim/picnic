@@ -99,13 +99,13 @@ export default async function AdminDashboardPage() {
   ])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">대시보드</h2>
-        <p className="text-muted-foreground">Picnic 서비스 현황을 한눈에 확인하세요.</p>
+        <h2 className="text-xl md:text-2xl font-bold">대시보드</h2>
+        <p className="text-sm md:text-base text-muted-foreground">Picnic 서비스 현황을 한눈에 확인하세요.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 md:gap-4 lg:grid-cols-3">
         <StatsCard
           title="총 회원수"
           value={stats.totalUsers.toLocaleString()}
@@ -139,27 +139,27 @@ export default async function AdminDashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 md:gap-6 md:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">최근 가입 회원</CardTitle>
+          <CardHeader className="p-3 md:p-6 pb-2 md:pb-2">
+            <CardTitle className="text-sm md:text-base">최근 가입 회원</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="p-3 md:p-6 pt-0 md:pt-0">
+            <div className="space-y-3 md:space-y-4">
               {recentUsers.length === 0 ? (
                 <p className="text-sm text-muted-foreground">최근 가입한 회원이 없습니다.</p>
               ) : (
                 recentUsers.map((user) => (
-                  <div key={user.id} className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
+                  <div key={user.id} className="flex items-center gap-2 md:gap-3">
+                    <Avatar className="h-7 w-7 md:h-8 md:w-8">
                       <AvatarImage src={user.avatar_url || undefined} />
-                      <AvatarFallback>{(user.full_name || '?').slice(0, 2)}</AvatarFallback>
+                      <AvatarFallback className="text-xs">{(user.full_name || '?').slice(0, 2)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{user.full_name || '이름 없음'}</p>
-                      <p className="text-xs text-muted-foreground">{user.city}</p>
+                      <p className="text-xs md:text-sm font-medium truncate">{user.full_name || '이름 없음'}</p>
+                      <p className="text-xs text-muted-foreground">{user.city === 'Moscow' ? '모스크바' : user.city === 'Saint Petersburg' ? '상트' : '-'}</p>
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
                       {new Date(user.created_at).toLocaleDateString('ko-KR')}
                     </span>
                   </div>
@@ -170,11 +170,11 @@ export default async function AdminDashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">최근 신고</CardTitle>
+          <CardHeader className="p-3 md:p-6 pb-2 md:pb-2">
+            <CardTitle className="text-sm md:text-base">최근 신고</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="p-3 md:p-6 pt-0 md:pt-0">
+            <div className="space-y-3 md:space-y-4">
               {recentReports.length === 0 ? (
                 <p className="text-sm text-muted-foreground">최근 신고가 없습니다.</p>
               ) : (
@@ -182,27 +182,27 @@ export default async function AdminDashboardPage() {
                   const reporterData = report.reporter as { full_name: string | null; avatar_url: string | null } | { full_name: string | null; avatar_url: string | null }[] | null
                   const reporter = Array.isArray(reporterData) ? reporterData[0] : reporterData
                   return (
-                    <div key={report.id} className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
+                    <div key={report.id} className="flex items-center gap-2 md:gap-3">
+                      <Avatar className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0">
                         <AvatarImage src={reporter?.avatar_url || undefined} />
-                        <AvatarFallback>{(reporter?.full_name || '?').slice(0, 2)}</AvatarFallback>
+                        <AvatarFallback className="text-xs">{(reporter?.full_name || '?').slice(0, 2)}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm truncate">
+                        <p className="text-xs md:text-sm truncate">
                           <span className="font-medium">{reporter?.full_name || '알 수 없음'}</span>
-                          <span className="text-muted-foreground">님이 </span>
+                          <span className="text-muted-foreground hidden sm:inline">님이 </span>
+                          <span className="text-muted-foreground sm:hidden"> · </span>
                           <span className="font-medium">{TARGET_TYPE_LABELS[report.target_type as ReportTargetType]}</span>
-                          <span className="text-muted-foreground"> 신고</span>
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground truncate">
                           {REPORT_REASONS[report.reason as ReportReason]}
                         </p>
                       </div>
                       <Badge
                         variant={report.status === 'pending' ? 'destructive' : 'secondary'}
-                        className="text-xs"
+                        className="text-xs flex-shrink-0"
                       >
-                        {report.status === 'pending' ? '대기중' : '처리됨'}
+                        {report.status === 'pending' ? '대기' : '처리'}
                       </Badge>
                     </div>
                   )

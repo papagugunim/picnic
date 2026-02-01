@@ -81,13 +81,74 @@ export default function AdminUsersPage() {
   }, [updateUserRole, currentUserRole])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">회원 관리</h2>
-        <p className="text-muted-foreground">회원 검색, 역할 변경, 계정 정지/해제를 관리합니다.</p>
+        <h2 className="text-xl md:text-2xl font-bold">회원 관리</h2>
+        <p className="text-sm md:text-base text-muted-foreground">회원 검색, 역할 변경, 계정 정지/해제를 관리합니다.</p>
       </div>
 
-      <div className="flex flex-wrap gap-4">
+      {/* 모바일 필터 */}
+      <div className="md:hidden space-y-2">
+        <div className="flex gap-2">
+          <Input
+            placeholder="이름/이메일 검색..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={handleKeyPress}
+            className="flex-1"
+          />
+          <Button onClick={handleSearch} variant="secondary" size="icon">
+            <MagnifyingGlassIcon className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="flex gap-2">
+          <Select
+            value={filters.role || 'all'}
+            onValueChange={(value) => setFilters((prev) => ({ ...prev, role: value as UserRole | 'all' }))}
+          >
+            <SelectTrigger className="flex-1">
+              <SelectValue placeholder="역할" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">모든 역할</SelectItem>
+              <SelectItem value="user">사용자</SelectItem>
+              <SelectItem value="admin">관리자</SelectItem>
+              <SelectItem value="developer">개발자</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.city || 'all'}
+            onValueChange={(value) => setFilters((prev) => ({ ...prev, city: value as 'Moscow' | 'Saint Petersburg' | 'all' }))}
+          >
+            <SelectTrigger className="flex-1">
+              <SelectValue placeholder="도시" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">모든 도시</SelectItem>
+              <SelectItem value="Moscow">모스크바</SelectItem>
+              <SelectItem value="Saint Petersburg">상트</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.status || 'all'}
+            onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value as 'active' | 'suspended' | 'all' }))}
+          >
+            <SelectTrigger className="flex-1">
+              <SelectValue placeholder="상태" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">모든 상태</SelectItem>
+              <SelectItem value="active">활성</SelectItem>
+              <SelectItem value="suspended">정지</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* 데스크톱 필터 */}
+      <div className="hidden md:flex flex-wrap gap-4">
         <div className="flex gap-2 flex-1 min-w-[200px]">
           <Input
             placeholder="이름 또는 이메일로 검색..."
