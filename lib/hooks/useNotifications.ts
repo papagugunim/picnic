@@ -38,23 +38,32 @@ export function useNotifications(): UseNotificationsReturn {
         return
       }
 
+      // 알림 기본 데이터 조회
       const { data, error: fetchError } = await supabase
         .from('notifications')
-        .select(`
-          *,
-          actor:profiles!actor_id (
-            id,
-            full_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50)
 
       if (fetchError) throw fetchError
 
-      setNotifications(data || [])
+      // actor 정보가 필요한 경우 별도로 조회
+      const notificationsWithActor = await Promise.all(
+        (data || []).map(async (notification) => {
+          if (notification.actor_id) {
+            const { data: actorData } = await supabase
+              .from('profiles')
+              .select('id, full_name, avatar_url')
+              .eq('id', notification.actor_id)
+              .single()
+            return { ...notification, actor: actorData }
+          }
+          return notification
+        })
+      )
+
+      setNotifications(notificationsWithActor)
       setUnreadCount((data || []).filter(n => !n.is_read).length)
     } catch (err) {
       setError(err instanceof Error ? err : new Error('알림을 불러오는데 실패했습니다'))
