@@ -25,9 +25,6 @@ export default function AdminUsersPage() {
     hasMore,
     fetchUsers,
     updateUserRole,
-    suspendUser,
-    unsuspendUser,
-    reset,
   } = useAdminUsers()
 
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>('user')
@@ -84,7 +81,7 @@ export default function AdminUsersPage() {
     <div className="space-y-4 md:space-y-6">
       <div>
         <h2 className="text-xl md:text-2xl font-bold">회원 관리</h2>
-        <p className="text-sm md:text-base text-muted-foreground">회원 검색, 역할 변경, 계정 정지/해제를 관리합니다.</p>
+        <p className="text-sm md:text-base text-muted-foreground">회원 검색 및 역할 변경을 관리합니다.</p>
       </div>
 
       {/* 모바일 필터 */}
@@ -128,20 +125,6 @@ export default function AdminUsersPage() {
               <SelectItem value="all">모든 도시</SelectItem>
               <SelectItem value="Moscow">모스크바</SelectItem>
               <SelectItem value="Saint Petersburg">상트</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={filters.status || 'all'}
-            onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value as 'active' | 'suspended' | 'all' }))}
-          >
-            <SelectTrigger className="flex-1">
-              <SelectValue placeholder="상태" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">모든 상태</SelectItem>
-              <SelectItem value="active">활성</SelectItem>
-              <SelectItem value="suspended">정지</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -190,25 +173,11 @@ export default function AdminUsersPage() {
             <SelectItem value="Saint Petersburg">상트페테르부르크</SelectItem>
           </SelectContent>
         </Select>
-
-        <Select
-          value={filters.status || 'all'}
-          onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value as 'active' | 'suspended' | 'all' }))}
-        >
-          <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder="상태" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">모든 상태</SelectItem>
-            <SelectItem value="active">활성</SelectItem>
-            <SelectItem value="suspended">정지됨</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
-      {users.length === 0 && !isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">
-          검색 결과가 없습니다.
+      {isLoading && users.length === 0 ? (
+        <div className="flex justify-center py-12">
+          <ReloadIcon className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
         <>
@@ -217,8 +186,6 @@ export default function AdminUsersPage() {
             currentUserId={user?.id || ''}
             currentUserRole={currentUserRole}
             onUpdateRole={handleRoleChange}
-            onSuspend={suspendUser}
-            onUnsuspend={unsuspendUser}
           />
 
           {hasMore && (
@@ -240,12 +207,6 @@ export default function AdminUsersPage() {
             </div>
           )}
         </>
-      )}
-
-      {isLoading && users.length === 0 && (
-        <div className="flex justify-center py-12">
-          <ReloadIcon className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
       )}
     </div>
   )

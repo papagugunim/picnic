@@ -1,29 +1,16 @@
 'use client'
 
-import { useState } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { UserRoleSelect } from './UserRoleSelect'
-import { SuspendUserDialog } from './SuspendUserDialog'
-import { DotsHorizontalIcon } from '@radix-ui/react-icons'
-import type { AdminProfile, UserRole } from '@/types/admin'
+import type { AdminUser } from '@/lib/hooks/useAdminUsers'
+import type { UserRole } from '@/types/admin'
 
 interface UserTableProps {
-  users: AdminProfile[]
+  users: AdminUser[]
   currentUserId: string
   currentUserRole: UserRole
   onUpdateRole: (userId: string, newRole: UserRole) => Promise<{ success: boolean; error?: string }>
-  onSuspend: (userId: string, reason: string, expiresAt?: string) => Promise<{ success: boolean; error?: string }>
-  onUnsuspend: (userId: string) => Promise<{ success: boolean; error?: string }>
 }
 
 export function UserTable({
@@ -31,10 +18,7 @@ export function UserTable({
   currentUserId,
   currentUserRole,
   onUpdateRole,
-  onSuspend,
-  onUnsuspend,
 }: UserTableProps) {
-  const [suspendDialogUser, setSuspendDialogUser] = useState<AdminProfile | null>(null)
 
   const getRoleBadgeVariant = (role: string | null) => {
     switch (role) {
@@ -66,6 +50,14 @@ export function UserTable({
     })
   }
 
+  if (users.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        회원이 없습니다.
+      </div>
+    )
+  }
+
   return (
     <>
       {/* 모바일 카드 뷰 */}
@@ -90,34 +82,6 @@ export function UserTable({
                     <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                   </div>
                 </div>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isSelf}>
-                      <DotsHorizontalIcon className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>액션</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {user.is_suspended ? (
-                      <DropdownMenuItem
-                        onClick={() => onUnsuspend(user.id)}
-                        disabled={!canModify}
-                      >
-                        정지 해제
-                      </DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem
-                        onClick={() => setSuspendDialogUser(user)}
-                        disabled={!canModify}
-                        className="text-destructive"
-                      >
-                        계정 정지
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
 
               <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -131,11 +95,6 @@ export function UserTable({
                   <Badge variant={getRoleBadgeVariant(user.user_role)} className="text-xs">
                     {getRoleLabel(user.user_role)}
                   </Badge>
-                )}
-                {user.is_suspended ? (
-                  <Badge variant="destructive" className="text-xs">정지</Badge>
-                ) : (
-                  <Badge variant="outline" className="text-xs text-green-600 border-green-600">활성</Badge>
                 )}
                 <span className="text-xs text-muted-foreground">
                   {user.city === 'Moscow' ? '모스크바' : user.city === 'Saint Petersburg' ? '상트' : '-'}
@@ -167,13 +126,7 @@ export function UserTable({
                 도시
               </th>
               <th className="h-10 px-4 text-left text-sm font-medium text-muted-foreground">
-                상태
-              </th>
-              <th className="h-10 px-4 text-left text-sm font-medium text-muted-foreground">
                 가입일
-              </th>
-              <th className="h-10 px-4 text-right text-sm font-medium text-muted-foreground">
-                액션
               </th>
             </tr>
           </thead>
@@ -213,44 +166,8 @@ export function UserTable({
                   <td className="p-4 text-sm">
                     {user.city === 'Moscow' ? '모스크바' : user.city === 'Saint Petersburg' ? '상트페테르부르크' : '-'}
                   </td>
-                  <td className="p-4">
-                    {user.is_suspended ? (
-                      <Badge variant="destructive">정지됨</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-green-600 border-green-600">활성</Badge>
-                    )}
-                  </td>
                   <td className="p-4 text-sm text-muted-foreground">
                     {formatDate(user.created_at)}
-                  </td>
-                  <td className="p-4 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" disabled={isSelf}>
-                          <DotsHorizontalIcon className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>액션</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        {user.is_suspended ? (
-                          <DropdownMenuItem
-                            onClick={() => onUnsuspend(user.id)}
-                            disabled={!canModify}
-                          >
-                            정지 해제
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem
-                            onClick={() => setSuspendDialogUser(user)}
-                            disabled={!canModify}
-                            className="text-destructive"
-                          >
-                            계정 정지
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </td>
                 </tr>
               )
@@ -258,21 +175,6 @@ export function UserTable({
           </tbody>
         </table>
       </div>
-
-      {suspendDialogUser && (
-        <SuspendUserDialog
-          user={suspendDialogUser}
-          open={!!suspendDialogUser}
-          onOpenChange={(open) => !open && setSuspendDialogUser(null)}
-          onSuspend={async (reason, expiresAt) => {
-            const result = await onSuspend(suspendDialogUser.id, reason, expiresAt)
-            if (result.success) {
-              setSuspendDialogUser(null)
-            }
-            return result
-          }}
-        />
-      )}
     </>
   )
 }

@@ -1,19 +1,27 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import type { AdminProfile, UserFilters, UserRole } from '@/types/admin'
+import type { UserFilters, UserRole } from '@/types/admin'
 
-const PAGE_SIZE = 20
+export interface AdminUser {
+  id: string
+  email: string
+  full_name: string | null
+  avatar_url: string | null
+  city: 'Moscow' | 'Saint Petersburg' | null
+  user_role: UserRole | null
+  bread_level: number
+  created_at: string
+  updated_at: string
+}
 
 export function useAdminUsers() {
-  const [users, setUsers] = useState<AdminProfile[]>([])
+  const [users, setUsers] = useState<AdminUser[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const pageRef = useRef(0)
 
   const fetchUsers = useCallback(async (filters: UserFilters, reset = false) => {
-    const supabase = createClient()
     setIsLoading(true)
 
     if (reset) {
@@ -21,65 +29,38 @@ export function useAdminUsers() {
     }
 
     const currentPage = pageRef.current
-    const from = currentPage * PAGE_SIZE
-    const to = from + PAGE_SIZE - 1
 
-    let query = supabase
-      .from('profiles')
-      .select(`
-        id,
-        email,
-        full_name,
-        avatar_url,
-        city,
-        user_role,
-        matryoshka_level,
-        is_suspended,
-        suspended_at,
-        suspended_by,
-        suspension_reason,
-        suspension_expires_at,
-        created_at,
-        updated_at
-      `)
-      .order('created_at', { ascending: false })
-      .range(from, to)
+    const params = new URLSearchParams()
+    params.set('page', currentPage.toString())
+    if (filters.search) params.set('search', filters.search)
+    if (filters.role && filters.role !== 'all') params.set('role', filters.role)
+    if (filters.city && filters.city !== 'all') params.set('city', filters.city)
 
-    if (filters.search) {
-      query = query.or(`full_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`)
-    }
+    try {
+      const response = await fetch(`/api/admin/users?${params.toString()}`)
+      const data = await response.json()
 
-    if (filters.role && filters.role !== 'all') {
-      query = query.eq('user_role', filters.role)
-    }
+      if (!response.ok) {
+        console.error('Failed to fetch users:', data.error)
+        setIsLoading(false)
+        return
+      }
 
-    if (filters.city && filters.city !== 'all') {
-      query = query.eq('city', filters.city)
-    }
+      const newUsers = data.users as AdminUser[]
 
-    if (filters.status && filters.status !== 'all') {
-      query = query.eq('is_suspended', filters.status === 'suspended')
-    }
+      if (reset) {
+        setUsers(newUsers)
+      } else {
+        setUsers((prev) => [...prev, ...newUsers])
+      }
 
-    const { data, error } = await query
-
-    if (error) {
+      pageRef.current += 1
+      setHasMore(data.hasMore)
+    } catch (error) {
       console.error('Failed to fetch users:', error)
+    } finally {
       setIsLoading(false)
-      return
     }
-
-    const newUsers = (data || []) as AdminProfile[]
-
-    if (reset) {
-      setUsers(newUsers)
-    } else {
-      setUsers((prev) => [...prev, ...newUsers])
-    }
-
-    pageRef.current += 1
-    setHasMore(newUsers.length === PAGE_SIZE)
-    setIsLoading(false)
   }, [])
 
   const updateUserRole = useCallback(async (
@@ -87,125 +68,37 @@ export function useAdminUsers() {
     newRole: UserRole,
     currentUserRole: UserRole
   ): Promise<{ success: boolean; error?: string }> => {
-    if (currentUserRole !== 'developer' && (newRole === 'admin' || newRole === 'developer')) {
-      return { success: false, error: '개발자만 admin/developer 역할을 부여할 수 있습니다.' }
-    }
-
-    const supabase = createClient()
-
-    const levelMap: Record<UserRole, number> = {
-      developer: 7,
-      admin: 6,
-      user: 1,
-    }
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        user_role: newRole,
-        matryoshka_level: levelMap[newRole],
-        updated_at: new Date().toISOString(),
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, newRole })
       })
-      .eq('id', userId)
 
-    if (error) {
-      return { success: false, error: error.message }
-    }
+      const data = await response.json()
 
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === userId
-          ? { ...u, user_role: newRole, matryoshka_level: levelMap[newRole] }
-          : u
+      if (!response.ok) {
+        return { success: false, error: data.error }
+      }
+
+      const levelMap: Record<UserRole, number> = {
+        developer: 7,
+        admin: 6,
+        user: 1,
+      }
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? { ...u, user_role: newRole, bread_level: levelMap[newRole] }
+            : u
+        )
       )
-    )
 
-    return { success: true }
-  }, [])
-
-  const suspendUser = useCallback(async (
-    userId: string,
-    reason: string,
-    expiresAt?: string
-  ): Promise<{ success: boolean; error?: string }> => {
-    const supabase = createClient()
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return { success: false, error: '인증이 필요합니다.' }
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: '네트워크 오류가 발생했습니다.' }
     }
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        is_suspended: true,
-        suspended_at: new Date().toISOString(),
-        suspended_by: user.id,
-        suspension_reason: reason,
-        suspension_expires_at: expiresAt || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId)
-
-    if (error) {
-      return { success: false, error: error.message }
-    }
-
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === userId
-          ? {
-              ...u,
-              is_suspended: true,
-              suspended_at: new Date().toISOString(),
-              suspended_by: user.id,
-              suspension_reason: reason,
-              suspension_expires_at: expiresAt || null,
-            }
-          : u
-      )
-    )
-
-    return { success: true }
-  }, [])
-
-  const unsuspendUser = useCallback(async (
-    userId: string
-  ): Promise<{ success: boolean; error?: string }> => {
-    const supabase = createClient()
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        is_suspended: false,
-        suspended_at: null,
-        suspended_by: null,
-        suspension_reason: null,
-        suspension_expires_at: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId)
-
-    if (error) {
-      return { success: false, error: error.message }
-    }
-
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === userId
-          ? {
-              ...u,
-              is_suspended: false,
-              suspended_at: null,
-              suspended_by: null,
-              suspension_reason: null,
-              suspension_expires_at: null,
-            }
-          : u
-      )
-    )
-
-    return { success: true }
   }, [])
 
   const reset = useCallback(() => {
@@ -220,8 +113,6 @@ export function useAdminUsers() {
     hasMore,
     fetchUsers,
     updateUserRole,
-    suspendUser,
-    unsuspendUser,
     reset,
   }
 }
