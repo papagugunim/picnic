@@ -26,6 +26,7 @@ export function useScrollDirection({
   useEffect(() => {
     // 초기값 설정
     lastScrollY.current = window.scrollY
+    console.log('[useScrollDirection] Hook mounted, initial scrollY:', window.scrollY)
 
     const handleScroll = () => {
       if (rafId.current) {
@@ -34,6 +35,7 @@ export function useScrollDirection({
 
       rafId.current = requestAnimationFrame(() => {
         const currentScrollY = window.scrollY
+        console.log('[useScrollDirection] Scroll event:', { currentScrollY, lastY: lastScrollY.current })
 
         // 페이지 상단 근처: 항상 표시
         if (currentScrollY < topOffset) {
@@ -48,6 +50,7 @@ export function useScrollDirection({
         if (Math.abs(diff) >= threshold) {
           // 아래로 스크롤: 숨김 / 위로 스크롤: 표시
           const shouldHide = diff > 0
+          console.log('[useScrollDirection] Direction change:', { diff, shouldHide })
           setHidden(shouldHide)
           lastScrollY.current = currentScrollY
         }

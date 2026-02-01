@@ -67,7 +67,8 @@ export function usePullToRefresh({
         setPullDistance(distance)
 
         // Only prevent scroll when actually pulling down at top
-        if (distance > 10) {
+        // Check cancelable to avoid the warning
+        if (distance > 10 && e.cancelable) {
           e.preventDefault()
         }
       }
