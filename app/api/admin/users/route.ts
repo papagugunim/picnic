@@ -11,15 +11,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
   }
 
-  // 관리자 권한 확인
+  // 개발자 권한 확인 (회원 관리는 개발자만 접근 가능)
   const { data: currentProfile } = await supabase
     .from('profiles')
     .select('user_role')
     .eq('id', user.id)
     .single()
 
-  if (!currentProfile || !['admin', 'developer'].includes(currentProfile.user_role || '')) {
-    return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 })
+  if (!currentProfile || currentProfile.user_role !== 'developer') {
+    return NextResponse.json({ error: '개발자만 접근 가능합니다.' }, { status: 403 })
   }
 
   // 쿼리 파라미터 파싱
@@ -75,15 +75,15 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
   }
 
-  // 관리자 권한 확인
+  // 개발자 권한 확인 (회원 관리는 개발자만 접근 가능)
   const { data: currentProfile } = await supabase
     .from('profiles')
     .select('user_role')
     .eq('id', user.id)
     .single()
 
-  if (!currentProfile || !['admin', 'developer'].includes(currentProfile.user_role || '')) {
-    return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 })
+  if (!currentProfile || currentProfile.user_role !== 'developer') {
+    return NextResponse.json({ error: '개발자만 접근 가능합니다.' }, { status: 403 })
   }
 
   const body = await request.json()

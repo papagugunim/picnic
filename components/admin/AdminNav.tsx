@@ -9,7 +9,15 @@ import {
   ExclamationTriangleIcon,
 } from '@radix-ui/react-icons'
 
-const navItems = [
+interface NavItem {
+  href: string
+  label: string
+  shortLabel: string
+  icon: typeof DashboardIcon
+  developerOnly?: boolean
+}
+
+const navItems: NavItem[] = [
   {
     href: '/admin',
     label: '대시보드',
@@ -21,6 +29,7 @@ const navItems = [
     label: '회원 관리',
     shortLabel: '회원',
     icon: PersonIcon,
+    developerOnly: true,
   },
   {
     href: '/admin/reports',
@@ -30,15 +39,23 @@ const navItems = [
   },
 ]
 
-export function AdminNav() {
+interface AdminNavProps {
+  userRole: 'admin' | 'developer'
+}
+
+export function AdminNav({ userRole }: AdminNavProps) {
   const pathname = usePathname()
+
+  const filteredItems = navItems.filter(
+    (item) => !item.developerOnly || userRole === 'developer'
+  )
 
   return (
     <>
       {/* 데스크톱 사이드바 */}
       <nav className="hidden md:block sticky top-14 h-[calc(100vh-3.5rem)] w-48 lg:w-56 border-r bg-background p-3 lg:p-4 flex-shrink-0">
         <ul className="space-y-1">
-          {navItems.map((item) => {
+          {filteredItems.map((item) => {
             const isActive = pathname === item.href
             return (
               <li key={item.href}>
@@ -63,7 +80,7 @@ export function AdminNav() {
       {/* 모바일 하단 탭바 */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background">
         <ul className="flex">
-          {navItems.map((item) => {
+          {filteredItems.map((item) => {
             const isActive = pathname === item.href
             return (
               <li key={item.href} className="flex-1">
