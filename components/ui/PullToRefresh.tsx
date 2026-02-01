@@ -21,7 +21,7 @@ export function PullToRefresh({
   enabled = true,
   className,
 }: PullToRefreshProps) {
-  const { pullDistance, isRefreshing, isPulling, containerProps } = usePullToRefresh({
+  const { pullDistance, isRefreshing, isPulling, containerRef } = usePullToRefresh({
     onRefresh,
     threshold,
     maxPull,
@@ -32,7 +32,7 @@ export function PullToRefresh({
   const shouldShowIndicator = pullDistance > 10 || isRefreshing
 
   return (
-    <div className={cn('relative', className)} {...containerProps}>
+    <div ref={containerRef} className={cn('relative', className)}>
       {/* Pull indicator */}
       <div
         className={cn(
