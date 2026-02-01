@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import { AdminHeader } from '@/components/admin/AdminHeader'
-import { AdminNav } from '@/components/admin/AdminNav'
+import { AdminLayoutClient } from '@/components/admin/AdminLayoutClient'
 
 export default async function AdminLayout({
   children,
@@ -27,18 +26,12 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <AdminHeader
-        userName={profile.full_name || '관리자'}
-        userRole={profile.user_role as 'admin' | 'developer'}
-        avatarUrl={profile.avatar_url}
-      />
-      <div className="flex">
-        <AdminNav />
-        <main className="flex-1 p-3 md:p-6 pb-20 md:pb-6">
-          {children}
-        </main>
-      </div>
-    </div>
+    <AdminLayoutClient
+      userName={profile.full_name || '관리자'}
+      userRole={profile.user_role as 'admin' | 'developer'}
+      avatarUrl={profile.avatar_url}
+    >
+      {children}
+    </AdminLayoutClient>
   )
 }
