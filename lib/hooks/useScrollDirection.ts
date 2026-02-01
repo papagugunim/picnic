@@ -19,6 +19,8 @@ export function useScrollDirection({
   threshold = 5,
   topOffset = 100,
 }: UseScrollDirectionOptions = {}) {
+  console.log('[useScrollDirection] Hook called')
+
   const [hidden, setHidden] = useState(false)
   const lastScrollY = useRef(0)
   const rafId = useRef<number | null>(null)
@@ -26,7 +28,7 @@ export function useScrollDirection({
   useEffect(() => {
     // 초기값 설정
     lastScrollY.current = window.scrollY
-    console.log('[useScrollDirection] Hook mounted, initial scrollY:', window.scrollY)
+    console.log('[useScrollDirection] useEffect running, initial scrollY:', window.scrollY)
 
     const handleScroll = () => {
       if (rafId.current) {

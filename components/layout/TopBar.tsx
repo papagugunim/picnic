@@ -26,6 +26,8 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
   const { unreadCount } = useNotifications()
   const scrollHidden = useScrollDirection({ threshold: 10, topOffset: 50 })
 
+  console.log('[TopBar] Rendered, scrollHidden:', scrollHidden)
+
   // 채팅방 페이지에서는 TopBar 숨기기
   const isChatRoomPage = pathname?.match(/^\/chats\/[^/]+$/)
   if (isChatRoomPage) {
