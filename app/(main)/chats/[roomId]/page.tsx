@@ -32,6 +32,7 @@ export default function ChatRoomPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -47,8 +48,19 @@ export default function ChatRoomPage() {
   }, [roomId])
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    if (messages.length > 0) {
+      // 초기 로딩 시에는 즉시 스크롤, 이후에는 부드럽게
+      if (isInitialLoad) {
+        // DOM이 렌더링된 후 스크롤
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'instant' })
+          setIsInitialLoad(false)
+        }, 100)
+      } else {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }
+    }
+  }, [messages, isInitialLoad])
 
   // iOS 키보드 대응 - visualViewport 활용
   useEffect(() => {
