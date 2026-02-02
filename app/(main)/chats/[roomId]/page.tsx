@@ -319,7 +319,7 @@ export default function ChatRoomPage() {
       </div>
 
       {/* Messages - inner scroll */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overscroll-none">
         <div className="max-w-screen-xl mx-auto p-4">
           {messages.length === 0 && !appointment ? (
             <div className="text-center py-16 text-muted-foreground">
