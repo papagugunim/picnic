@@ -21,13 +21,11 @@ import { AppointmentCard } from '@/components/chat/AppointmentCard'
 import { CompleteSaleButton } from '@/components/chat/CompleteSaleButton'
 import { ReviewModal } from '@/components/review/ReviewModal'
 import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
-import { useScrollDirection } from '@/lib/hooks/useScrollDirection'
 
 export default function ChatRoomPage() {
   const params = useParams()
   const router = useRouter()
   const roomId = params.roomId as string
-  const scrollHidden = useScrollDirection({ threshold: 10, topOffset: 50 })
 
   const [room, setRoom] = useState<ChatRoomWithProfile | null>(null)
   const [newMessage, setNewMessage] = useState('')
@@ -215,50 +213,50 @@ export default function ChatRoomPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header - 스크롤 시 숨김 */}
-      <div className={`fixed top-0 left-0 right-0 bg-background border-b border-border z-40 transition-transform duration-300 ease-in-out ${scrollHidden ? '-translate-y-full' : 'translate-y-0'}`}>
+    <div className="h-dvh flex flex-col bg-background">
+      {/* Header - 고정되지 않음 */}
+      <div className="flex-shrink-0 bg-background border-b border-border">
         <div className="max-w-screen-xl mx-auto">
           <div className="flex items-center gap-3 px-4 py-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.back()}
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.back()}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
 
-          <Link href={`/profile/${room.other_user.id}`} className="flex items-center gap-3 flex-1">
-            {room.other_user.avatar_url ? (
-              <img
-                src={room.other_user.avatar_url}
-                alt={room.other_user.full_name || '사용자'}
-                className="w-10 h-10 rounded-full object-cover"
+            <Link href={`/profile/${room.other_user.id}`} className="flex items-center gap-3 flex-1">
+              {room.other_user.avatar_url ? (
+                <img
+                  src={room.other_user.avatar_url}
+                  alt={room.other_user.full_name || '사용자'}
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold">
+                  {room.other_user.full_name?.charAt(0).toUpperCase() || '?'}
+                </div>
+              )}
+              <div>
+                <div className="font-semibold flex items-center gap-1">
+                  {room.other_user.full_name || '익명'}
+                  <span className="text-base">
+                    {getBreadEmoji(room.other_user.bread_level || 1, room.other_user.user_role || undefined)}
+                  </span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {getBreadInfo(room.other_user.bread_level || 1, room.other_user.user_role || undefined).name}
+                </div>
+              </div>
+            </Link>
+
+            {/* 판매완료 버튼 (판매자만, 약속 확정 후) */}
+            {isSeller && isAppointmentConfirmed && !isSold && currentUserId && room.post && (
+              <CompleteSaleButton
+                onReviewRequest={() => setShowReviewModal(true)}
               />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold">
-                {room.other_user.full_name?.charAt(0).toUpperCase() || '?'}
-              </div>
             )}
-            <div>
-              <div className="font-semibold flex items-center gap-1">
-                {room.other_user.full_name || '익명'}
-                <span className="text-base">
-                  {getBreadEmoji(room.other_user.bread_level || 1, room.other_user.user_role || undefined)}
-                </span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {getBreadInfo(room.other_user.bread_level || 1, room.other_user.user_role || undefined).name}
-              </div>
-            </div>
-          </Link>
-
-          {/* 판매완료 버튼 (판매자만, 약속 확정 후) */}
-          {isSeller && isAppointmentConfirmed && !isSold && currentUserId && room.post && (
-            <CompleteSaleButton
-              onReviewRequest={() => setShowReviewModal(true)}
-            />
-          )}
           </div>
 
           {/* Related Post Banner */}
@@ -267,179 +265,178 @@ export default function ChatRoomPage() {
               href={`/post/${room.post.id}`}
               className="flex items-center gap-3 px-4 py-2 bg-background border-t border-border hover:bg-muted transition-colors"
             >
-            {room.post.images && room.post.images.length > 0 ? (
-              <img
-                src={room.post.images[0]}
-                alt={room.post.title}
-                className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-              />
-            ) : (
-              <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                <Package className="w-6 h-6 text-muted-foreground" />
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">
-                {room.post.title}
-              </div>
-              <div className="text-xs text-muted-foreground flex items-center gap-2">
-                <span>
-                  {room.post.price === 0 || room.post.price === null
-                    ? '무료나눔'
-                    : `${room.post.price.toLocaleString()}₽`}
-                </span>
-                {room.post.status && (
-                  <span className={`px-2 py-0.5 rounded-full ${getPostStatusInfo(room.post.status as PostStatus).bgColor} ${getPostStatusInfo(room.post.status as PostStatus).textColor} font-medium`}>
-                    {getPostStatusInfo(room.post.status as PostStatus).label}
+              {room.post.images && room.post.images.length > 0 ? (
+                <img
+                  src={room.post.images[0]}
+                  alt={room.post.title}
+                  className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                  <Package className="w-6 h-6 text-muted-foreground" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">
+                  {room.post.title}
+                </div>
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <span>
+                    {room.post.price === 0 || room.post.price === null
+                      ? '무료나눔'
+                      : `${room.post.price.toLocaleString()}₽`}
                   </span>
-                )}
+                  {room.post.status && (
+                    <span className={`px-2 py-0.5 rounded-full ${getPostStatusInfo(room.post.status as PostStatus).bgColor} ${getPostStatusInfo(room.post.status as PostStatus).textColor} font-medium`}>
+                      {getPostStatusInfo(room.post.status as PostStatus).label}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
             </Link>
           )}
         </div>
       </div>
 
-      {/* Messages - 헤더와 입력창 사이 공간 확보 */}
-      <div className="max-w-screen-xl mx-auto p-4" style={{
-        paddingTop: room.post ? 'calc(56px + 64px + 16px)' : 'calc(56px + 16px)',
-        paddingBottom: 'calc(80px + 16px)'
-      }}>
-        {messages.length === 0 && !appointment ? (
-          <div className="text-center py-16 text-muted-foreground h-full flex items-center justify-center">
-            메시지를 보내서 대화를 시작해보세요
-          </div>
-        ) : (
-          <div className="space-y-4 min-h-full flex flex-col justify-end">
-            {/* 약속 카드 (있을 경우 맨 위에 표시) */}
-            {appointment && currentUserId && (
-              <AppointmentCard
-                appointment={appointment}
-                currentUserId={currentUserId}
-                onRespond={respondToAppointment}
-              />
-            )}
+      {/* Messages - inner scroll */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-screen-xl mx-auto p-4">
+          {messages.length === 0 && !appointment ? (
+            <div className="text-center py-16 text-muted-foreground">
+              메시지를 보내서 대화를 시작해보세요
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* 약속 카드 (있을 경우 맨 위에 표시) */}
+              {appointment && currentUserId && (
+                <AppointmentCard
+                  appointment={appointment}
+                  currentUserId={currentUserId}
+                  onRespond={respondToAppointment}
+                />
+              )}
 
-            {/* 메시지 목록 */}
-            {messages.map((message, index) => {
-              const isOwnMessage = message.sender_id === currentUserId
-              const showDate = index === 0 ||
-                new Date(messages[index - 1].created_at).toDateString() !==
-                new Date(message.created_at).toDateString()
+              {/* 메시지 목록 */}
+              {messages.map((message, index) => {
+                const isOwnMessage = message.sender_id === currentUserId
+                const showDate = index === 0 ||
+                  new Date(messages[index - 1].created_at).toDateString() !==
+                  new Date(message.created_at).toDateString()
 
-              return (
-                <div key={message.id}>
-                  {showDate && (
-                    <div className="text-center my-4">
-                      <span className="text-xs text-muted-foreground bg-secondary px-3 py-1 rounded-full">
-                        {new Date(message.created_at).toLocaleDateString('ko-KR', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
-                      </span>
-                    </div>
-                  )}
+                return (
+                  <div key={message.id}>
+                    {showDate && (
+                      <div className="text-center my-4">
+                        <span className="text-xs text-muted-foreground bg-secondary px-3 py-1 rounded-full">
+                          {new Date(message.created_at).toLocaleDateString('ko-KR', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })}
+                        </span>
+                      </div>
+                    )}
 
-                  <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`flex gap-2 max-w-[70%] ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
-                      {!isOwnMessage && (
-                        message.sender.avatar_url ? (
-                          <img
-                            src={message.sender.avatar_url}
-                            alt={message.sender.full_name || '사용자'}
-                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                            {message.sender.full_name?.charAt(0).toUpperCase() || '?'}
-                          </div>
-                        )
-                      )}
-
-                      <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+                    <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`flex gap-2 max-w-[70%] ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
                         {!isOwnMessage && (
-                          <span className="text-xs text-muted-foreground mb-1 px-1">
-                            {message.sender.full_name || '익명'}
-                          </span>
+                          message.sender.avatar_url ? (
+                            <img
+                              src={message.sender.avatar_url}
+                              alt={message.sender.full_name || '사용자'}
+                              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                              {message.sender.full_name?.charAt(0).toUpperCase() || '?'}
+                            </div>
+                          )
                         )}
-                        <div className={`px-4 py-2 rounded-2xl ${
-                          isOwnMessage
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-secondary'
-                        }`}>
-                          <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-                        </div>
-                        <div className="flex items-center gap-1 mt-1 px-1">
-                          {isOwnMessage && (
-                            <span className="text-xs text-muted-foreground">
-                              {message.is_read ? '읽음' : '안읽음'}
+
+                        <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+                          {!isOwnMessage && (
+                            <span className="text-xs text-muted-foreground mb-1 px-1">
+                              {message.sender.full_name || '익명'}
                             </span>
                           )}
-                          <span className="text-xs text-muted-foreground">
-                            {formatTime(message.created_at)}
-                          </span>
+                          <div className={`px-4 py-2 rounded-2xl ${
+                            isOwnMessage
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-secondary'
+                          }`}>
+                            <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                          </div>
+                          <div className="flex items-center gap-1 mt-1 px-1">
+                            {isOwnMessage && (
+                              <span className="text-xs text-muted-foreground">
+                                {message.is_read ? '읽음' : '안읽음'}
+                              </span>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              {formatTime(message.created_at)}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
+                )
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Message Input - 고정 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-40">
+      {/* Message Input - 고정되지 않음 */}
+      <div className="flex-shrink-0 bg-background border-t border-border">
         <div className="max-w-screen-xl mx-auto p-4">
           <div className="flex flex-col gap-2">
-          {/* 구매약속 잡기 버튼 (구매자만, 판매완료 아닐 때) */}
-          {isBuyer && !isSold && currentUserId && room.post && room.post.author_id && (
-            <AppointmentProposalForm
-              roomId={roomId}
-              postId={room.post.id}
-              postAuthorId={room.post.author_id}
-              currentUserId={currentUserId}
-              otherUserId={room.other_user.id}
-              onPropose={proposeAppointment}
-            />
-          )}
+            {/* 구매약속 잡기 버튼 (구매자만, 판매완료 아닐 때) */}
+            {isBuyer && !isSold && currentUserId && room.post && room.post.author_id && (
+              <AppointmentProposalForm
+                roomId={roomId}
+                postId={room.post.id}
+                postAuthorId={room.post.author_id}
+                currentUserId={currentUserId}
+                otherUserId={room.other_user.id}
+                onPropose={proposeAppointment}
+              />
+            )}
 
-          <div className="flex gap-2">
-            <Textarea
-              ref={inputRef}
-              placeholder="메시지를 입력하세요..."
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              rows={1}
-              className="resize-none text-base"
-              style={{ fontSize: '16px' }}
-              onFocus={() => {
-                setTimeout(() => {
-                  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-                }, 100)
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  // 이미 전송 중이면 무시 (중복 전송 방지)
-                  if (!isSending && newMessage.trim()) {
-                    handleSendMessage()
+            <div className="flex gap-2">
+              <Textarea
+                ref={inputRef}
+                placeholder="메시지를 입력하세요..."
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                rows={1}
+                className="resize-none text-base"
+                style={{ fontSize: '16px' }}
+                onFocus={() => {
+                  setTimeout(() => {
+                    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+                  }, 100)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    // 이미 전송 중이면 무시 (중복 전송 방지)
+                    if (!isSending && newMessage.trim()) {
+                      handleSendMessage()
+                    }
                   }
-                }
-              }}
-            />
-            <Button
-              onClick={handleSendMessage}
-              disabled={!newMessage.trim() || isSending}
-              size="icon"
-              className="flex-shrink-0"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </div>
+                }}
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={!newMessage.trim() || isSending}
+                size="icon"
+                className="flex-shrink-0"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
