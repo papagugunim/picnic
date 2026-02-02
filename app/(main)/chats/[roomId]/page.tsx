@@ -433,15 +433,7 @@ export default function ChatRoomPage() {
                 rows={1}
                 className="resize-none text-base"
                 style={{ fontSize: '16px' }}
-                onFocus={() => {
-                  // iOS 키보드가 올라오는 동안 여러 번 스크롤 시도
-                  const scrollToEnd = () => {
-                    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-                  }
-                  setTimeout(scrollToEnd, 100)
-                  setTimeout(scrollToEnd, 300)
-                  setTimeout(scrollToEnd, 500)
-                }}
+                onFocus={() => {}}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
