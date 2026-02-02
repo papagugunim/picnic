@@ -19,54 +19,33 @@ export function useScrollDirection({
   threshold = 5,
   topOffset = 100,
 }: UseScrollDirectionOptions = {}) {
-  console.log('[useScrollDirection] Hook called')
-
   const [hidden, setHidden] = useState(false)
   const lastScrollY = useRef(0)
-  const rafId = useRef<number | null>(null)
 
   useEffect(() => {
-    // 초기값 설정
     lastScrollY.current = window.scrollY
-    console.log('[useScrollDirection] useEffect running, initial scrollY:', window.scrollY)
 
     const handleScroll = () => {
-      if (rafId.current) {
-        cancelAnimationFrame(rafId.current)
+      const currentScrollY = window.scrollY
+
+      // 페이지 상단 근처: 항상 표시
+      if (currentScrollY < topOffset) {
+        setHidden(false)
+        lastScrollY.current = currentScrollY
+        return
       }
 
-      rafId.current = requestAnimationFrame(() => {
-        const currentScrollY = window.scrollY
-        console.log('[useScrollDirection] Scroll event:', { currentScrollY, lastY: lastScrollY.current })
+      const diff = currentScrollY - lastScrollY.current
 
-        // 페이지 상단 근처: 항상 표시
-        if (currentScrollY < topOffset) {
-          setHidden(false)
-          lastScrollY.current = currentScrollY
-          return
-        }
-
-        const diff = currentScrollY - lastScrollY.current
-
-        // 임계값 이상 스크롤했을 때만 방향 전환
-        if (Math.abs(diff) >= threshold) {
-          // 아래로 스크롤: 숨김 / 위로 스크롤: 표시
-          const shouldHide = diff > 0
-          console.log('[useScrollDirection] Direction change:', { diff, shouldHide })
-          setHidden(shouldHide)
-          lastScrollY.current = currentScrollY
-        }
-      })
+      // 임계값 이상 스크롤했을 때만 방향 전환
+      if (Math.abs(diff) >= threshold) {
+        setHidden(diff > 0)
+        lastScrollY.current = currentScrollY
+      }
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true })
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll)
-      if (rafId.current) {
-        cancelAnimationFrame(rafId.current)
-      }
-    }
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [threshold, topOffset])
 
   return hidden

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Bell, Settings, Search, Shield } from 'lucide-react'
@@ -7,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/contexts/UserContext'
 import { useNotifications } from '@/lib/hooks/useNotifications'
-import { useScrollDirection } from '@/lib/hooks/useScrollDirection'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,9 +24,34 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
   const pathname = usePathname()
   const { profile, refreshProfile } = useUser()
   const { unreadCount } = useNotifications()
-  const scrollHidden = useScrollDirection({ threshold: 10, topOffset: 50 })
 
-  console.log('[TopBar] Rendered, scrollHidden:', scrollHidden)
+  // 스크롤 방향 감지 - 직접 구현
+  const [scrollHidden, setScrollHidden] = useState(false)
+  const lastScrollY = useRef(0)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+
+      // 페이지 상단 근처: 항상 표시
+      if (currentScrollY < 50) {
+        setScrollHidden(false)
+        lastScrollY.current = currentScrollY
+        return
+      }
+
+      const diff = currentScrollY - lastScrollY.current
+
+      // 10px 이상 스크롤했을 때만 방향 전환
+      if (Math.abs(diff) > 10) {
+        setScrollHidden(diff > 0) // 아래로 스크롤: 숨김
+        lastScrollY.current = currentScrollY
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   // 채팅방 페이지에서는 TopBar 숨기기
   const isChatRoomPage = pathname?.match(/^\/chats\/[^/]+$/)
