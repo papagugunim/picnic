@@ -33,7 +33,10 @@ export default function ChatRoomPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
 
   const { messages, isSending, sendMessage } = useMessages(roomId)
   const { appointment, proposeAppointment, respondToAppointment } = useAppointment(roomId)
@@ -47,22 +50,35 @@ export default function ChatRoomPage() {
     scrollToBottom()
   }, [messages])
 
-  // 모바일 키보드 대응
+  // iOS 키보드 대응 - visualViewport 활용
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.visualViewport) return
+    if (typeof window === 'undefined') return
 
-    const handleResize = () => {
-      // 키보드가 올라오면 스크롤
-      if (document.activeElement === inputRef.current) {
+    const viewport = window.visualViewport
+    if (!viewport) return
+
+    const handleViewportChange = () => {
+      // iOS에서 키보드가 올라오면 visualViewport.height가 줄어듦
+      const windowHeight = window.innerHeight
+      const viewportHeight = viewport.height
+      const newKeyboardHeight = windowHeight - viewportHeight
+
+      setKeyboardHeight(newKeyboardHeight > 50 ? newKeyboardHeight : 0)
+
+      // 키보드가 올라올 때 스크롤
+      if (newKeyboardHeight > 50) {
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-        }, 100)
+        }, 50)
       }
     }
 
-    window.visualViewport.addEventListener('resize', handleResize)
+    viewport.addEventListener('resize', handleViewportChange)
+    viewport.addEventListener('scroll', handleViewportChange)
+
     return () => {
-      window.visualViewport?.removeEventListener('resize', handleResize)
+      viewport.removeEventListener('resize', handleViewportChange)
+      viewport.removeEventListener('scroll', handleViewportChange)
     }
   }, [])
 
@@ -213,7 +229,11 @@ export default function ChatRoomPage() {
   }
 
   return (
-    <div className="h-dvh flex flex-col bg-background">
+    <div
+      ref={containerRef}
+      className="flex flex-col bg-background"
+      style={{ height: keyboardHeight > 0 ? `calc(100dvh - ${keyboardHeight}px)` : '100dvh' }}
+    >
       {/* Header - 고정되지 않음 */}
       <div className="flex-shrink-0 bg-background border-b border-border">
         <div className="max-w-screen-xl mx-auto">
@@ -299,7 +319,7 @@ export default function ChatRoomPage() {
       </div>
 
       {/* Messages - inner scroll */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto">
         <div className="max-w-screen-xl mx-auto p-4">
           {messages.length === 0 && !appointment ? (
             <div className="text-center py-16 text-muted-foreground">
@@ -414,9 +434,13 @@ export default function ChatRoomPage() {
                 className="resize-none text-base"
                 style={{ fontSize: '16px' }}
                 onFocus={() => {
-                  setTimeout(() => {
+                  // iOS 키보드가 올라오는 동안 여러 번 스크롤 시도
+                  const scrollToEnd = () => {
                     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-                  }, 100)
+                  }
+                  setTimeout(scrollToEnd, 100)
+                  setTimeout(scrollToEnd, 300)
+                  setTimeout(scrollToEnd, 500)
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
