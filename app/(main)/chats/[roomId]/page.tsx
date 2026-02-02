@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ChevronLeft, Send, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 import { useMessages } from '@/lib/hooks/useMessages'
 import { useAppointment } from '@/lib/hooks/useAppointment'
@@ -34,7 +34,7 @@ export default function ChatRoomPage() {
   const [showReviewModal, setShowReviewModal] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
 
@@ -410,10 +410,10 @@ export default function ChatRoomPage() {
 
       {/* Message Input - 고정되지 않음 */}
       <div className="flex-shrink-0 bg-background border-t border-border">
-        <div className="max-w-screen-xl mx-auto p-4">
-          <div className="flex flex-col gap-2">
-            {/* 구매약속 잡기 버튼 (구매자만, 판매완료 아닐 때) */}
-            {isBuyer && !isSold && currentUserId && room.post && room.post.author_id && (
+        <div className="max-w-screen-xl mx-auto px-3 py-2">
+          {/* 구매약속 잡기 버튼 (구매자만, 판매완료 아닐 때) */}
+          {isBuyer && !isSold && currentUserId && room.post && room.post.author_id && (
+            <div className="mb-2">
               <AppointmentProposalForm
                 roomId={roomId}
                 postId={room.post.id}
@@ -422,37 +422,34 @@ export default function ChatRoomPage() {
                 otherUserId={room.other_user.id}
                 onPropose={proposeAppointment}
               />
-            )}
-
-            <div className="flex gap-2">
-              <Textarea
-                ref={inputRef}
-                placeholder="메시지를 입력하세요..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                rows={1}
-                className="resize-none text-base"
-                style={{ fontSize: '16px' }}
-                onFocus={() => {}}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    // 이미 전송 중이면 무시 (중복 전송 방지)
-                    if (!isSending && newMessage.trim()) {
-                      handleSendMessage()
-                    }
-                  }
-                }}
-              />
-              <Button
-                onClick={handleSendMessage}
-                disabled={!newMessage.trim() || isSending}
-                size="icon"
-                className="flex-shrink-0"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
             </div>
+          )}
+
+          <div className="flex gap-2 items-center">
+            <Input
+              ref={inputRef}
+              placeholder="메시지를 입력하세요..."
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              className="flex-1 h-10"
+              style={{ fontSize: '16px' }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  if (!isSending && newMessage.trim()) {
+                    handleSendMessage()
+                  }
+                }
+              }}
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={!newMessage.trim() || isSending}
+              size="icon"
+              className="flex-shrink-0 h-10 w-10"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       </div>
