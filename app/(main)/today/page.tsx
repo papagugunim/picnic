@@ -10,8 +10,8 @@ import { createClient } from '@/lib/supabase/client'
 import { getCache, setCache, clearCache, CACHE_KEYS } from '@/lib/cache'
 
 // 차트 컴포넌트 동적 임포트 (번들 크기 최적화)
-const ComposedChart = dynamic(() => import('recharts').then(mod => mod.ComposedChart), { ssr: false })
-const Bar = dynamic(() => import('recharts').then(mod => mod.Bar), { ssr: false })
+const AreaChart = dynamic(() => import('recharts').then(mod => mod.AreaChart), { ssr: false })
+const Area = dynamic(() => import('recharts').then(mod => mod.Area), { ssr: false })
 const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false })
 const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false })
 const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid), { ssr: false })
@@ -86,62 +86,6 @@ interface NewsItem {
   is_published: boolean
   created_at: string
   updated_at: string
-}
-
-// 캔들스틱 Shape 컴포넌트 (Recharts Bar의 shape prop용)
-const CandlestickShape = (props: any) => {
-  const { x, y, width, height, payload } = props
-
-  if (!payload || !payload.open || !payload.close || !payload.high || !payload.low) {
-    return null
-  }
-
-  const { open, close, high, low } = payload
-  const isRising = close >= open
-  const color = isRising ? '#22c55e' : '#ef4444'
-
-  // y축 스케일 계산을 위한 값들
-  const candleWidth = Math.max(3, Math.min(width, 12))
-
-  // 전체 범위 대비 각 값의 비율 계산
-  const range = high - low
-  if (range === 0) return null
-
-  // high가 y축 상단, low가 y축 하단
-  const yHigh = y
-  const yLow = y + height
-  const yOpen = yLow - ((open - low) / range) * height
-  const yClose = yLow - ((close - low) / range) * height
-
-  const bodyTop = Math.min(yOpen, yClose)
-  const bodyHeight = Math.abs(yOpen - yClose) || 1
-
-  const wickX = x + width / 2
-
-  return (
-    <g>
-      {/* 심지 (High-Low 선) */}
-      <line
-        x1={wickX}
-        y1={yHigh}
-        x2={wickX}
-        y2={yLow}
-        stroke={color}
-        strokeWidth={1.5}
-      />
-      {/* 몸통 (Open-Close 사각형) */}
-      <rect
-        x={wickX - candleWidth / 2}
-        y={bodyTop}
-        width={candleWidth}
-        height={bodyHeight}
-        fill={color}
-        stroke={color}
-        strokeWidth={1}
-        fillOpacity={isRising ? 0.7 : 1}
-      />
-    </g>
-  )
 }
 
 export default function TodayPage() {
@@ -768,13 +712,6 @@ export default function TodayPage() {
                     </div>
                   )}
                 </div>
-                {weatherLastUpdated && (
-                  <div className="flex justify-end">
-                    <span className="text-xs text-muted-foreground">
-                      마지막 업데이트: {getLastUpdatedText(weatherLastUpdated)}
-                    </span>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -1001,7 +938,7 @@ export default function TodayPage() {
                 </div>
 
                 {/* 그래프 */}
-                <div className="h-64 mb-4">
+                <div className="h-56">
                   {isLoadingChart ? (
                     <div className="flex items-center justify-center h-full">
                       <div className="text-sm text-muted-foreground flex items-center gap-2">
@@ -1011,60 +948,54 @@ export default function TodayPage() {
                     </div>
                   ) : chartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#333" opacity={0.3} />
+                      <AreaChart data={chartData}>
+                        <defs>
+                          <linearGradient id="colorClose" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} vertical={false} />
                         <XAxis
                           dataKey="date"
-                          tick={{ fontSize: 11 }}
-                          stroke="#666"
+                          tick={{ fontSize: 10, fill: '#9ca3af' }}
+                          axisLine={false}
+                          tickLine={false}
                           tickMargin={8}
                           interval={chartPeriod === 'year' ? 7 : chartPeriod === 'quarter' ? 4 : 'preserveStartEnd'}
                         />
                         <YAxis
-                          tick={{ fontSize: 11 }}
-                          stroke="#666"
-                          domain={['dataMin', 'dataMax']}
+                          tick={{ fontSize: 10, fill: '#9ca3af' }}
+                          axisLine={false}
+                          tickLine={false}
+                          domain={['dataMin - 0.5', 'dataMax + 0.5']}
                           tickMargin={8}
+                          width={45}
                         />
                         <Tooltip
                           content={({ active, payload }) => {
                             if (active && payload && payload.length) {
                               const data = payload[0].payload as OHLCData
-                              const isRising = data.close >= data.open
                               return (
-                                <div style={{
-                                  backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                                  border: `1px solid ${isRising ? '#22c55e' : '#ef4444'}`,
-                                  borderRadius: '8px',
-                                  padding: '8px 12px',
-                                  fontSize: '12px',
-                                  color: '#fff'
-                                }}>
-                                  <div style={{ marginBottom: '4px', fontWeight: 'bold' }}>{data.date}</div>
-                                  <div style={{ color: '#aaa' }}>시가: {data.open.toFixed(2)}</div>
-                                  <div style={{ color: '#22c55e' }}>고가: {data.high.toFixed(2)}</div>
-                                  <div style={{ color: '#ef4444' }}>저가: {data.low.toFixed(2)}</div>
-                                  <div style={{ fontWeight: 'bold' }}>종가: {data.close.toFixed(2)}</div>
-                                  <div style={{
-                                    marginTop: '4px',
-                                    color: isRising ? '#22c55e' : '#ef4444',
-                                    fontSize: '11px'
-                                  }}>
-                                    {isRising ? '▲' : '▼'} {Math.abs(data.close - data.open).toFixed(2)} ({((Math.abs(data.close - data.open) / data.open) * 100).toFixed(2)}%)
-                                  </div>
+                                <div className="bg-background/95 backdrop-blur border border-border rounded-lg px-3 py-2 shadow-lg">
+                                  <div className="text-xs text-muted-foreground mb-1">{data.date}</div>
+                                  <div className="text-sm font-bold">{data.close.toFixed(2)}</div>
                                 </div>
                               )
                             }
                             return null
                           }}
                         />
-                        {/* 캔들스틱 렌더링 */}
-                        <Bar
-                          dataKey="high"
-                          shape={<CandlestickShape />}
-                          isAnimationActive={false}
+                        <Area
+                          type="monotone"
+                          dataKey="close"
+                          stroke="#22c55e"
+                          strokeWidth={2}
+                          fill="url(#colorClose)"
+                          dot={false}
+                          activeDot={{ r: 4, fill: '#22c55e', strokeWidth: 0 }}
                         />
-                      </ComposedChart>
+                      </AreaChart>
                     </ResponsiveContainer>
                   ) : (
                     <div className="flex items-center justify-center h-full">
@@ -1073,19 +1004,6 @@ export default function TodayPage() {
                       </div>
                     </div>
                   )}
-                </div>
-
-                <div className="text-xs text-muted-foreground text-center">
-                  <div className="mb-1">
-                    {chartType === 'rub' ? '1루블당 원화 환율 (캔들차트)' : '1달러당 루블 환율 (캔들차트)'}
-                  </div>
-                  <div className="opacity-70">
-                    출처: {chartType === 'usd' ? 'Alpha Vantage API' : '한국수출입은행 환율 데이터'}
-                  </div>
-                  <div className="mt-1 text-xs opacity-60">
-                    <span className="text-green-500">■</span> 상승(종가 ≥ 시가)
-                    <span className="ml-2 text-red-500">■</span> 하락(종가 {"<"} 시가)
-                  </div>
                 </div>
               </div>
             </div>
