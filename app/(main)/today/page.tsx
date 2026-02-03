@@ -962,7 +962,19 @@ export default function TodayPage() {
                           axisLine={false}
                           tickLine={false}
                           tickMargin={8}
-                          interval={chartPeriod === 'year' ? 7 : chartPeriod === 'quarter' ? 4 : 'preserveStartEnd'}
+                          interval={
+                            chartPeriod === 'year' ? Math.floor(chartData.length / 6) :
+                            chartPeriod === 'quarter' ? Math.floor(chartData.length / 5) :
+                            chartPeriod === 'month' ? Math.floor(chartData.length / 5) :
+                            'preserveStartEnd'
+                          }
+                          tickFormatter={(value) => {
+                            const parts = value.split('/')
+                            if (parts.length === 2) {
+                              return `${parseInt(parts[0])}/${parseInt(parts[1])}`
+                            }
+                            return value
+                          }}
                         />
                         <YAxis
                           tick={{ fontSize: 10, fill: '#9ca3af' }}
