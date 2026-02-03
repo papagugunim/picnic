@@ -4,7 +4,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useCallback } from 'react'
-import { TrendingUp, Newspaper, Calendar as CalendarIcon, MapPin, Calculator, X, RefreshCw } from 'lucide-react'
+import { TrendingUp, Newspaper, Calendar as CalendarIcon, MapPin, Calculator, X, RefreshCw, Plus, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { getCache, setCache, clearCache, CACHE_KEYS } from '@/lib/cache'
@@ -74,6 +74,18 @@ interface OHLCData {
   high: number
   low: number
   close: number
+}
+
+// 뉴스 타입
+interface NewsItem {
+  id: string
+  title: string
+  content: string
+  summary: string | null
+  author_id: string
+  is_published: boolean
+  created_at: string
+  updated_at: string
 }
 
 // 캔들스틱 Shape 컴포넌트 (Recharts Bar의 shape prop용)
@@ -162,6 +174,17 @@ export default function TodayPage() {
     usd: OHLCData[]
   }>({ rub: [], usd: [] })
 
+  // 뉴스 상태
+  const [newsList, setNewsList] = useState<NewsItem[]>([])
+  const [currentNewsIndex, setCurrentNewsIndex] = useState(0)
+  const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null)
+  const [showNewsModal, setShowNewsModal] = useState(false)
+  const [showNewsForm, setShowNewsForm] = useState(false)
+  const [editingNews, setEditingNews] = useState<NewsItem | null>(null)
+  const [newsFormData, setNewsFormData] = useState({ title: '', content: '', summary: '' })
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [isSavingNews, setIsSavingNews] = useState(false)
+
   // 환율 데이터 가져오기 함수
   const fetchExchangeRates = useCallback(async (forceRefresh: boolean = false) => {
     try {
@@ -215,6 +238,116 @@ export default function TodayPage() {
       setExchangeRatesLastUpdated(new Date())
     }
   }, [])
+
+  // 뉴스 데이터 가져오기 함수
+  const fetchNews = useCallback(async () => {
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('news')
+        .select('*')
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .limit(10)
+
+      if (error) throw error
+      setNewsList(data || [])
+    } catch (error) {
+      logger.error('뉴스 가져오기 실패:', error)
+      // 에러 시 빈 배열 유지
+    }
+  }, [])
+
+  // 뉴스 저장 함수
+  const handleSaveNews = async () => {
+    if (!newsFormData.title.trim() || !newsFormData.content.trim()) return
+
+    setIsSavingNews(true)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) {
+        alert('로그인이 필요합니다')
+        return
+      }
+
+      const newsData = {
+        title: newsFormData.title.trim(),
+        content: newsFormData.content.trim(),
+        summary: newsFormData.summary.trim() || newsFormData.content.slice(0, 100) + '...',
+        author_id: user.id,
+        is_published: true
+      }
+
+      if (editingNews) {
+        // 수정
+        const { error } = await supabase
+          .from('news')
+          .update(newsData)
+          .eq('id', editingNews.id)
+
+        if (error) throw error
+      } else {
+        // 새로 생성
+        const { error } = await supabase
+          .from('news')
+          .insert(newsData)
+
+        if (error) throw error
+      }
+
+      // 폼 초기화 및 모달 닫기
+      setNewsFormData({ title: '', content: '', summary: '' })
+      setEditingNews(null)
+      setShowNewsForm(false)
+
+      // 뉴스 목록 다시 가져오기
+      fetchNews()
+    } catch (error) {
+      logger.error('뉴스 저장 실패:', error)
+      alert('저장에 실패했습니다')
+    } finally {
+      setIsSavingNews(false)
+    }
+  }
+
+  // 뉴스 삭제 함수
+  const handleDeleteNews = async (newsId: string) => {
+    if (!confirm('정말 삭제하시겠습니까?')) return
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('news')
+        .delete()
+        .eq('id', newsId)
+
+      if (error) throw error
+
+      // 모달 닫기
+      setShowNewsModal(false)
+      setSelectedNews(null)
+
+      // 뉴스 목록 다시 가져오기
+      fetchNews()
+    } catch (error) {
+      logger.error('뉴스 삭제 실패:', error)
+      alert('삭제에 실패했습니다')
+    }
+  }
+
+  // 뉴스 수정 시작
+  const handleEditNews = (news: NewsItem) => {
+    setEditingNews(news)
+    setNewsFormData({
+      title: news.title,
+      content: news.content,
+      summary: news.summary || ''
+    })
+    setShowNewsModal(false)
+    setShowNewsForm(true)
+  }
 
   // 날씨 데이터 가져오기 함수
   const fetchWeatherData = useCallback(async (city: string, forceRefresh: boolean = false) => {
@@ -339,7 +472,7 @@ export default function TodayPage() {
       if (user) {
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('city')
+          .select('city, user_role')
           .eq('id', user.id)
           .single()
 
@@ -350,6 +483,11 @@ export default function TodayPage() {
           setUserCity(profile.city)
           fetchWeatherData(profile.city)
         }
+
+        // 관리자 권한 체크
+        if (profile?.user_role === 'admin' || profile?.user_role === 'developer') {
+          setIsAdmin(true)
+        }
       }
       setLoading(false)
     }
@@ -357,6 +495,7 @@ export default function TodayPage() {
     setCurrentDate(new Date())
     fetchUserCity()
     fetchExchangeRates()
+    fetchNews()
 
     // 10분마다 날씨 자동 업데이트 (캐시 TTL과 동일)
     const weatherInterval = setInterval(() => {
@@ -377,7 +516,18 @@ export default function TodayPage() {
       clearInterval(weatherInterval)
       clearInterval(exchangeRatesInterval)
     }
-  }, [userCity, fetchWeatherData, fetchExchangeRates])
+  }, [userCity, fetchWeatherData, fetchExchangeRates, fetchNews])
+
+  // 3초마다 뉴스 자동 슬라이드
+  useEffect(() => {
+    if (newsList.length <= 1) return
+
+    const newsInterval = setInterval(() => {
+      setCurrentNewsIndex(prev => (prev + 1) % newsList.length)
+    }, 3000)
+
+    return () => clearInterval(newsInterval)
+  }, [newsList.length])
 
   const formatDate = () => {
     const timezone = userCity ? CITY_TIMEZONES[userCity] : undefined
@@ -942,51 +1092,196 @@ export default function TodayPage() {
           )}
 
           {/* 뉴스 */}
-          <div className="glass-strong rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Newspaper className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-              <h2 className="font-bold">러시아 소식</h2>
-            </div>
-
-            <div className="space-y-2">
-              <div className="p-3 bg-background rounded-lg border border-border hover:border-primary transition-colors cursor-pointer">
-                <div className="text-sm font-semibold mb-1">모스크바 한인회, 설날 행사 개최 예정</div>
-                <p className="text-xs text-muted-foreground mb-1.5">
-                  다가오는 설을 맞아 한인회에서 대규모 행사를 준비하고 있습니다...
-                </p>
-                <div className="text-xs text-muted-foreground">2시간 전</div>
+          <div className="glass-strong rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Newspaper className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                <h2 className="font-bold text-sm">러시아 소식</h2>
               </div>
-
-              <div className="p-3 bg-background rounded-lg border border-border hover:border-primary transition-colors cursor-pointer">
-                <div className="text-sm font-semibold mb-1">새로운 한인 마트 오픈</div>
-                <p className="text-xs text-muted-foreground mb-1.5">
-                  상트페테르부르크에 한국 식품을 전문으로 하는 마트가 새롭게...
-                </p>
-                <div className="text-xs text-muted-foreground">5시간 전</div>
-              </div>
-
-              {showAllNews && (
-                <div className="p-3 bg-background rounded-lg border border-border hover:border-primary transition-colors cursor-pointer">
-                  <div className="text-sm font-semibold mb-1">러시아 비자 갱신 안내</div>
-                  <p className="text-xs text-muted-foreground mb-1.5">
-                    2024년 비자 갱신 절차가 일부 변경되었습니다. 자세한 내용은...
-                  </p>
-                  <div className="text-xs text-muted-foreground">1일 전</div>
-                </div>
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    setEditingNews(null)
+                    setNewsFormData({ title: '', content: '', summary: '' })
+                    setShowNewsForm(true)
+                  }}
+                  className="p-1.5 hover:bg-background rounded-lg transition-colors"
+                  aria-label="소식 추가"
+                >
+                  <Plus className="w-4 h-4 text-muted-foreground" />
+                </button>
               )}
             </div>
 
-            <button
-              onClick={() => setShowAllNews(!showAllNews)}
-              className="w-full mt-2 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {showAllNews ? '접기' : '더보기'}
-            </button>
+            {newsList.length > 0 ? (
+              <div className="relative">
+                {/* 뉴스 카드 */}
+                <button
+                  onClick={() => {
+                    setSelectedNews(newsList[currentNewsIndex])
+                    setShowNewsModal(true)
+                  }}
+                  className="w-full text-left p-3 bg-background rounded-lg border border-border hover:border-primary transition-all cursor-pointer"
+                >
+                  <div className="text-sm font-semibold mb-1 line-clamp-1">
+                    {newsList[currentNewsIndex]?.title}
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    {newsList[currentNewsIndex]?.summary || newsList[currentNewsIndex]?.content.slice(0, 100)}
+                  </p>
+                </button>
 
-            <p className="text-xs text-muted-foreground mt-2 text-center">
-              * 뉴스는 예시 데이터입니다.
-            </p>
+                {/* 인디케이터 */}
+                {newsList.length > 1 && (
+                  <div className="flex justify-center gap-1 mt-2">
+                    {newsList.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentNewsIndex(index)}
+                        className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                          index === currentNewsIndex
+                            ? 'bg-primary'
+                            : 'bg-muted-foreground/30'
+                        }`}
+                        aria-label={`소식 ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-3 bg-background rounded-lg border border-border text-center">
+                <p className="text-xs text-muted-foreground">
+                  {isAdmin ? '새 소식을 추가해주세요' : '등록된 소식이 없습니다'}
+                </p>
+              </div>
+            )}
           </div>
+
+          {/* 뉴스 상세 모달 */}
+          {showNewsModal && selectedNews && (
+            <div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              onClick={() => setShowNewsModal(false)}
+            >
+              <div
+                className="glass-strong rounded-xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <h2 className="text-lg font-bold pr-8">{selectedNews.title}</h2>
+                  <button
+                    onClick={() => setShowNewsModal(false)}
+                    className="p-2 hover:bg-background rounded-lg transition-colors flex-shrink-0"
+                    aria-label="닫기"
+                  >
+                    <X className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </div>
+
+                <div className="prose prose-sm dark:prose-invert max-w-none mb-4">
+                  <p className="whitespace-pre-wrap text-sm">{selectedNews.content}</p>
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-3">
+                  <span>
+                    {new Date(selectedNews.created_at).toLocaleDateString('ko-KR', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </span>
+                  {isAdmin && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditNews(selectedNews)}
+                        className="p-1.5 hover:bg-background rounded-lg transition-colors"
+                        aria-label="수정"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteNews(selectedNews.id)}
+                        className="p-1.5 hover:bg-background rounded-lg transition-colors text-destructive"
+                        aria-label="삭제"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 뉴스 작성/수정 모달 */}
+          {showNewsForm && (
+            <div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              onClick={() => setShowNewsForm(false)}
+            >
+              <div
+                className="glass-strong rounded-xl p-6 max-w-lg w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-bold">
+                    {editingNews ? '소식 수정' : '새 소식 작성'}
+                  </h2>
+                  <button
+                    onClick={() => setShowNewsForm(false)}
+                    className="p-2 hover:bg-background rounded-lg transition-colors"
+                    aria-label="닫기"
+                  >
+                    <X className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">제목</label>
+                    <input
+                      type="text"
+                      value={newsFormData.title}
+                      onChange={(e) => setNewsFormData(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="소식 제목"
+                      className="w-full p-3 bg-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">내용</label>
+                    <textarea
+                      value={newsFormData.content}
+                      onChange={(e) => setNewsFormData(prev => ({ ...prev, content: e.target.value }))}
+                      placeholder="소식 내용을 입력하세요"
+                      rows={6}
+                      className="w-full p-3 bg-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">요약 (선택)</label>
+                    <input
+                      type="text"
+                      value={newsFormData.summary}
+                      onChange={(e) => setNewsFormData(prev => ({ ...prev, summary: e.target.value }))}
+                      placeholder="미리보기에 표시될 요약 (비워두면 자동 생성)"
+                      className="w-full p-3 bg-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleSaveNews}
+                    disabled={isSavingNews || !newsFormData.title.trim() || !newsFormData.content.trim()}
+                    className="w-full py-3 bg-primary text-primary-foreground rounded-lg font-medium disabled:opacity-50 transition-colors"
+                  >
+                    {isSavingNews ? '저장 중...' : (editingNews ? '수정하기' : '등록하기')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 유용한 링크 */}
           <div className="glass-strong rounded-xl p-4">
