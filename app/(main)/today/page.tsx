@@ -633,89 +633,69 @@ export default function TodayPage() {
         {/* Content */}
         <div className="p-4 space-y-3">
           {/* 환율 정보 */}
-          <div className="glass-strong rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
+          <div className="glass-strong rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
-                <h2 className="font-bold">환율</h2>
+                <h2 className="font-bold text-sm">환율</h2>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5">
                 <button
                   onClick={handleRefreshExchangeRates}
                   disabled={isRefreshingExchangeRates}
-                  className="p-2 hover:bg-background rounded-lg transition-colors disabled:opacity-50"
+                  className="p-1.5 hover:bg-background rounded-lg transition-colors disabled:opacity-50"
                   aria-label="환율 새로고침"
                 >
                   <RefreshCw
-                    className={`w-4 h-4 text-muted-foreground ${
+                    className={`w-3.5 h-3.5 text-muted-foreground ${
                       isRefreshingExchangeRates ? 'animate-spin' : ''
                     }`}
                   />
                 </button>
                 <button
                   onClick={() => setShowCalculator(true)}
-                  className="p-2 hover:bg-background rounded-lg transition-colors"
+                  className="p-1.5 hover:bg-background rounded-lg transition-colors"
                   aria-label="환율 계산기"
                 >
-                  <Calculator className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <Calculator className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 </button>
               </div>
             </div>
 
             {exchangeRates ? (
-              <>
-                <div className="space-y-2">
-                  <button
-                    onClick={() => {
-                      setChartType('rub')
-                      setShowChart(true)
-                      loadChartData('rub', chartPeriod)
-                    }}
-                    className="w-full flex items-center justify-between p-3 bg-background rounded-lg border border-border hover:border-primary transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="text-lg">₽</div>
-                      <div className="text-sm font-medium">1 루블</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold">{(1 / exchangeRates.krwToRub).toFixed(2)}원</div>
-                      <div className="text-xs text-muted-foreground">1,000원 = {(exchangeRates.krwToRub * 1000).toFixed(2)}₽</div>
-                    </div>
-                  </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setChartType('rub')
+                    setShowChart(true)
+                    loadChartData('rub', chartPeriod)
+                  }}
+                  className="flex-1 flex items-center justify-between py-2 px-3 bg-background rounded-lg border border-border hover:border-primary transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">₽</span>
+                    <span className="text-xs text-muted-foreground">1루블</span>
+                  </div>
+                  <div className="font-bold text-sm">{(1 / exchangeRates.krwToRub).toFixed(2)}원</div>
+                </button>
 
-                  <button
-                    onClick={() => {
-                      setChartType('usd')
-                      setShowChart(true)
-                      loadChartData('usd', chartPeriod)
-                    }}
-                    className="w-full flex items-center justify-between p-3 bg-background rounded-lg border border-border hover:border-primary transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="text-lg">$</div>
-                      <div className="text-sm font-medium">1 달러</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold">{(1 / exchangeRates.rubToUsd).toFixed(2)}₽</div>
-                      <div className="text-xs text-muted-foreground">1₽ = ${exchangeRates.rubToUsd}</div>
-                    </div>
-                  </button>
-                </div>
-
-                <div className="mt-3 text-xs text-muted-foreground text-center space-y-0.5">
-                  <div>출처: {
-                    exchangeRates.source === 'koreaexim' ? '한국수출입은행' :
-                    exchangeRates.source === 'naver' ? '네이버 환율' :
-                    exchangeRates.source === 'api' ? 'ExchangeRate API' :
-                    '캐시 데이터'
-                  }</div>
-                  {exchangeRatesLastUpdated && (
-                    <div>마지막 업데이트: {getLastUpdatedText(exchangeRatesLastUpdated)}</div>
-                  )}
-                </div>
-              </>
+                <button
+                  onClick={() => {
+                    setChartType('usd')
+                    setShowChart(true)
+                    loadChartData('usd', chartPeriod)
+                  }}
+                  className="flex-1 flex items-center justify-between py-2 px-3 bg-background rounded-lg border border-border hover:border-primary transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">$</span>
+                    <span className="text-xs text-muted-foreground">1달러</span>
+                  </div>
+                  <div className="font-bold text-sm">{(1 / exchangeRates.rubToUsd).toFixed(2)}₽</div>
+                </button>
+              </div>
             ) : (
-              <div className="flex items-center justify-center p-4">
+              <div className="flex items-center justify-center py-3">
                 <div className="text-sm text-muted-foreground">환율 정보를 불러오는 중...</div>
               </div>
             )}
