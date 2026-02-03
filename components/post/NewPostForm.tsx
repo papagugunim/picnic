@@ -261,8 +261,8 @@ export default function NewPostForm() {
                         px-4 py-3 rounded-lg border-2 transition-all
                         ${
                           field.value === cat.value
-                            ? 'border-primary bg-primary/10 text-primary font-semibold'
-                            : 'border-border bg-background hover:border-primary/50'
+                            ? 'border-primary bg-primary text-primary-foreground font-semibold shadow-md'
+                            : 'border-border bg-background hover:border-primary/50 hover:bg-muted/50'
                         }
                       `}
                     >
