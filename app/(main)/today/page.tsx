@@ -1032,9 +1032,9 @@ export default function TodayPage() {
             </div>
 
             {newsList.length > 0 ? (
-              <div className="relative overflow-hidden">
-                {/* 뉴스 카드 - 슬라이드 애니메이션 */}
-                <div className="relative">
+              <div>
+                {/* 뉴스 카드 - 페이드 애니메이션, 높이 고정 */}
+                <div className="relative h-[120px]">
                   {newsList.map((news, index) => (
                     <button
                       key={news.id}
@@ -1042,17 +1042,17 @@ export default function TodayPage() {
                         setSelectedNews(news)
                         setShowNewsModal(true)
                       }}
-                      className={`w-full text-left p-4 bg-background rounded-lg border border-border hover:border-primary cursor-pointer
-                        transition-all duration-500 ease-in-out
+                      className={`absolute inset-0 w-full h-full text-left p-4 bg-background rounded-lg border border-border hover:border-primary cursor-pointer
+                        transition-opacity duration-500 ease-in-out
                         ${index === currentNewsIndex
-                          ? 'opacity-100 translate-x-0 relative'
-                          : 'opacity-0 translate-x-full absolute inset-0 pointer-events-none'
+                          ? 'opacity-100 z-10'
+                          : 'opacity-0 z-0 pointer-events-none'
                         }`}
                     >
                       <div className="text-sm font-semibold mb-2 line-clamp-1">
                         {news.title}
                       </div>
-                      <p className="text-sm text-muted-foreground line-clamp-4 leading-relaxed">
+                      <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
                         {news.summary || news.content}
                       </p>
                     </button>
@@ -1078,7 +1078,7 @@ export default function TodayPage() {
                 )}
               </div>
             ) : (
-              <div className="p-4 bg-background rounded-lg border border-border text-center">
+              <div className="h-[120px] flex items-center justify-center bg-background rounded-lg border border-border">
                 <p className="text-sm text-muted-foreground">
                   {isAdmin ? '새 소식을 추가해주세요' : '등록된 소식이 없습니다'}
                 </p>
