@@ -285,27 +285,16 @@ export default function NewPostForm() {
         )}
 
         {/* 제출 버튼 */}
-        <div className="flex gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-            disabled={isLoading}
-            className="flex-1"
-          >
-            취소
-          </Button>
-          <Button type="submit" disabled={isLoading} className="flex-1">
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                게시 중...
-              </>
-            ) : (
-              '게시하기'
-            )}
-          </Button>
-        </div>
+        <Button type="submit" disabled={isLoading} className="w-full h-12 text-base font-semibold">
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              게시 중...
+            </>
+          ) : (
+            '게시하기'
+          )}
+        </Button>
       </form>
     </Form>
   )
