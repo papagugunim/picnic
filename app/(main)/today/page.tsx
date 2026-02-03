@@ -1096,7 +1096,7 @@ export default function TodayPage() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Newspaper className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                <h2 className="font-bold text-sm">러시아 소식</h2>
+                <h2 className="font-bold text-sm">유용한 소식</h2>
               </div>
               {isAdmin && (
                 <button
@@ -1114,34 +1114,44 @@ export default function TodayPage() {
             </div>
 
             {newsList.length > 0 ? (
-              <div className="relative">
-                {/* 뉴스 카드 */}
-                <button
-                  onClick={() => {
-                    setSelectedNews(newsList[currentNewsIndex])
-                    setShowNewsModal(true)
-                  }}
-                  className="w-full text-left p-3 bg-background rounded-lg border border-border hover:border-primary transition-all cursor-pointer"
-                >
-                  <div className="text-sm font-semibold mb-1 line-clamp-1">
-                    {newsList[currentNewsIndex]?.title}
-                  </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {newsList[currentNewsIndex]?.summary || newsList[currentNewsIndex]?.content.slice(0, 100)}
-                  </p>
-                </button>
+              <div className="relative overflow-hidden">
+                {/* 뉴스 카드 - 슬라이드 애니메이션 */}
+                <div className="relative">
+                  {newsList.map((news, index) => (
+                    <button
+                      key={news.id}
+                      onClick={() => {
+                        setSelectedNews(news)
+                        setShowNewsModal(true)
+                      }}
+                      className={`w-full text-left p-4 bg-background rounded-lg border border-border hover:border-primary cursor-pointer
+                        transition-all duration-500 ease-in-out
+                        ${index === currentNewsIndex
+                          ? 'opacity-100 translate-x-0 relative'
+                          : 'opacity-0 translate-x-full absolute inset-0 pointer-events-none'
+                        }`}
+                    >
+                      <div className="text-sm font-semibold mb-2 line-clamp-1">
+                        {news.title}
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-4 leading-relaxed">
+                        {news.summary || news.content}
+                      </p>
+                    </button>
+                  ))}
+                </div>
 
                 {/* 인디케이터 */}
                 {newsList.length > 1 && (
-                  <div className="flex justify-center gap-1 mt-2">
+                  <div className="flex justify-center gap-1.5 mt-3">
                     {newsList.map((_, index) => (
                       <button
                         key={index}
                         onClick={() => setCurrentNewsIndex(index)}
-                        className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                        className={`w-2 h-2 rounded-full transition-all duration-300 ${
                           index === currentNewsIndex
-                            ? 'bg-primary'
-                            : 'bg-muted-foreground/30'
+                            ? 'bg-primary scale-110'
+                            : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
                         }`}
                         aria-label={`소식 ${index + 1}`}
                       />
@@ -1150,8 +1160,8 @@ export default function TodayPage() {
                 )}
               </div>
             ) : (
-              <div className="p-3 bg-background rounded-lg border border-border text-center">
-                <p className="text-xs text-muted-foreground">
+              <div className="p-4 bg-background rounded-lg border border-border text-center">
+                <p className="text-sm text-muted-foreground">
                   {isAdmin ? '새 소식을 추가해주세요' : '등록된 소식이 없습니다'}
                 </p>
               </div>
