@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('CommunityPage')
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Heart, MessageCircle, Plus, Search, BarChart2, X, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { Heart, MessageCircle, Plus, Search, BarChart2, X, ChevronLeft, ChevronRight, Loader2, MoreVertical, Trash2, Edit, Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PullToRefresh } from '@/components/ui/PullToRefresh'
@@ -17,6 +17,14 @@ import Image from 'next/image'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadEmoji } from '@/lib/bread'
 import { UserAvatar } from '@/components/ui/user-avatar'
+import { CommentSection } from '@/components/comment/CommentSection'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 
 interface CommunityPost {
   id: string
@@ -65,6 +73,13 @@ export default function CommunityPage() {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false)
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
+
+  // Post detail modal state
+  const [selectedPost, setSelectedPost] = useState<CommunityPost | null>(null)
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false)
+  const [modalCommentCount, setModalCommentCount] = useState(0)
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useScrollRestoration({ key: 'community-page' })
 
@@ -130,18 +145,6 @@ export default function CommunityPage() {
     }
   }
 
-  // Keyboard events
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isGalleryOpen) return
-      if (e.key === 'Escape') closeGallery()
-      if (e.key === 'ArrowLeft') goToPrevImage()
-      if (e.key === 'ArrowRight') goToNextImage()
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isGalleryOpen, closeGallery, goToPrevImage, goToNextImage])
-
   // Initialize user data
   useEffect(() => {
     async function initUser() {
@@ -157,12 +160,15 @@ export default function CommunityPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('city')
+        .select('city, user_role')
         .eq('id', user.id)
         .single()
 
       if (profile?.city) {
         setUserCity(profile.city)
+      }
+      if (profile?.user_role) {
+        setCurrentUserRole(profile.user_role)
       }
       setIsInitialized(true)
     }
@@ -310,6 +316,137 @@ export default function CommunityPage() {
       reset()
     }
   }, [selectedCategory])
+
+  // Post detail modal functions
+  const openPostModal = useCallback(async (post: CommunityPost, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    setSelectedPost(post)
+    setModalCommentCount(post.comments_count)
+    setIsPostModalOpen(true)
+    document.body.style.overflow = 'hidden'
+
+    // Increment view count if not author
+    if (currentUserId && post.user_id !== currentUserId) {
+      const supabase = createClient()
+      await supabase
+        .from('community_posts')
+        .update({ view_count: (post.view_count || 0) + 1 })
+        .eq('id', post.id)
+
+      // Update local state
+      updateItem(post.id, (p) => ({ ...p, view_count: (p.view_count || 0) + 1 }))
+    }
+  }, [currentUserId, updateItem])
+
+  const closePostModal = useCallback(() => {
+    setIsPostModalOpen(false)
+    setSelectedPost(null)
+    document.body.style.overflow = ''
+  }, [])
+
+  // Keyboard events for modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isGalleryOpen) {
+          closeGallery()
+        } else if (isPostModalOpen) {
+          closePostModal()
+        }
+      }
+      if (isGalleryOpen) {
+        if (e.key === 'ArrowLeft') goToPrevImage()
+        if (e.key === 'ArrowRight') goToNextImage()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isGalleryOpen, isPostModalOpen, closeGallery, closePostModal, goToPrevImage, goToNextImage])
+
+  // Delete post from modal
+  const deletePostFromModal = useCallback(async () => {
+    if (!selectedPost || !confirm('정말로 이 게시글을 삭제하시겠습니까?')) return
+
+    try {
+      setIsDeleting(true)
+      const supabase = createClient()
+
+      const { error } = await supabase
+        .from('community_posts')
+        .delete()
+        .eq('id', selectedPost.id)
+
+      if (error) {
+        logger.error('Post deletion error:', error)
+        alert('게시글 삭제 중 오류가 발생했습니다')
+        return
+      }
+
+      closePostModal()
+      refresh()
+    } catch (err) {
+      logger.error('Delete error:', err)
+      alert('게시글 삭제 중 오류가 발생했습니다')
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [selectedPost, closePostModal, refresh])
+
+  // Toggle like from modal
+  const toggleModalLike = useCallback(async () => {
+    if (!currentUserId || !selectedPost) return
+
+    const currentlyLiked = selectedPost.is_liked
+
+    // Optimistic update for modal
+    setSelectedPost(prev => prev ? {
+      ...prev,
+      is_liked: !currentlyLiked,
+      likes_count: currentlyLiked ? prev.likes_count - 1 : prev.likes_count + 1,
+    } : null)
+
+    // Also update in list
+    updateItem(selectedPost.id, (post) => ({
+      ...post,
+      is_liked: !currentlyLiked,
+      likes_count: currentlyLiked ? post.likes_count - 1 : post.likes_count + 1
+    }))
+
+    try {
+      const supabase = createClient()
+
+      if (currentlyLiked) {
+        await supabase
+          .from('community_likes')
+          .delete()
+          .eq('post_id', selectedPost.id)
+          .eq('user_id', currentUserId)
+      } else {
+        await supabase
+          .from('community_likes')
+          .insert({
+            post_id: selectedPost.id,
+            user_id: currentUserId,
+          })
+      }
+    } catch (err) {
+      logger.error('Toggle like error:', err)
+      // Revert on error
+      setSelectedPost(prev => prev ? {
+        ...prev,
+        is_liked: currentlyLiked,
+        likes_count: currentlyLiked ? prev.likes_count + 1 : prev.likes_count - 1,
+      } : null)
+      updateItem(selectedPost.id, (post) => ({
+        ...post,
+        is_liked: currentlyLiked,
+        likes_count: currentlyLiked ? post.likes_count + 1 : post.likes_count - 1
+      }))
+    }
+  }, [currentUserId, selectedPost, updateItem])
 
   async function toggleLike(postId: string, currentlyLiked: boolean) {
     if (!currentUserId) return
@@ -467,7 +604,7 @@ export default function CommunityPage() {
                     <article
                       key={post.id}
                       className="flex gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => router.push(`/community/${post.id}`)}
+                      onClick={() => openPostModal(post)}
                     >
                       {/* Profile photo */}
                       <Link
@@ -569,11 +706,7 @@ export default function CommunityPage() {
                         {/* Action buttons */}
                         <div className="flex items-center justify-end gap-4 text-muted-foreground">
                           <button
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              router.push(`/community/${post.id}`)
-                            }}
+                            onClick={(e) => openPostModal(post, e)}
                             className="flex items-center gap-2 p-2 -ml-2 rounded-full hover:bg-primary/10 hover:text-primary transition-colors group"
                           >
                             <MessageCircle className="w-[18px] h-[18px]" />
@@ -632,6 +765,184 @@ export default function CommunityPage() {
             <Plus className="w-6 h-6" />
           </button>
         </div>
+
+        {/* Post detail modal */}
+        {isPostModalOpen && selectedPost && (
+          <div className="fixed inset-0 z-40 bg-background flex flex-col">
+            {/* Modal Header */}
+            <div className="flex-shrink-0 bg-background border-b border-border">
+              <div className="flex items-center justify-between px-4 py-3 max-w-4xl mx-auto">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={closePostModal}
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+                <h1 className="text-lg font-semibold">동네생활</h1>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreVertical className="w-5 h-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {currentUserId === selectedPost.user_id && (
+                      <>
+                        <DropdownMenuItem onClick={() => {
+                          closePostModal()
+                          router.push(`/community/${selectedPost.id}/edit`)
+                        }}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          수정
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={deletePostFromModal}
+                          disabled={isDeleting}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          {isDeleting ? '삭제 중...' : '삭제'}
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {(currentUserRole === 'admin' || currentUserRole === 'developer') && currentUserId !== selectedPost.user_id && (
+                      <>
+                        <DropdownMenuItem
+                          onClick={deletePostFromModal}
+                          disabled={isDeleting}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          {isDeleting ? '삭제 중...' : '관리자 삭제'}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    {currentUserId !== selectedPost.user_id && (
+                      <DropdownMenuItem onClick={() => {
+                        closePostModal()
+                        router.push(`/community/${selectedPost.id}`)
+                      }}>
+                        <Flag className="w-4 h-4 mr-2" />
+                        신고하기
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            {/* Modal Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="max-w-4xl mx-auto">
+                {/* Post Content */}
+                <div className="p-4">
+                  {/* Author Info */}
+                  <div className="flex items-start gap-3 mb-4">
+                    <Link href={`/profile/${selectedPost.user_id}`} onClick={closePostModal}>
+                      <UserAvatar
+                        src={selectedPost.profiles.avatar_url}
+                        alt={selectedPost.profiles.full_name || '사용자'}
+                        breadLevel={selectedPost.profiles.bread_level}
+                        size="lg"
+                      />
+                    </Link>
+
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/profile/${selectedPost.user_id}`}
+                          onClick={closePostModal}
+                          className="font-semibold hover:underline flex items-center gap-1"
+                        >
+                          <span>{selectedPost.profiles.full_name || '익명'}</span>
+                          <span className="text-base">{getBreadEmoji(selectedPost.profiles.bread_level, selectedPost.profiles.user_role || undefined)}</span>
+                        </Link>
+                        <span className="text-xs px-2 py-0.5 bg-secondary rounded-full">
+                          {getCategoryEmoji(selectedPost.category)} {getCategoryName(selectedPost.category)}
+                        </span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {formatTimeAgo(selectedPost.created_at)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Title */}
+                  <h1 className="text-2xl font-bold mb-4">{selectedPost.title}</h1>
+
+                  {/* Content */}
+                  <div className="prose prose-sm max-w-none mb-6 whitespace-pre-wrap">
+                    {selectedPost.content}
+                  </div>
+
+                  {/* Images */}
+                  {selectedPost.images && selectedPost.images.length > 0 && (
+                    <div className="grid grid-cols-2 gap-2 mb-6">
+                      {selectedPost.images.map((image, idx) => (
+                        <div
+                          key={idx}
+                          onClick={(e) => openGallery(selectedPost.images!, idx, e)}
+                          className="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                        >
+                          <Image
+                            src={image}
+                            alt={`이미지 ${idx + 1}`}
+                            fill
+                            sizes="(max-width: 768px) 50vw, 400px"
+                            className="object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-6 py-4 border-y border-border">
+                    <button
+                      onClick={toggleModalLike}
+                      className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                    >
+                      <Heart
+                        className={`w-6 h-6 ${
+                          selectedPost.is_liked
+                            ? 'fill-red-500 text-red-500'
+                            : 'text-muted-foreground'
+                        }`}
+                      />
+                      <span className={selectedPost.is_liked ? 'text-red-500 font-semibold' : 'text-muted-foreground'}>
+                        {selectedPost.likes_count}
+                      </span>
+                    </button>
+
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <MessageCircle className="w-6 h-6" />
+                      <span>{modalCommentCount}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <span>조회</span>
+                      <span>{selectedPost.view_count || 0}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Comments Section */}
+                <CommentSection
+                  postId={selectedPost.id}
+                  currentUserId={currentUserId}
+                  isAdmin={currentUserRole === 'admin' || currentUserRole === 'developer'}
+                  onCommentCountChange={(count) => {
+                    setModalCommentCount(count)
+                    updateItem(selectedPost.id, (post) => ({ ...post, comments_count: count }))
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Image gallery modal */}
         {isGalleryOpen && (
