@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -16,6 +16,7 @@ interface CommentSectionProps {
   currentUserId: string | null
   isAdmin: boolean
   onCommentCountChange?: (count: number) => void
+  isFullscreen?: boolean
 }
 
 export function CommentSection({
@@ -23,11 +24,16 @@ export function CommentSection({
   currentUserId,
   isAdmin,
   onCommentCountChange,
+  isFullscreen = false,
 }: CommentSectionProps) {
   const [comments, setComments] = useState<ThreadedComment[]>([])
   const [newComment, setNewComment] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Use ref to avoid infinite loop with onCommentCountChange callback
+  const onCommentCountChangeRef = useRef(onCommentCountChange)
+  onCommentCountChangeRef.current = onCommentCountChange
 
   const formatTimeAgo = useCallback((dateString: string) => {
     const date = new Date(dateString)
@@ -85,6 +91,8 @@ export function CommentSection({
       setIsLoading(true)
       const supabase = createClient()
 
+      logger.log('Fetching comments for post:', postId)
+
       // Fetch all comments for this post
       const { data: commentsData, error: commentsError } = await supabase
         .from('community_comments')
@@ -98,7 +106,7 @@ export function CommentSection({
           reply_count,
           created_at,
           updated_at,
-          profiles!community_comments_user_id_fkey (
+          profiles (
             full_name,
             avatar_url,
             bread_level,
@@ -108,8 +116,11 @@ export function CommentSection({
         .eq('post_id', postId)
         .order('created_at', { ascending: true })
 
+      logger.log('Comments query result:', { count: commentsData?.length, error: commentsError })
+
       if (commentsError) {
         logger.error('Comments fetch error:', commentsError)
+        setIsLoading(false)
         return
       }
 
@@ -163,17 +174,17 @@ export function CommentSection({
 
       // Calculate total comment count
       const totalCount = commentsData?.length || 0
-      onCommentCountChange?.(totalCount)
+      onCommentCountChangeRef.current?.(totalCount)
     } catch (err) {
       logger.error('Fetch comments error:', err)
     } finally {
       setIsLoading(false)
     }
-  }, [postId, currentUserId, buildCommentTree, onCommentCountChange])
+  }, [postId, currentUserId, buildCommentTree])
 
   useEffect(() => {
     fetchComments()
-  }, [fetchComments])
+  }, [postId, currentUserId])
 
   const handleLike = useCallback(async (commentId: string, isLiked: boolean) => {
     if (!currentUserId) return
@@ -315,7 +326,7 @@ export function CommentSection({
   const totalCommentCount = countAllComments(comments)
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col">
       {/* Comments header */}
       <div className="px-4 py-4">
         <h2 className="text-lg font-bold">
@@ -324,7 +335,7 @@ export function CommentSection({
       </div>
 
       {/* Comments list */}
-      <div className="flex-1 px-4 pb-4 overflow-y-auto">
+      <div className="px-4 pb-4">
         {isLoading ? (
           <div className="text-center py-8 text-muted-foreground">
             댓글을 불러오는 중...
@@ -351,15 +362,18 @@ export function CommentSection({
         )}
       </div>
 
-      {/* Comment input - fixed at bottom */}
-      <div className="sticky bottom-0 bg-background border-t border-border p-4">
-        <div className="flex gap-2">
+      {/* Comment input */}
+      <div className={isFullscreen
+        ? "fixed bottom-0 left-0 right-0 bg-background border-t border-border px-4 py-2 z-10 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
+        : "sticky bottom-0 bg-background border-t border-border px-4 py-2"
+      }>
+        <div className="flex gap-2 items-center max-w-3xl mx-auto">
           <Textarea
             placeholder="댓글을 입력하세요..."
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             rows={1}
-            className="resize-none"
+            className="resize-none min-h-0 h-10 py-2"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
@@ -371,12 +385,15 @@ export function CommentSection({
             onClick={handleSubmitComment}
             disabled={!newComment.trim() || isSubmitting}
             size="icon"
-            className="flex-shrink-0"
+            className="flex-shrink-0 h-10 w-10"
           >
             <Send className="w-4 h-4" />
           </Button>
         </div>
       </div>
+
+      {/* Spacer for fixed input when fullscreen */}
+      {isFullscreen && <div className="h-16" />}
     </div>
   )
 }

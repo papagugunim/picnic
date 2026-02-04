@@ -15,7 +15,7 @@ import {
   MOSCOW_METRO_STATIONS,
   SPB_METRO_STATIONS,
 } from '@/lib/constants'
-import { getRandomLoadingMessage } from '@/lib/loading-messages'
+import { getLoadingMessage } from '@/lib/loading-messages'
 
 interface Profile {
   id: string
@@ -212,7 +212,7 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">{getRandomLoadingMessage()}</div>
+        <div className="text-muted-foreground">{getLoadingMessage('settings')}</div>
       </div>
     )
   }
@@ -230,140 +230,130 @@ export default function SettingsPage() {
 
   return (
     <div className="bg-background">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="flex items-center gap-4 mb-8">
+      <div className="max-w-2xl mx-auto px-4 py-4">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => router.back()}
+            className="h-8 w-8"
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-2xl font-bold">설정</h1>
+          <h1 className="text-lg font-bold">설정</h1>
         </div>
 
-        <div className="space-y-6">
-          <div className="glass-strong rounded-xl p-6">
-            <h2 className="text-base font-semibold mb-4">프로필</h2>
-            <div className="flex items-start gap-6">
-              <div className="relative flex-shrink-0">
-                {avatarPreview ? (
-                  <img
-                    src={avatarPreview}
-                    alt="Avatar"
-                    className="w-20 h-20 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center text-foreground text-2xl font-bold">
-                    {profile.full_name?.charAt(0).toUpperCase() || '?'}
-                  </div>
-                )}
-                <label
-                  htmlFor="avatar-upload"
-                  className="absolute bottom-0 right-0 w-7 h-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors"
-                >
-                  <Camera className="w-3.5 h-3.5" />
-                </label>
-                <input
-                  id="avatar-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarChange}
+        <div className="space-y-3">
+          {/* 프로필 */}
+          <div className="flex items-center gap-4 py-3 border-b border-border">
+            <div className="relative flex-shrink-0">
+              {avatarPreview ? (
+                <img
+                  src={avatarPreview}
+                  alt="Avatar"
+                  className="w-14 h-14 rounded-full object-cover"
                 />
-              </div>
-              <div className="flex-1 space-y-3">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">닉네임</label>
-                  <Input
-                    value={profile.full_name || ''}
-                    disabled
-                    className="bg-muted cursor-not-allowed text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">닉네임은 변경할 수 없습니다</p>
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center text-foreground text-xl font-bold">
+                  {profile.full_name?.charAt(0).toUpperCase() || '?'}
                 </div>
-              </div>
+              )}
+              <label
+                htmlFor="avatar-upload"
+                className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors"
+              >
+                <Camera className="w-3 h-3" />
+              </label>
+              <input
+                id="avatar-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold truncate">{profile.full_name || '익명'}</div>
+              <div className="text-xs text-muted-foreground">프로필 사진 변경</div>
             </div>
           </div>
 
-          <div className="glass-strong rounded-xl p-6">
-            <h2 className="text-base font-semibold mb-3">테마</h2>
+          {/* 테마 */}
+          <div className="py-3 border-b border-border">
+            <div className="text-sm font-medium text-muted-foreground mb-2">테마</div>
             {mounted && (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="flex gap-2">
                 <button
                   onClick={() => setTheme('light')}
-                  className={'p-3 rounded-lg text-center transition-all ' +
+                  className={'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ' +
                     (theme === 'light'
-                      ? 'ring-2 ring-primary bg-primary/5'
+                      ? 'bg-primary text-primary-foreground'
                       : 'bg-secondary hover:bg-muted')}
                 >
-                  <div className="flex justify-center mb-1.5">
-                    <Sun className="w-5 h-5" />
-                  </div>
-                  <div className="font-medium text-xs">라이트</div>
+                  <Sun className="w-4 h-4" />
+                  <span>라이트</span>
                 </button>
                 <button
                   onClick={() => setTheme('dark')}
-                  className={'p-3 rounded-lg text-center transition-all ' +
+                  className={'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ' +
                     (theme === 'dark'
-                      ? 'ring-2 ring-primary bg-primary/5'
+                      ? 'bg-primary text-primary-foreground'
                       : 'bg-secondary hover:bg-muted')}
                 >
-                  <div className="flex justify-center mb-1.5">
-                    <Moon className="w-5 h-5" />
-                  </div>
-                  <div className="font-medium text-xs">다크</div>
+                  <Moon className="w-4 h-4" />
+                  <span>다크</span>
                 </button>
                 <button
                   onClick={() => setTheme('system')}
-                  className={'p-3 rounded-lg text-center transition-all ' +
+                  className={'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ' +
                     (theme === 'system'
-                      ? 'ring-2 ring-primary bg-primary/5'
+                      ? 'bg-primary text-primary-foreground'
                       : 'bg-secondary hover:bg-muted')}
                 >
-                  <div className="flex justify-center mb-1.5">
-                    <Monitor className="w-5 h-5" />
-                  </div>
-                  <div className="font-medium text-xs">시스템</div>
+                  <Monitor className="w-4 h-4" />
+                  <span>시스템</span>
                 </button>
               </div>
             )}
           </div>
 
-          <div className="glass-strong rounded-xl p-6">
-            <h2 className="text-base font-semibold mb-3">도시</h2>
-            <div className="grid grid-cols-2 gap-3">
+          {/* 도시 */}
+          <div className="py-3 border-b border-border">
+            <div className="text-sm font-medium text-muted-foreground mb-2">도시</div>
+            <div className="flex gap-2">
               <button
                 onClick={() => handleCityChange('Moscow')}
-                className={'p-3 rounded-lg text-center transition-all ' +
+                className={'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ' +
                   (selectedCity === 'Moscow' || selectedCity === 'moscow'
-                    ? 'ring-2 ring-primary bg-primary/5'
+                    ? 'bg-primary text-primary-foreground'
                     : 'bg-secondary hover:bg-muted')}
               >
-                <div className="text-2xl mb-1.5">🏛️</div>
-                <div className="font-medium text-xs">모스크바</div>
+                <span>🏛️</span>
+                <span>모스크바</span>
               </button>
               <button
                 onClick={() => handleCityChange('Saint Petersburg')}
-                className={'p-3 rounded-lg text-center transition-all ' +
+                className={'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ' +
                   (selectedCity === 'Saint Petersburg' || selectedCity === 'spb'
-                    ? 'ring-2 ring-primary bg-primary/5'
+                    ? 'bg-primary text-primary-foreground'
                     : 'bg-secondary hover:bg-muted')}
               >
-                <div className="text-2xl mb-1.5">⛲</div>
-                <div className="font-medium text-xs">상트페테르부르크</div>
+                <span>⛲</span>
+                <span>상트페테르부르크</span>
               </button>
             </div>
           </div>
 
+          {/* 지하철역 */}
           {selectedCity && (
-            <div className="glass-strong rounded-xl p-6">
-              <h2 className="text-base font-semibold mb-3">
-                선호하는 지하철역 ({selectedStations.length}/5)
-              </h2>
+            <div className="py-3 border-b border-border">
+              <div className="text-sm font-medium text-muted-foreground mb-2">
+                선호 지하철역 ({selectedStations.length}/5)
+              </div>
 
               {selectedStations.length > 0 && (
-                <div className="mb-4 flex flex-wrap gap-2">
+                <div className="mb-3 flex flex-wrap gap-1.5">
                   {selectedStations.map((stationValue) => {
                     const station = metroStations.find((s) => s.value === stationValue)
                     if (!station) return null
@@ -371,64 +361,52 @@ export default function SettingsPage() {
                       <button
                         key={stationValue}
                         onClick={() => handleStationToggle(stationValue)}
-                        className="inline-flex items-center gap-2 px-3 py-2 text-white rounded-full text-sm font-medium hover:opacity-90 transition-opacity"
+                        className="inline-flex items-center gap-1 px-2 py-1 text-white rounded-full text-xs font-medium hover:opacity-90 transition-opacity"
                         style={{ backgroundColor: station.lineColor }}
                       >
                         {formatStationName(station.label)}
-                        <X className="w-4 h-4" />
+                        <X className="w-3 h-3" />
                       </button>
                     )
                   })}
                 </div>
               )}
 
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <div className="relative mb-2">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="text"
                   placeholder="지하철역 검색..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-9 h-9 text-sm"
                 />
               </div>
 
-              <div className="max-h-96 overflow-y-auto space-y-1">
+              <div className="max-h-48 overflow-y-auto">
                 {filteredStations.map((station) => {
                   const isSelected = selectedStations.includes(station.value)
                   return (
                     <button
                       key={station.value}
                       onClick={() => handleStationToggle(station.value)}
-                      className={'w-full text-left px-3 py-3 rounded-lg transition-all ' +
+                      className={'w-full text-left px-2 py-2 rounded-lg transition-all flex items-center gap-2 ' +
                         (isSelected
-                          ? 'bg-primary text-primary-foreground ring-2 ring-primary/50'
+                          ? 'bg-primary/10'
                           : 'hover:bg-secondary/50')}
                     >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-1 h-10 rounded-full"
-                          style={{ backgroundColor: station.lineColor }}
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold text-white"
-                              style={{ backgroundColor: station.lineColor }}
-                            >
-                              {station.line}
-                            </span>
-                            <span className="font-medium text-sm">
-                              {formatStationName(station.label)}
-                            </span>
-                          </div>
-                        </div>
-                        {isSelected && (
-                          <span className="text-xs bg-white/20 px-2 py-1 rounded">
-                            ✓
-                          </span>
-                        )}
-                      </div>
+                      <span
+                        className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white flex-shrink-0"
+                        style={{ backgroundColor: station.lineColor }}
+                      >
+                        {station.line}
+                      </span>
+                      <span className="text-sm truncate flex-1">
+                        {formatStationName(station.label)}
+                      </span>
+                      {isSelected && (
+                        <span className="text-primary text-sm">✓</span>
+                      )}
                     </button>
                   )
                 })}
@@ -436,36 +414,33 @@ export default function SettingsPage() {
             </div>
           )}
 
+          {/* 저장 버튼 */}
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="w-full h-12 text-sm font-medium"
+            className="w-full h-10 text-sm font-medium"
           >
             {isSaving ? '저장 중...' : '저장하기'}
           </Button>
 
           {success && (
-            <div className="p-4 bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400 rounded-lg text-sm font-medium text-center">
+            <div className="p-3 bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400 rounded-lg text-sm text-center">
               {success}
             </div>
           )}
 
           {error && (
-            <div className="p-4 bg-destructive/10 text-destructive dark:bg-destructive/20 rounded-lg text-sm font-medium text-center">
+            <div className="p-3 bg-destructive/10 text-destructive dark:bg-destructive/20 rounded-lg text-sm text-center">
               {error}
             </div>
           )}
 
           {/* 회원 탈퇴 */}
-          <div className="mt-12 pt-6 border-t border-border">
+          <div className="pt-4">
             <Link href="/settings/delete-account">
-              <Button
-                variant="ghost"
-                className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
-              >
-                <AlertTriangle className="w-4 h-4 mr-2" />
+              <button className="w-full text-sm text-muted-foreground hover:text-destructive transition-colors py-2">
                 회원 탈퇴
-              </Button>
+              </button>
             </Link>
           </div>
         </div>

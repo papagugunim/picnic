@@ -60,104 +60,105 @@ export function CommentThread({
   }, [comment.id, onDelete])
 
   return (
-    <div className={cn('relative', comment.depth > 0 && 'pl-6')}>
-      {/* Thread connector line */}
-      {comment.depth > 0 && (
-        <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-border" />
-      )}
-
-      <div className="flex items-start gap-3 relative">
-        {/* Horizontal connector for replies */}
-        {comment.depth > 0 && (
-          <div className="absolute left-0 top-5 w-3 h-0.5 bg-border" />
-        )}
-
-        {/* Avatar */}
-        <Link href={`/profile/${comment.user_id}`} className="flex-shrink-0">
-          <UserAvatar
-            src={comment.profiles.avatar_url}
-            alt={comment.profiles.full_name || '사용자'}
-            breadLevel={comment.profiles.bread_level}
-            size="sm"
-          />
-        </Link>
+    <div className={cn('relative', comment.depth > 0 && 'ml-12')}>
+      <div className="flex gap-3">
+        {/* Avatar with thread line */}
+        <div className="flex flex-col items-center">
+          <Link href={`/profile/${comment.user_id}`} className="flex-shrink-0">
+            <UserAvatar
+              src={comment.profiles.avatar_url}
+              alt={comment.profiles.full_name || '사용자'}
+              breadLevel={comment.profiles.bread_level}
+              size="sm"
+            />
+          </Link>
+          {/* Vertical thread line for replies */}
+          {hasReplies && showReplies && (
+            <div className="w-0.5 flex-1 bg-border mt-2" />
+          )}
+        </div>
 
         {/* Comment content */}
-        <div className="flex-1 min-w-0">
-          <div className="bg-secondary rounded-lg p-3">
+        <div className="flex-1 min-w-0 pb-3">
+          {/* Header: name + emoji + time */}
+          <div className="flex items-center gap-1 text-sm">
             <Link
               href={`/profile/${comment.user_id}`}
-              className="font-semibold text-sm hover:underline inline-flex items-center gap-1"
+              className="font-bold hover:underline"
             >
-              <span>{comment.profiles.full_name || '익명'}</span>
-              <span className="text-sm">
-                {getBreadEmoji(comment.profiles.bread_level, comment.profiles.user_role || undefined)}
-              </span>
+              {comment.profiles.full_name || '익명'}
             </Link>
-            <p className="text-sm mt-1 whitespace-pre-wrap break-words">
-              {comment.content}
-            </p>
+            <span className="text-sm">
+              {getBreadEmoji(comment.profiles.bread_level, comment.profiles.user_role || undefined)}
+            </span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-muted-foreground">
+              {formatTimeAgo(comment.created_at)}
+            </span>
           </div>
 
+          {/* Content */}
+          <p className="text-[15px] mt-1 whitespace-pre-wrap break-words leading-relaxed">
+            {comment.content}
+          </p>
+
           {/* Actions */}
-          <div className="flex items-center gap-4 mt-2 px-2 text-xs">
+          <div className="flex items-center gap-5 mt-2 text-muted-foreground">
+            {canReply && (
+              <button
+                onClick={() => setShowReplyInput(!showReplyInput)}
+                className="flex items-center gap-1.5 hover:text-primary transition-colors group"
+              >
+                <MessageCircle className="w-4 h-4" />
+                {comment.reply_count > 0 && (
+                  <span className="text-xs">{comment.reply_count}</span>
+                )}
+              </button>
+            )}
+
             <button
               onClick={() => onLike(comment.id, comment.is_liked)}
               className={cn(
-                'flex items-center gap-1 hover:text-primary transition-colors',
-                comment.is_liked ? 'text-red-500' : 'text-muted-foreground'
+                'flex items-center gap-1.5 transition-colors',
+                comment.is_liked ? 'text-red-500' : 'hover:text-red-500'
               )}
             >
               <Heart
                 className={cn('w-4 h-4', comment.is_liked && 'fill-current')}
               />
-              <span>{comment.likes_count || 0}</span>
+              {(comment.likes_count > 0) && (
+                <span className="text-xs">{comment.likes_count}</span>
+              )}
             </button>
-
-            {canReply && (
-              <button
-                onClick={() => setShowReplyInput(!showReplyInput)}
-                className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>답글</span>
-              </button>
-            )}
-
-            <span className="text-muted-foreground">
-              {formatTimeAgo(comment.created_at)}
-            </span>
 
             {currentUserId !== comment.user_id && (
               <button
                 onClick={() => setIsReportDialogOpen(true)}
-                className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
+                className="flex items-center gap-1.5 hover:text-primary transition-colors"
               >
                 <Flag className="w-4 h-4" />
-                <span>신고</span>
               </button>
             )}
 
             {canDelete && (
               <button
                 onClick={handleDeleteClick}
-                className="flex items-center gap-1 text-muted-foreground hover:text-destructive transition-colors ml-auto"
+                className="flex items-center gap-1.5 hover:text-destructive transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>{currentUserId === comment.user_id ? '삭제' : '관리자 삭제'}</span>
               </button>
             )}
           </div>
 
           {/* Reply input */}
           {showReplyInput && (
-            <div className="flex gap-2 mt-3 pl-2">
+            <div className="flex gap-2 mt-3">
               <Textarea
                 placeholder="답글을 입력하세요..."
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
                 rows={1}
-                className="resize-none text-sm"
+                className="resize-none text-sm min-h-0 h-10 py-2"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
@@ -169,7 +170,7 @@ export function CommentThread({
                 onClick={handleSubmitReply}
                 disabled={!replyContent.trim() || isSubmitting}
                 size="icon"
-                className="flex-shrink-0"
+                className="flex-shrink-0 h-10 w-10"
               >
                 <Send className="w-4 h-4" />
               </Button>
@@ -177,28 +178,19 @@ export function CommentThread({
           )}
 
           {/* Toggle replies button */}
-          {hasReplies && (
+          {hasReplies && !showReplies && (
             <button
-              onClick={() => setShowReplies(!showReplies)}
-              className="flex items-center gap-1 text-primary text-sm mt-3 hover:underline"
+              onClick={() => setShowReplies(true)}
+              className="flex items-center gap-1 text-primary text-sm mt-2 hover:underline"
             >
-              {showReplies ? (
-                <>
-                  <ChevronUp className="w-4 h-4" />
-                  <span>답글 {comment.replies!.length}개 숨기기</span>
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="w-4 h-4" />
-                  <span>답글 {comment.replies!.length}개 보기</span>
-                </>
-              )}
+              <ChevronDown className="w-4 h-4" />
+              <span>답글 {comment.replies!.length}개 보기</span>
             </button>
           )}
 
           {/* Replies */}
           {showReplies && hasReplies && (
-            <div className="mt-3 space-y-3">
+            <div className="mt-3 space-y-0">
               {comment.replies!.map((reply) => (
                 <CommentThread
                   key={reply.id}
@@ -211,6 +203,13 @@ export function CommentThread({
                   formatTimeAgo={formatTimeAgo}
                 />
               ))}
+              <button
+                onClick={() => setShowReplies(false)}
+                className="flex items-center gap-1 text-primary text-sm mt-1 ml-12 hover:underline"
+              >
+                <ChevronUp className="w-4 h-4" />
+                <span>답글 숨기기</span>
+              </button>
             </div>
           )}
         </div>

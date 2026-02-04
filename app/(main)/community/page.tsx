@@ -14,7 +14,7 @@ import { useInfiniteScroll } from '@/lib/hooks/useInfiniteScroll'
 import { useScrollRestoration } from '@/lib/hooks/useScrollRestoration'
 import Link from 'next/link'
 import Image from 'next/image'
-import { getRandomLoadingMessage } from '@/lib/loading-messages'
+import { getLoadingMessage } from '@/lib/loading-messages'
 import { getBreadEmoji } from '@/lib/bread'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { CommentSection } from '@/components/comment/CommentSection'
@@ -522,7 +522,7 @@ export default function CommunityPage() {
           <div className="px-4 py-4">
             <h1 className="text-2xl font-bold mb-4">동네생활</h1>
             <div className="text-center py-16 text-muted-foreground">
-              {getRandomLoadingMessage()}
+              {getLoadingMessage('post')}
             </div>
           </div>
         </div>
@@ -766,20 +766,25 @@ export default function CommunityPage() {
           </button>
         </div>
 
-        {/* Post detail modal */}
+        {/* Post detail modal - Fullscreen */}
         {isPostModalOpen && selectedPost && (
-          <div className="fixed inset-0 z-40 bg-background flex flex-col">
-            {/* Modal Header */}
-            <div className="flex-shrink-0 bg-background border-b border-border">
-              <div className="flex items-center justify-between px-4 py-3 max-w-4xl mx-auto">
+          <div
+            className="fixed inset-0 bg-background z-50 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header - Fixed */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background flex-shrink-0">
+              <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={closePostModal}
                 >
-                  <X className="w-5 h-5" />
+                  <ChevronLeft className="w-5 h-5" />
                 </Button>
                 <h1 className="text-lg font-semibold">동네생활</h1>
+              </div>
+              <div className="flex items-center gap-1">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon">
@@ -835,105 +840,106 @@ export default function CommunityPage() {
             </div>
 
             {/* Modal Content - Scrollable */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="max-w-4xl mx-auto">
-                {/* Post Content */}
-                <div className="p-4">
-                  {/* Author Info */}
-                  <div className="flex items-start gap-3 mb-4">
-                    <Link href={`/profile/${selectedPost.user_id}`} onClick={closePostModal}>
-                      <UserAvatar
-                        src={selectedPost.profiles.avatar_url}
-                        alt={selectedPost.profiles.full_name || '사용자'}
-                        breadLevel={selectedPost.profiles.bread_level}
-                        size="lg"
-                      />
-                    </Link>
+            <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+              {/* Post Content */}
+              <div className="p-4 max-w-3xl mx-auto">
+                {/* Author Info */}
+                <div className="flex items-start gap-3 mb-4">
+                  <Link href={`/profile/${selectedPost.user_id}`} onClick={closePostModal}>
+                    <UserAvatar
+                      src={selectedPost.profiles.avatar_url}
+                      alt={selectedPost.profiles.full_name || '사용자'}
+                      breadLevel={selectedPost.profiles.bread_level}
+                      size="lg"
+                    />
+                  </Link>
 
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/profile/${selectedPost.user_id}`}
-                          onClick={closePostModal}
-                          className="font-semibold hover:underline flex items-center gap-1"
-                        >
-                          <span>{selectedPost.profiles.full_name || '익명'}</span>
-                          <span className="text-base">{getBreadEmoji(selectedPost.profiles.bread_level, selectedPost.profiles.user_role || undefined)}</span>
-                        </Link>
-                        <span className="text-xs px-2 py-0.5 bg-secondary rounded-full">
-                          {getCategoryEmoji(selectedPost.category)} {getCategoryName(selectedPost.category)}
-                        </span>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {formatTimeAgo(selectedPost.created_at)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Title */}
-                  <h1 className="text-2xl font-bold mb-4">{selectedPost.title}</h1>
-
-                  {/* Content */}
-                  <div className="prose prose-sm max-w-none mb-6 whitespace-pre-wrap">
-                    {selectedPost.content}
-                  </div>
-
-                  {/* Images */}
-                  {selectedPost.images && selectedPost.images.length > 0 && (
-                    <div className="grid grid-cols-2 gap-2 mb-6">
-                      {selectedPost.images.map((image, idx) => (
-                        <div
-                          key={idx}
-                          onClick={(e) => openGallery(selectedPost.images!, idx, e)}
-                          className="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-                        >
-                          <Image
-                            src={image}
-                            alt={`이미지 ${idx + 1}`}
-                            fill
-                            sizes="(max-width: 768px) 50vw, 400px"
-                            className="object-cover"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-6 py-4 border-y border-border">
-                    <button
-                      onClick={toggleModalLike}
-                      className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
-                    >
-                      <Heart
-                        className={`w-6 h-6 ${
-                          selectedPost.is_liked
-                            ? 'fill-red-500 text-red-500'
-                            : 'text-muted-foreground'
-                        }`}
-                      />
-                      <span className={selectedPost.is_liked ? 'text-red-500 font-semibold' : 'text-muted-foreground'}>
-                        {selectedPost.likes_count}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Link
+                        href={`/profile/${selectedPost.user_id}`}
+                        onClick={closePostModal}
+                        className="font-semibold hover:underline flex items-center gap-1"
+                      >
+                        <span>{selectedPost.profiles.full_name || '익명'}</span>
+                        <span className="text-base">{getBreadEmoji(selectedPost.profiles.bread_level, selectedPost.profiles.user_role || undefined)}</span>
+                      </Link>
+                      <span className="text-xs px-2 py-0.5 bg-secondary rounded-full">
+                        {getCategoryEmoji(selectedPost.category)} {getCategoryName(selectedPost.category)}
                       </span>
-                    </button>
-
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <MessageCircle className="w-6 h-6" />
-                      <span>{modalCommentCount}</span>
                     </div>
-
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <span>조회</span>
-                      <span>{selectedPost.view_count || 0}</span>
+                    <div className="text-sm text-muted-foreground">
+                      {formatTimeAgo(selectedPost.created_at)}
                     </div>
                   </div>
                 </div>
 
-                {/* Comments Section */}
+                {/* Title */}
+                <h1 className="text-2xl font-bold mb-4">{selectedPost.title}</h1>
+
+                {/* Content */}
+                <div className="prose prose-sm max-w-none mb-6 whitespace-pre-wrap">
+                  {selectedPost.content}
+                </div>
+
+                {/* Images */}
+                {selectedPost.images && selectedPost.images.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2 mb-6">
+                    {selectedPost.images.map((image, idx) => (
+                      <div
+                        key={idx}
+                        onClick={(e) => openGallery(selectedPost.images!, idx, e)}
+                        className="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                      >
+                        <Image
+                          src={image}
+                          alt={`이미지 ${idx + 1}`}
+                          fill
+                          sizes="(max-width: 768px) 50vw, 400px"
+                          className="object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex items-center gap-6 py-4 border-y border-border">
+                  <button
+                    onClick={toggleModalLike}
+                    className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                  >
+                    <Heart
+                      className={`w-6 h-6 ${
+                        selectedPost.is_liked
+                          ? 'fill-red-500 text-red-500'
+                          : 'text-muted-foreground'
+                      }`}
+                    />
+                    <span className={selectedPost.is_liked ? 'text-red-500 font-semibold' : 'text-muted-foreground'}>
+                      {selectedPost.likes_count}
+                    </span>
+                  </button>
+
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MessageCircle className="w-6 h-6" />
+                    <span>{modalCommentCount}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <span>조회</span>
+                    <span>{selectedPost.view_count || 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Comments Section */}
+              <div className="max-w-3xl mx-auto">
                 <CommentSection
                   postId={selectedPost.id}
                   currentUserId={currentUserId}
                   isAdmin={currentUserRole === 'admin' || currentUserRole === 'developer'}
+                  isFullscreen={true}
                   onCommentCountChange={(count) => {
                     setModalCommentCount(count)
                     updateItem(selectedPost.id, (post) => ({ ...post, comments_count: count }))

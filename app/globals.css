@@ -36,12 +36,12 @@
   }
 
   .dark {
-    /* Notion-inspired Dark Mode - 간결하고 깔끔한 무채색 */
-    --background: 0 0% 9%;
+    /* X/Twitter-inspired Dark Mode - 완전한 검정 배경 */
+    --background: 0 0% 0%;
     --foreground: 0 0% 95%;
-    --card: 0 0% 13%;
+    --card: 0 0% 8%;
     --card-foreground: 0 0% 95%;
-    --popover: 0 0% 13%;
+    --popover: 0 0% 8%;
     --popover-foreground: 0 0% 95%;
 
     /* Primary - Sage Green (채도 낮은 초록색) */
@@ -49,22 +49,22 @@
     --primary-foreground: 0 0% 100%;
 
     /* Secondary - 무채색 */
-    --secondary: 0 0% 16%;
+    --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 95%;
 
     /* Muted - 무채색 */
-    --muted: 0 0% 16%;
+    --muted: 0 0% 12%;
     --muted-foreground: 0 0% 65%;
 
     /* Accent - 무채색 */
-    --accent: 0 0% 18%;
+    --accent: 0 0% 14%;
     --accent-foreground: 0 0% 95%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 95%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 16%;
+    --border: 0 0% 16%;
+    --input: 0 0% 12%;
     --ring: 150 20% 50%;
   }
 }
