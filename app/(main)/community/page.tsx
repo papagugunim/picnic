@@ -8,10 +8,8 @@ import { useRouter } from 'next/navigation'
 import { Heart, MessageCircle, Plus, Search, BarChart2, X, ChevronLeft, ChevronRight, Loader2, MoreVertical, Trash2, Edit, Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { createClient } from '@/lib/supabase/client'
 import { useInfiniteScroll } from '@/lib/hooks/useInfiniteScroll'
-import { useScrollRestoration } from '@/lib/hooks/useScrollRestoration'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getLoadingMessage } from '@/lib/loading-messages'
@@ -82,8 +80,6 @@ export default function CommunityPage() {
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
-
-  useScrollRestoration({ key: 'community-page' })
 
   const toggleExpand = useCallback((postId: string, e: React.MouseEvent) => {
     e.preventDefault()
@@ -533,8 +529,7 @@ export default function CommunityPage() {
   }
 
   return (
-    <PullToRefresh onRefresh={refresh} enabled={!isLoading}>
-      <div className="bg-background">
+    <div className="bg-background">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="bg-background">
@@ -1044,6 +1039,5 @@ export default function CommunityPage() {
           </div>
         )}
       </div>
-    </PullToRefresh>
   )
 }
