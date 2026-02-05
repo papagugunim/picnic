@@ -5,18 +5,18 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Settings, MapPin, Calendar, Package, Train, Users, MessageCircle, Heart, Bookmark, Flag } from 'lucide-react'
-import { useTheme } from 'next-themes'
-import { Button } from '@/components/ui/button'
-import { createClient } from '@/lib/supabase/client'
-import Link from 'next/link'
+import { MapPin, Calendar, Package, Users, MessageCircle, Heart, Bookmark, Flag } from 'lucide-react'
 import {
   MOSCOW_METRO_STATIONS,
   SPB_METRO_STATIONS,
 } from '@/lib/constants'
+import { useTheme } from 'next-themes'
+import { Button } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
 import { getBreadInfo, getBreadDescription, getBreadEmoji } from '@/lib/bread'
 import { UserAvatar } from '@/components/ui/user-avatar'
-import { getRandomLoadingMessage } from '@/lib/loading-messages'
+import { getLoadingMessage } from '@/lib/loading-messages'
 import { BreadLevelModal } from '@/components/bread-level-modal'
 import { ReportDialog } from '@/components/admin/ReportDialog'
 
@@ -248,7 +248,7 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">{getRandomLoadingMessage()}</div>
+        <div className="text-muted-foreground">{getLoadingMessage('profile')}</div>
       </div>
     )
   }
@@ -294,8 +294,6 @@ export default function ProfilePage() {
     const stations = getMetroStations()
     return stations.find((s) => s.value === stationValue)
   }
-
-  const isDark = mounted && (resolvedTheme === 'dark' || (!resolvedTheme && theme === 'dark'))
 
   return (
     <div className="bg-background">
@@ -399,36 +397,32 @@ export default function ProfilePage() {
                 })()}
               </div>
 
-              <div className="flex items-start gap-1.5">
-                <Train className="w-3.5 h-3.5 mt-0.5 text-muted-foreground" />
+              {/* 지하철역 - 아이콘 없이 */}
+              {profile.preferred_metro_stations && profile.preferred_metro_stations.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
-                  {profile.preferred_metro_stations && profile.preferred_metro_stations.length > 0 ? (
-                    profile.preferred_metro_stations.map((stationValue) => {
-                      const station = getStationInfo(stationValue)
-                      if (!station) return null
-                      return (
+                  {profile.preferred_metro_stations.map((stationValue) => {
+                    const station = getStationInfo(stationValue)
+                    if (!station) return null
+                    return (
+                      <span
+                        key={stationValue}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs"
+                        style={{
+                          backgroundColor: `${station.lineColor}20`,
+                          border: `1px solid ${station.lineColor}`,
+                          color: station.lineColor
+                        }}
+                      >
                         <span
-                          key={stationValue}
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs"
-                          style={{
-                            backgroundColor: `${station.lineColor}20`,
-                            border: `1px solid ${station.lineColor}`,
-                            color: station.lineColor
-                          }}
-                        >
-                          <span
-                            className="w-1.5 h-1.5 rounded-full"
-                            style={{ backgroundColor: station.lineColor }}
-                          />
-                          {formatStationName(station.label)}
-                        </span>
-                      )
-                    })
-                  ) : (
-                    <span className="text-muted-foreground text-xs">설정 안 함</span>
-                  )}
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ backgroundColor: station.lineColor }}
+                        />
+                        {formatStationName(station.label)}
+                      </span>
+                    )
+                  })}
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

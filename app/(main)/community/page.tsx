@@ -18,6 +18,7 @@ import { getLoadingMessage } from '@/lib/loading-messages'
 import { getBreadEmoji } from '@/lib/bread'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { CommentSection } from '@/components/comment/CommentSection'
+import { ReportDialog } from '@/components/admin/ReportDialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,6 +81,7 @@ export default function CommunityPage() {
   const [modalCommentCount, setModalCommentCount] = useState(0)
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
 
   useScrollRestoration({ key: 'community-page' })
 
@@ -826,10 +828,7 @@ export default function CommunityPage() {
                       </>
                     )}
                     {currentUserId !== selectedPost.user_id && (
-                      <DropdownMenuItem onClick={() => {
-                        closePostModal()
-                        router.push(`/community/${selectedPost.id}`)
-                      }}>
+                      <DropdownMenuItem onClick={() => setIsReportDialogOpen(true)}>
                         <Flag className="w-4 h-4 mr-2" />
                         신고하기
                       </DropdownMenuItem>
@@ -947,6 +946,16 @@ export default function CommunityPage() {
                 />
               </div>
             </div>
+
+            {/* Report Dialog */}
+            {selectedPost && (
+              <ReportDialog
+                open={isReportDialogOpen}
+                onOpenChange={setIsReportDialogOpen}
+                targetType="community_post"
+                targetId={selectedPost.id}
+              />
+            )}
           </div>
         )}
 
