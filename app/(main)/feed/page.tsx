@@ -3,15 +3,13 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('FeedPage')
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Plus, Heart, Bookmark, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { createClient } from '@/lib/supabase/client'
 import { useInfiniteScroll } from '@/lib/hooks/useInfiniteScroll'
-import { useScrollRestoration } from '@/lib/hooks/useScrollRestoration'
 import { getNearbyMetroStations, hasNearbyStation } from '@/lib/metro-utils'
 import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
 
@@ -49,8 +47,6 @@ export default function FeedPage() {
   const [userStations, setUserStations] = useState<string[]>([])
   const [userId, setUserId] = useState<string | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
-
-  useScrollRestoration({ key: 'feed-page' })
 
   // Initialize user data
   useEffect(() => {
@@ -207,8 +203,8 @@ export default function FeedPage() {
     }
   }, [selectedTab, userCity])
 
-  // Filter posts based on selected tab
-  const filteredPosts = useCallback(() => {
+  // Filter posts based on selected tab - memoized to prevent recalculation
+  const posts = useMemo(() => {
     if (allPosts.length === 0) return []
 
     switch (selectedTab) {
@@ -227,8 +223,6 @@ export default function FeedPage() {
         return allPosts
     }
   }, [allPosts, selectedTab, userStations, userCity])
-
-  const posts = filteredPosts()
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString)
@@ -350,8 +344,7 @@ export default function FeedPage() {
   }
 
   return (
-    <PullToRefresh onRefresh={refresh} enabled={!isLoading}>
-      <div>
+    <div>
         {/* Category filter */}
         <div className="bg-background border-b border-border">
           <div className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide">
@@ -504,6 +497,7 @@ export default function FeedPage() {
         )}
 
         {/* FAB button */}
+        {/* FAB button */}
         <Button
           asChild
           className="fab flex items-center justify-center"
@@ -514,6 +508,5 @@ export default function FeedPage() {
           </Link>
         </Button>
       </div>
-    </PullToRefresh>
   )
 }

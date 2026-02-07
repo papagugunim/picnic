@@ -3,7 +3,7 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('CommunityPage')
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Heart, MessageCircle, Plus, Search, BarChart2, X, ChevronLeft, ChevronRight, Loader2, MoreVertical, Trash2, Edit, Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -506,11 +506,14 @@ export default function CommunityPage() {
     return cat?.name || category
   }
 
-  const filteredPosts = posts.filter((post) =>
-    searchQuery
-      ? post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.content.toLowerCase().includes(searchQuery.toLowerCase())
-      : true
+  // Memoize filtered posts to prevent recalculation on every render
+  const filteredPosts = useMemo(() =>
+    posts.filter((post) =>
+      searchQuery
+        ? post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          post.content.toLowerCase().includes(searchQuery.toLowerCase())
+        : true
+    ), [posts, searchQuery]
   )
 
   if (isLoading) {
