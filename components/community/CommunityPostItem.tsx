@@ -206,12 +206,10 @@ export function CommunityPostItem({
             <span className="text-sm">{post.likes_count || 0}</span>
           </button>
 
-          {currentUserRole === 'developer' && (
-            <div className="flex items-center gap-2 p-2 rounded-full">
-              <BarChart2 className="w-[18px] h-[18px]" />
-              <span className="text-sm">{post.view_count || 0}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 p-2 rounded-full">
+            <BarChart2 className="w-[18px] h-[18px]" />
+            <span className="text-sm">{post.view_count || 0}</span>
+          </div>
         </div>
       </div>
     </article>
