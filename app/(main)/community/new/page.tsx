@@ -7,7 +7,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
 import ImageUpload from '@/components/post/ImageUpload'
@@ -22,9 +21,8 @@ const categories = [
 
 export default function NewCommunityPostPage() {
   const router = useRouter()
-  const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('question')
+  const [selectedCategory, setSelectedCategory] = useState('chat')
   const [images, setImages] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -68,15 +66,13 @@ export default function NewCommunityPostPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!title.trim()) {
-      setError('제목을 입력해주세요')
-      return
-    }
-
     if (!content.trim()) {
       setError('내용을 입력해주세요')
       return
     }
+
+    // 내용 첫 줄에서 제목 자동 생성
+    const title = content.trim().split('\n')[0].slice(0, 50)
 
     try {
       setIsSubmitting(true)
@@ -167,14 +163,8 @@ export default function NewCommunityPostPage() {
               >
                 <ChevronLeft className="w-5 h-5" />
               </Button>
-              <h1 className="text-xl font-bold">게시글 작성</h1>
+              <h1 className="text-lg font-bold">글쓰기</h1>
             </div>
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting || !title.trim() || !content.trim()}
-            >
-              {isSubmitting ? '작성 중...' : '완료'}
-            </Button>
           </div>
         </div>
 
@@ -214,34 +204,15 @@ export default function NewCommunityPostPage() {
             </div>
           </div>
 
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              제목
-            </label>
-            <Input
-              type="text"
-              placeholder="제목을 입력하세요"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={100}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              {title.length}/100
-            </p>
-          </div>
-
           {/* Content */}
           <div>
-            <label className="block text-sm font-medium mb-2">
-              내용
-            </label>
             <Textarea
-              placeholder="이웃들에게 도움이 되는 정보를 공유해주세요"
+              placeholder="오늘 무슨 일 있었어요? 편하게 얘기해주세요 :)"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={10}
               maxLength={2000}
+              className="text-base"
             />
             <p className="text-xs text-muted-foreground mt-1">
               {content.length}/2000
@@ -258,14 +229,23 @@ export default function NewCommunityPostPage() {
 
           {/* Tips */}
           <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <h3 className="font-semibold mb-2 text-sm">💡 좋은 게시글 작성 팁</h3>
+            <h3 className="font-semibold mb-2 text-sm">💬 이런 글도 좋아요</h3>
             <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• 명확하고 구체적인 제목을 작성하세요</li>
-              <li>• 이웃들에게 유용한 정보를 공유하세요</li>
-              <li>• 사진을 첨부하면 더 이해하기 쉬워요</li>
-              <li>• 좋아요를 많이 받으면 빵 굽기 점수가 올라가요!</li>
+              <li>• 오늘 날씨 어때요? 같은 가벼운 수다</li>
+              <li>• 맛집 발견! 같은 꿀팁 공유</li>
+              <li>• 사진 한 장이면 분위기 200% UP</li>
+              <li>• 좋아요 많이 받으면 빵 굽기 점수 UP!</li>
             </ul>
           </div>
+
+          {/* Submit */}
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || !content.trim()}
+            className="w-full h-12 text-base"
+          >
+            {isSubmitting ? '올리는 중...' : '올리기'}
+          </Button>
         </form>
       </div>
     </div>
