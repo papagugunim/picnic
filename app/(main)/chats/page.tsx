@@ -57,7 +57,7 @@ export default function ChatsPage() {
     <div className="bg-background">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="bg-background border-b border-border">
+        <div className="bg-background">
           <div className="px-4 py-4">
             <h1 className="text-lg font-bold">채팅</h1>
           </div>
@@ -82,7 +82,7 @@ export default function ChatsPage() {
                 >
                   <Link
                     href={`/chats/${room.id}`}
-                    className="block border-b border-border hover:bg-muted/50 transition-colors"
+                    className="block hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center gap-3 p-4">
                       {/* Product Thumbnail */}
