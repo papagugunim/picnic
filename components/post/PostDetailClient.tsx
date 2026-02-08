@@ -513,7 +513,7 @@ export default function PostDetailClient({
       <div className="bg-background pb-20">
         <div className="max-w-4xl mx-auto">
           {/* Header Skeleton */}
-          <div className="bg-background border-b border-border">
+          <div className="bg-background">
             <div className="flex items-center justify-between px-4 py-3">
               <div className="w-10 h-10 bg-muted rounded animate-pulse" />
               <div className="h-6 bg-muted rounded w-24 animate-pulse" />
@@ -527,7 +527,7 @@ export default function PostDetailClient({
           {/* Content Skeleton */}
           <div className="p-4 space-y-4">
             {/* Author Info Skeleton */}
-            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-border">
+            <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-full bg-muted animate-pulse" />
               <div className="flex-1 space-y-2">
                 <div className="h-5 bg-muted rounded w-32 animate-pulse" />
@@ -571,10 +571,10 @@ export default function PostDetailClient({
   const canManage = isAuthor || isAdmin
 
   return (
-    <div className="bg-background pb-20">
+    <div className="bg-background">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="bg-background border-b border-border">
+        <div className="bg-background">
           <div className="flex items-center justify-between px-4 py-3">
             <Button
               variant="ghost"
@@ -654,7 +654,7 @@ export default function PostDetailClient({
         {post.images && post.images.length > 0 && (
           <div className="relative">
             <div
-              className="aspect-square bg-muted relative"
+              className="aspect-square bg-background relative"
               onTouchStart={onTouchStart}
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
@@ -725,7 +725,7 @@ export default function PostDetailClient({
           {/* Author Info */}
           <Link
             href={`/profile/${post.author_id}`}
-            className="flex items-center gap-3 mb-4 pb-4 border-b border-border"
+            className="flex items-center gap-3 mb-4"
           >
             <UserAvatar
               src={post.profiles.avatar_url}
@@ -775,7 +775,7 @@ export default function PostDetailClient({
           </div>
 
           {/* Description */}
-          <div className="prose prose-sm max-w-none mb-6 whitespace-pre-wrap border-b border-border pb-6">
+          <div className="prose prose-sm max-w-none mb-6 whitespace-pre-wrap">
             {post.description}
           </div>
 
@@ -821,7 +821,7 @@ export default function PostDetailClient({
           </div>
 
           {/* 좋아요/관심/조회수 버튼 */}
-          <div className="border-t border-border pt-4 mb-6">
+          <div className="mb-6">
             <div className="flex gap-4 items-center">
               <button
                 onClick={toggleLike}
@@ -863,19 +863,17 @@ export default function PostDetailClient({
           </div>
         </div>
 
-        {/* Bottom Action Bar */}
+        {/* 채팅하기 버튼 */}
         {!isAuthor && post.status !== 'sold' && (
-          <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-30">
-            <div className="max-w-4xl mx-auto flex gap-2">
-              <Button
-                onClick={startChat}
-                disabled={isStartingChat}
-                className="flex-1 h-14 text-lg"
-              >
-                <MessageCircle className="w-5 h-5 mr-2" />
-                {isStartingChat ? getRandomLoadingMessage() : '채팅하기'}
-              </Button>
-            </div>
+          <div className="px-4 pb-6">
+            <Button
+              onClick={startChat}
+              disabled={isStartingChat}
+              className="w-full h-11"
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              {isStartingChat ? getRandomLoadingMessage() : '채팅하기'}
+            </Button>
           </div>
         )}
       </div>
