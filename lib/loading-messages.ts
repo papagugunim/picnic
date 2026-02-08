@@ -4,16 +4,20 @@
  */
 
 const LOADING_MESSAGES = [
-  '피크닉 준비 중... 🧺',
-  '돗자리를 펴는 중... 🏞️',
-  '바구니를 챙기는 중... 🧺',
-  '빵을 굽는 중... 🍞',
-  '보르시를 끓이는 중... 🍲',
-  '피로시키를 굽는 중... 🥟',
-  '차이를 우려내는 중... ☕',
-  '지하철을 타고 가는 중... 🚇',
-  '빵과 소금을 준비하는 중... 🍞',
-  '발랄라이카 조율 중... 🎵',
+  '뺘쪼르치까에서 장 보는 중... 🛒',
+  '메트로 환승하는 중... 🚇',
+  '보르시 한 그릇 끓이는 중... 🍲',
+  '펠메니 빚는 중... 🥟',
+  '블리니에 스메타나 올리는 중... 🥞',
+  '마르슈르트까 기다리는 중... 🚐',
+  '프롭까에 갇혀 있는 중... 🚗',
+  '다차에서 샤슬릭 굽는 중... 🍖',
+  '크바스 한 잔 따르는 중... 🍺',
+  '우샨까 쓰고 나가는 중... 🧣',
+  '영하 20도에서 버티는 중... 🥶',
+  '눈 치우고 오는 중... ❄️',
+  '피로시키 하나만 더... 🥟',
+  '까샤 저어주는 중... 🥣',
 ]
 
 /**
@@ -30,13 +34,13 @@ export function getRandomLoadingMessage(): string {
 export function getLoadingMessage(context?: 'profile' | 'chat' | 'post' | 'settings'): string {
   switch (context) {
     case 'profile':
-      return '프로필을 불러오는 중... 🪆'
+      return '마뜨료시까 열어보는 중... 🪆'
     case 'chat':
-      return '채팅방으로 이동 중... 💬'
+      return '메트로에서 와이파이 잡는 중... 💬'
     case 'post':
-      return '게시물을 가져오는 중... 📦'
+      return '뺘쪼르치까 돌아보는 중... 📦'
     case 'settings':
-      return '설정을 불러오는 중... ⚙️'
+      return '나스뜨로이까 만지는 중... ⚙️'
     default:
       return getRandomLoadingMessage()
   }
