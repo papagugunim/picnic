@@ -132,7 +132,6 @@ export default function ImageUpload({
             id="image-upload-input"
             type="file"
             accept="image/*"
-            multiple
             onChange={handleImageUpload}
             className="hidden"
           />

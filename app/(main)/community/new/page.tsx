@@ -12,10 +12,10 @@ import { createClient } from '@/lib/supabase/client'
 import ImageUpload from '@/components/post/ImageUpload'
 
 const categories = [
-  { id: 'question', name: '질문', emoji: '❓' },
-  { id: 'info', name: '정보', emoji: '💡' },
-  { id: 'event', name: '이벤트', emoji: '🎉' },
   { id: 'chat', name: '잡담', emoji: '💬' },
+  { id: 'info', name: '정보', emoji: '💡' },
+  { id: 'question', name: '질문', emoji: '❓' },
+  { id: 'event', name: '이벤트', emoji: '🎉' },
   { id: 'lost_found', name: '분실물', emoji: '🔍' },
 ]
 
@@ -153,7 +153,7 @@ export default function NewCommunityPostPage() {
     <div className="bg-background">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="bg-background border-b border-border">
+        <div className="bg-background">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-2">
               <Button
