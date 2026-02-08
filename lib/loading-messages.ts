@@ -11,10 +11,7 @@ const COMMON_MESSAGES = [
   '블리니에 스메타나 올리는 중... 🥞',
   '프롭까에 갇혀 있는 중... 🚗',
   '피로시키 하나만 더... 🥟',
-  '얀덱스 택시 부르는 중... 🚕',
   '바부시까한테 혼나는 중... 👵',
-  '셰이차스가 대체 언제야... ⏰',
-  '한국 택배 기다리는 중... 📦',
   '김치 담글 배추 찾는 중... 🥬',
   '마가진에서 고르는 중... 🏪',
   '"빠니마유" 연발하는 중... 🗣️',
@@ -96,7 +93,7 @@ export function getLoadingMessage(context?: 'profile' | 'chat' | 'post' | 'setti
     case 'profile':
       return '마뜨료시까 열어보는 중... 🪆'
     case 'chat':
-      return '메트로에서 와이파이 잡는 중... 💬'
+      return '채팅방으로 이동 중... 💬'
     case 'post':
       return '마가진 돌아보는 중... 🏪'
     case 'settings':
