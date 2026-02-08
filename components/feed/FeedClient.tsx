@@ -175,12 +175,12 @@ export default function FeedClient({ initialPosts, userId }: FeedClientProps) {
     enabled: isInitialized,
   })
 
-  // Reset when tab changes
+  // Reset only when city changes (not tab - tabs filter client-side)
   useEffect(() => {
     if (isInitialized) {
       reset()
     }
-  }, [selectedTab, userCity])
+  }, [userCity])
 
   // Nearby 필터용 역 목록 (async lazy load)
   const [nearbyStationsList, setNearbyStationsList] = useState<string[]>([])
@@ -204,7 +204,11 @@ export default function FeedClient({ initialPosts, userId }: FeedClientProps) {
         }
         return allPosts
 
-      case 'recent':
+      case 'recent': {
+        const oneHourAgo = Date.now() - 60 * 60 * 1000
+        return allPosts.filter(post => new Date(post.created_at).getTime() > oneHourAgo)
+      }
+
       case 'all':
       default:
         return allPosts
@@ -308,7 +312,7 @@ export default function FeedClient({ initialPosts, userId }: FeedClientProps) {
   return (
     <div>
         {/* Category filter */}
-        <div className="bg-background border-b border-border">
+        <div className="bg-background">
           <div className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide">
             {categories.map((category) => (
               <button
