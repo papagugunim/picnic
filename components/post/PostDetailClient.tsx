@@ -3,9 +3,10 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('PostDetail')
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, MapPin, Clock, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye, Flag } from 'lucide-react'
+import { ChevronLeft, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye, Flag } from 'lucide-react'
+import { ImageGalleryModal } from '@/components/community/ImageGalleryModal'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -99,9 +100,9 @@ export default function PostDetailClient({
   const [isStartingChat, setIsStartingChat] = useState(false)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [touchStart, setTouchStart] = useState<number | null>(null)
-  const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false)
+  const sliderRef = useRef<HTMLDivElement>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showHiddenConfirm, setShowHiddenConfirm] = useState(false)
 
@@ -475,38 +476,13 @@ export default function PostDetailClient({
     }
   }
 
-  // 스와이프 핸들러
-  const minSwipeDistance = 50
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null)
-    setTouchStart(e.targetTouches[0].clientX)
-  }
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX)
-  }
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd || !post) return
-
-    const distance = touchStart - touchEnd
-    const isLeftSwipe = distance > minSwipeDistance
-    const isRightSwipe = distance < -minSwipeDistance
-
-    if (isLeftSwipe) {
-      // 왼쪽으로 스와이프 = 다음 이미지
-      setSelectedImageIndex((prev) =>
-        prev === post.images.length - 1 ? 0 : prev + 1
-      )
-    }
-    if (isRightSwipe) {
-      // 오른쪽으로 스와이프 = 이전 이미지
-      setSelectedImageIndex((prev) =>
-        prev === 0 ? post.images.length - 1 : prev - 1
-      )
-    }
-  }
+  // 스크롤 스냅 기반 슬라이더 - 스크롤 끝나면 인덱스 업데이트
+  const handleSliderScroll = useCallback(() => {
+    const el = sliderRef.current
+    if (!el) return
+    const idx = Math.round(el.scrollLeft / el.clientWidth)
+    setSelectedImageIndex(idx)
+  }, [])
 
   if (isLoading) {
     return (
@@ -650,71 +626,51 @@ export default function PostDetailClient({
           </div>
         </div>
 
-        {/* Images */}
+        {/* Images - 스와이프 슬라이더 */}
         {post.images && post.images.length > 0 && (
           <div className="relative">
             <div
-              className="aspect-square bg-background relative"
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove}
-              onTouchEnd={onTouchEnd}
+              ref={sliderRef}
+              className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+              onScroll={handleSliderScroll}
+              style={{ WebkitOverflowScrolling: 'touch' }}
             >
-              <Image
-                src={post.images[selectedImageIndex]}
-                alt={post.title}
-                fill
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                className="object-contain"
-                priority={selectedImageIndex === 0}
-              />
-            </div>
-
-            {/* Previous/Next buttons */}
-            {post.images.length > 1 && (
-              <>
-                <button
-                  onClick={() => setSelectedImageIndex((prev) =>
-                    prev === 0 ? post.images.length - 1 : prev - 1
-                  )}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
-                  aria-label="이전 이미지"
+              {post.images.map((image, idx) => (
+                <div
+                  key={idx}
+                  className="flex-shrink-0 w-full aspect-square bg-background relative snap-center cursor-pointer"
+                  onClick={() => setIsGalleryOpen(true)}
                 >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setSelectedImageIndex((prev) =>
-                    prev === post.images.length - 1 ? 0 : prev + 1
-                  )}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
-                  aria-label="다음 이미지"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </>
-            )}
-
-            {/* Image indicators */}
-            {post.images.length > 1 && (
-              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
-                {post.images.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedImageIndex(idx)}
-                    className={`w-2 h-2 rounded-full transition-colors ${
-                      idx === selectedImageIndex
-                        ? 'bg-white'
-                        : 'bg-white/50'
-                    }`}
-                    aria-label={`이미지 ${idx + 1}번으로 이동`}
+                  <Image
+                    src={image}
+                    alt={`${post.title} ${idx + 1}`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    className="object-contain"
+                    priority={idx === 0}
                   />
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
 
             {/* Image counter */}
             {post.images.length > 1 && (
               <div className="absolute top-4 right-4 bg-black/50 text-white text-xs px-2 py-1 rounded">
                 {selectedImageIndex + 1} / {post.images.length}
+              </div>
+            )}
+
+            {/* Bottom indicators */}
+            {post.images.length > 1 && (
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
+                {post.images.map((_, idx) => (
+                  <div
+                    key={idx}
+                    className={`w-2 h-2 rounded-full transition-colors ${
+                      idx === selectedImageIndex ? 'bg-foreground' : 'bg-foreground/30'
+                    }`}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -923,6 +879,15 @@ export default function PostDetailClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 이미지 갤러리 모달 */}
+      {isGalleryOpen && post && post.images.length > 0 && (
+        <ImageGalleryModal
+          images={post.images}
+          currentIndex={selectedImageIndex}
+          onClose={() => setIsGalleryOpen(false)}
+        />
+      )}
     </div>
   )
 }

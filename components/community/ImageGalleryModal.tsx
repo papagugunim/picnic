@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
-import { X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { X } from 'lucide-react'
 import Image from 'next/image'
 import {
   Dialog,
@@ -18,50 +18,122 @@ interface ImageGalleryModalProps {
 
 export function ImageGalleryModal({ images, currentIndex, onClose }: ImageGalleryModalProps) {
   const [galleryIndex, setGalleryIndex] = useState(currentIndex)
-  const [touchStart, setTouchStart] = useState<number | null>(null)
-  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  const [scale, setScale] = useState(1)
+  const [translate, setTranslate] = useState({ x: 0, y: 0 })
+  const lastPinchDistance = useRef(0)
+  const lastTouchCenter = useRef({ x: 0, y: 0 })
+  const isDragging = useRef(false)
+  const dragStart = useRef({ x: 0, y: 0 })
+  const swipeStartX = useRef<number | null>(null)
+  const swipeCurrentX = useRef<number | null>(null)
+  const isZoomed = scale > 1
 
-  const minSwipeDistance = 50
+  const resetZoom = useCallback(() => {
+    setScale(1)
+    setTranslate({ x: 0, y: 0 })
+  }, [])
 
   const goToPrevImage = useCallback(() => {
+    resetZoom()
     setGalleryIndex(prev => (prev === 0 ? images.length - 1 : prev - 1))
-  }, [images.length])
+  }, [images.length, resetZoom])
 
   const goToNextImage = useCallback(() => {
+    resetZoom()
     setGalleryIndex(prev => (prev === images.length - 1 ? 0 : prev + 1))
-  }, [images.length])
+  }, [images.length, resetZoom])
 
   const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null)
-    setTouchStart(e.targetTouches[0].clientX)
+    if (e.touches.length === 2) {
+      // 핀치 시작
+      const dx = e.touches[0].clientX - e.touches[1].clientX
+      const dy = e.touches[0].clientY - e.touches[1].clientY
+      lastPinchDistance.current = Math.sqrt(dx * dx + dy * dy)
+      lastTouchCenter.current = {
+        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+      }
+    } else if (e.touches.length === 1) {
+      if (isZoomed) {
+        // 확대 상태에서 드래그
+        isDragging.current = true
+        dragStart.current = {
+          x: e.touches[0].clientX - translate.x,
+          y: e.touches[0].clientY - translate.y,
+        }
+      } else {
+        // 스와이프 시작
+        swipeStartX.current = e.touches[0].clientX
+        swipeCurrentX.current = e.touches[0].clientX
+      }
+    }
   }
 
   const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX)
+    if (e.touches.length === 2) {
+      // 핀치 줌
+      const dx = e.touches[0].clientX - e.touches[1].clientX
+      const dy = e.touches[0].clientY - e.touches[1].clientY
+      const distance = Math.sqrt(dx * dx + dy * dy)
+
+      if (lastPinchDistance.current > 0) {
+        const newScale = Math.min(Math.max(scale * (distance / lastPinchDistance.current), 1), 4)
+        setScale(newScale)
+        if (newScale === 1) {
+          setTranslate({ x: 0, y: 0 })
+        }
+      }
+      lastPinchDistance.current = distance
+    } else if (e.touches.length === 1) {
+      if (isZoomed && isDragging.current) {
+        // 확대 상태에서 이동
+        setTranslate({
+          x: e.touches[0].clientX - dragStart.current.x,
+          y: e.touches[0].clientY - dragStart.current.y,
+        })
+      } else if (!isZoomed) {
+        swipeCurrentX.current = e.touches[0].clientX
+      }
+    }
   }
 
   const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return
-    const distance = touchStart - touchEnd
-    const isLeftSwipe = distance > minSwipeDistance
-    const isRightSwipe = distance < -minSwipeDistance
+    lastPinchDistance.current = 0
+    isDragging.current = false
 
-    if (isLeftSwipe) {
-      goToNextImage()
+    if (!isZoomed && swipeStartX.current !== null && swipeCurrentX.current !== null) {
+      const distance = swipeStartX.current - swipeCurrentX.current
+      if (distance > 50) goToNextImage()
+      else if (distance < -50) goToPrevImage()
     }
-    if (isRightSwipe) {
-      goToPrevImage()
+    swipeStartX.current = null
+    swipeCurrentX.current = null
+  }
+
+  // 더블탭으로 줌 토글
+  const lastTap = useRef(0)
+  const handleTap = (e: React.TouchEvent) => {
+    const now = Date.now()
+    if (now - lastTap.current < 300) {
+      // 더블탭
+      if (isZoomed) {
+        resetZoom()
+      } else {
+        setScale(2.5)
+      }
     }
+    lastTap.current = now
   }
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') goToPrevImage()
       if (e.key === 'ArrowRight') goToNextImage()
+      if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [goToPrevImage, goToNextImage])
+  }, [goToPrevImage, goToNextImage, onClose])
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -89,43 +161,32 @@ export function ImageGalleryModal({ images, currentIndex, onClose }: ImageGaller
 
         {/* Image area */}
         <div
-          className="absolute inset-0 flex items-center justify-center"
+          className="absolute inset-0 flex items-center justify-center overflow-hidden touch-none"
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
+          onTouchEnd={(e) => { onTouchEnd(); handleTap(e) }}
         >
-          <Image
-            src={images[galleryIndex]}
-            alt={`이미지 ${galleryIndex + 1}`}
-            fill
-            sizes="100vw"
-            className="object-contain"
-            quality={85}
-            priority
-          />
+          <div
+            style={{
+              transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+              transition: isDragging.current ? 'none' : 'transform 0.2s ease-out',
+              width: '100%',
+              height: '100%',
+              position: 'relative',
+            }}
+          >
+            <Image
+              src={images[galleryIndex]}
+              alt={`이미지 ${galleryIndex + 1}`}
+              fill
+              sizes="100vw"
+              className="object-contain"
+              quality={85}
+              priority
+              draggable={false}
+            />
+          </div>
         </div>
-
-        {/* Previous button */}
-        {images.length > 1 && (
-          <button
-            onClick={goToPrevImage}
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors z-10"
-            aria-label="이전 이미지"
-          >
-            <ChevronLeft className="w-8 h-8" />
-          </button>
-        )}
-
-        {/* Next button */}
-        {images.length > 1 && (
-          <button
-            onClick={goToNextImage}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors z-10"
-            aria-label="다음 이미지"
-          >
-            <ChevronRight className="w-8 h-8" />
-          </button>
-        )}
 
         {/* Bottom indicators */}
         {images.length > 1 && (
@@ -133,7 +194,7 @@ export function ImageGalleryModal({ images, currentIndex, onClose }: ImageGaller
             {images.map((_, idx) => (
               <button
                 key={idx}
-                onClick={() => setGalleryIndex(idx)}
+                onClick={() => { resetZoom(); setGalleryIndex(idx) }}
                 className={`w-2 h-2 rounded-full transition-colors ${
                   idx === galleryIndex ? 'bg-white' : 'bg-white/50'
                 }`}
