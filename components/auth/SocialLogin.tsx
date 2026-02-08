@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { createNamespacedLogger } from '@/lib/logger'
+import { toast } from 'sonner'
 
 const logger = createNamespacedLogger('SocialLogin')
 
@@ -45,13 +46,13 @@ export default function SocialLogin({ mode = 'signup' }: SocialLoginProps) {
 
       if (error) {
         logger.error(`${provider} OAuth error:`, error)
-        alert(`${provider === 'google' ? 'Google' : 'Apple'} 로그인에 실패했습니다. 다시 시도해주세요.`)
+        toast.error(`${provider === 'google' ? 'Google' : 'Apple'} 로그인에 실패했습니다. 다시 시도해주세요.`)
         setIsLoading(null)
       }
       // 성공 시 자동으로 리다이렉트되므로 로딩 상태는 유지
     } catch (error) {
       logger.error(`${provider} OAuth unexpected error:`, error)
-      alert('로그인 중 오류가 발생했습니다.')
+      toast.error('로그인 중 오류가 발생했습니다.')
       setIsLoading(null)
     }
   }

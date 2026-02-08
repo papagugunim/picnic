@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useFormContext } from 'react-hook-form'
 import {
   FormControl,
@@ -18,12 +18,7 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { CITIES } from '@/lib/constants'
-import {
-  MOSCOW_METRO_STATIONS,
-  SPB_METRO_STATIONS,
-  MOSCOW_LINE_COLORS,
-  SPB_LINE_COLORS,
-} from '@/lib/metro-stations'
+import type { MetroStation, MetroLineColor } from '@/lib/metro-stations'
 
 interface CitySelectorProps {
   disabled?: boolean
@@ -33,25 +28,31 @@ export default function CitySelector({ disabled }: CitySelectorProps) {
   const form = useFormContext()
   const selectedCity = form.watch('city')
 
-  // 도시가 변경되면 지하철역 선택 초기화
+  const [metroStations, setMetroStations] = useState<MetroStation[]>([])
+  const [lineColors, setLineColors] = useState<Record<string, MetroLineColor>>({})
+
+  // 도시가 변경되면 지하철역 선택 초기화 & 데이터 로드
   useEffect(() => {
     if (selectedCity) {
       form.setValue('metroStation', '', { shouldValidate: false })
+
+      import('@/lib/metro-stations').then((mod) => {
+        if (selectedCity === CITIES.MOSCOW) {
+          setMetroStations(mod.MOSCOW_METRO_STATIONS)
+          setLineColors(mod.MOSCOW_LINE_COLORS)
+        } else if (selectedCity === CITIES.SPB) {
+          setMetroStations(mod.SPB_METRO_STATIONS)
+          setLineColors(mod.SPB_LINE_COLORS)
+        } else {
+          setMetroStations([])
+          setLineColors({})
+        }
+      })
+    } else {
+      setMetroStations([])
+      setLineColors({})
     }
   }, [selectedCity, form])
-
-  // 선택된 도시에 따라 지하철역 목록 및 색상 결정
-  const metroStations = selectedCity === CITIES.MOSCOW
-    ? MOSCOW_METRO_STATIONS
-    : selectedCity === CITIES.SPB
-    ? SPB_METRO_STATIONS
-    : []
-
-  const lineColors = selectedCity === CITIES.MOSCOW
-    ? MOSCOW_LINE_COLORS
-    : selectedCity === CITIES.SPB
-    ? SPB_LINE_COLORS
-    : {}
 
   return (
     <div className="space-y-4">

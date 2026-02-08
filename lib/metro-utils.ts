@@ -1,16 +1,16 @@
-import { MOSCOW_METRO_STATIONS, SPB_METRO_STATIONS } from './constants'
-
 /**
  * 사용자의 지하철역 기준으로 근처 역들을 찾습니다 (같은 노선의 앞뒤 5개역)
  */
-export function getNearbyMetroStations(
+export async function getNearbyMetroStations(
   userStations: string[],
   city: string,
   range: number = 5
-): string[] {
+): Promise<string[]> {
   if (!userStations || userStations.length === 0) {
     return []
   }
+
+  const { MOSCOW_METRO_STATIONS, SPB_METRO_STATIONS } = await import('./metro-data')
 
   const stations = city.toLowerCase() === 'moscow'
     ? MOSCOW_METRO_STATIONS

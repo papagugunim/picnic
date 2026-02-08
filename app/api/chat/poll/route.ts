@@ -37,10 +37,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'roomId가 필요합니다' }, { status: 400 })
     }
 
-    // Vercel 제약사항: Pro 60초, Hobby 10초 → 실제 timeout 45초로 제한
+    // Vercel 제약사항: Pro 60초, Hobby 10초 → 실제 timeout 30초로 제한 (DB 부하 감소)
     const timeout = Math.min(
-      timeoutParam ? parseInt(timeoutParam) : 30000,
-      45000
+      timeoutParam ? parseInt(timeoutParam) : 25000,
+      30000
     )
 
     logger.log(`[Poll] Starting poll for room ${roomId}, timeout: ${timeout}ms`)
@@ -65,7 +65,7 @@ export async function GET(request: Request) {
 
     // 4. Long Polling 로직
     const startTime = Date.now()
-    const pollInterval = 500 // 500ms마다 체크
+    const pollInterval = 2000 // 2초마다 체크 (DB 부하 감소)
     const maxIterations = Math.floor(timeout / pollInterval)
 
     // lastMessageId 이후의 created_at 찾기

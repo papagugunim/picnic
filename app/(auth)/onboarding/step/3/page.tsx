@@ -8,10 +8,7 @@ import { useRouter } from 'next/navigation'
 import { X, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
-import {
-  MOSCOW_METRO_STATIONS,
-  SPB_METRO_STATIONS,
-} from '@/lib/constants'
+import { useMetroStations } from '@/lib/hooks/useMetroStations'
 import OnboardingLayout from '@/components/onboarding/OnboardingLayout'
 
 export default function OnboardingStep3() {
@@ -59,9 +56,8 @@ export default function OnboardingStep3() {
     fetchUserProfile()
   }, [router])
 
-  // 도시에 따른 지하철역 목록
-  const metroStations =
-    userCity === 'moscow' ? MOSCOW_METRO_STATIONS : SPB_METRO_STATIONS
+  // 도시에 따른 지하철역 목록 (lazy load)
+  const metroStations = useMetroStations(userCity)
 
   // 검색 필터링
   const filteredStations = useMemo(() => {

@@ -10,6 +10,16 @@ import { getBreadEmoji } from '@/lib/bread'
 import { cn } from '@/lib/utils'
 import type { ThreadedComment } from '@/types'
 import { ReportDialog } from '@/components/admin/ReportDialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface CommentThreadProps {
   comment: ThreadedComment
@@ -35,6 +45,7 @@ export function CommentThread({
   const [replyContent, setReplyContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const canReply = comment.depth < 2
   const canDelete = currentUserId === comment.user_id || isAdmin
@@ -54,9 +65,12 @@ export function CommentThread({
   }, [comment.id, replyContent, isSubmitting, onReply])
 
   const handleDeleteClick = useCallback(() => {
-    if (confirm('정말로 이 댓글을 삭제하시겠습니까?')) {
-      onDelete(comment.id)
-    }
+    setShowDeleteConfirm(true)
+  }, [])
+
+  const confirmDelete = useCallback(() => {
+    onDelete(comment.id)
+    setShowDeleteConfirm(false)
   }, [comment.id, onDelete])
 
   return (
@@ -108,6 +122,7 @@ export function CommentThread({
               <button
                 onClick={() => setShowReplyInput(!showReplyInput)}
                 className="flex items-center gap-1.5 hover:text-primary transition-colors group"
+                aria-label="답글"
               >
                 <MessageCircle className="w-4 h-4" />
                 {comment.reply_count > 0 && (
@@ -122,6 +137,7 @@ export function CommentThread({
                 'flex items-center gap-1.5 transition-colors',
                 comment.is_liked ? 'text-red-500' : 'hover:text-red-500'
               )}
+              aria-label="좋아요"
             >
               <Heart
                 className={cn('w-4 h-4', comment.is_liked && 'fill-current')}
@@ -135,6 +151,7 @@ export function CommentThread({
               <button
                 onClick={() => setIsReportDialogOpen(true)}
                 className="flex items-center gap-1.5 hover:text-primary transition-colors"
+                aria-label="신고"
               >
                 <Flag className="w-4 h-4" />
               </button>
@@ -144,6 +161,7 @@ export function CommentThread({
               <button
                 onClick={handleDeleteClick}
                 className="flex items-center gap-1.5 hover:text-destructive transition-colors"
+                aria-label="삭제"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -171,6 +189,7 @@ export function CommentThread({
                 disabled={!replyContent.trim() || isSubmitting}
                 size="icon"
                 className="flex-shrink-0 h-10 w-10"
+                aria-label="답글 전송"
               >
                 <Send className="w-4 h-4" />
               </Button>
@@ -222,6 +241,24 @@ export function CommentThread({
         targetType="comment"
         targetId={comment.id}
       />
+
+      {/* 삭제 확인 다이얼로그 */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>댓글 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              정말로 이 댓글을 삭제하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

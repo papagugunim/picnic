@@ -6,6 +6,7 @@ const logger = createNamespacedLogger('UseNotifications')
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Notification } from '@/types/notification'
+import { useUser } from '@/lib/contexts/UserContext'
 
 interface UseNotificationsReturn {
   notifications: Notification[]
@@ -22,6 +23,7 @@ export function useNotifications(): UseNotificationsReturn {
   const [unreadCount, setUnreadCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const { user } = useUser()
 
   const supabase = createClient()
 
@@ -31,7 +33,6 @@ export function useNotifications(): UseNotificationsReturn {
       setIsLoading(true)
       setError(null)
 
-      const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         setNotifications([])
         setUnreadCount(0)
@@ -48,20 +49,32 @@ export function useNotifications(): UseNotificationsReturn {
 
       if (fetchError) throw fetchError
 
-      // actor 정보가 필요한 경우 별도로 조회
-      const notificationsWithActor = await Promise.all(
-        (data || []).map(async (notification) => {
-          if (notification.actor_id) {
-            const { data: actorData } = await supabase
-              .from('profiles')
-              .select('id, full_name, avatar_url')
-              .eq('id', notification.actor_id)
-              .single()
-            return { ...notification, actor: actorData }
-          }
-          return notification
-        })
-      )
+      // actor 정보를 배치 쿼리로 조회 (N+1 문제 해결)
+      const actorIds = [...new Set(
+        (data || [])
+          .map(n => n.actor_id)
+          .filter((id): id is string => !!id)
+      )]
+
+      let actorsMap = new Map<string, { id: string; full_name: string; avatar_url: string }>()
+
+      if (actorIds.length > 0) {
+        const { data: actorsData } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .in('id', actorIds)
+
+        if (actorsData) {
+          actorsMap = new Map(actorsData.map(a => [a.id, a]))
+        }
+      }
+
+      const notificationsWithActor = (data || []).map(notification => {
+        if (notification.actor_id && actorsMap.has(notification.actor_id)) {
+          return { ...notification, actor: actorsMap.get(notification.actor_id) }
+        }
+        return notification
+      })
 
       setNotifications(notificationsWithActor)
       setUnreadCount((data || []).filter(n => !n.is_read).length)
@@ -71,7 +84,7 @@ export function useNotifications(): UseNotificationsReturn {
     } finally {
       setIsLoading(false)
     }
-  }, [supabase])
+  }, [supabase, user])
 
   // 개별 알림 읽음 처리
   const markAsRead = useCallback(async (notificationId: string) => {
@@ -95,10 +108,9 @@ export function useNotifications(): UseNotificationsReturn {
 
   // 모든 알림 읽음 처리
   const markAllAsRead = useCallback(async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+    if (!user) return
 
+    try {
       // RPC 대신 직접 UPDATE 쿼리 사용 (400 에러 방지)
       const { error: updateError } = await supabase
         .from('notifications')
@@ -116,10 +128,12 @@ export function useNotifications(): UseNotificationsReturn {
     } catch (err) {
       logger.error('Failed to mark all notifications as read:', err)
     }
-  }, [supabase])
+  }, [supabase, user])
 
   // 초기 로드 및 실시간 구독
   useEffect(() => {
+    if (!user) return
+
     fetchNotifications()
 
     // 실시간 구독
@@ -133,8 +147,7 @@ export function useNotifications(): UseNotificationsReturn {
           table: 'notifications',
         },
         async (payload) => {
-          const { data: { user } } = await supabase.auth.getUser()
-          if (!user || payload.new.user_id !== user.id) return
+          if (payload.new.user_id !== user.id) return
 
           // actor 정보 가져오기
           let newNotification = payload.new as Notification
@@ -174,7 +187,7 @@ export function useNotifications(): UseNotificationsReturn {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [fetchNotifications, supabase])
+  }, [fetchNotifications, supabase, user])
 
   return {
     notifications,

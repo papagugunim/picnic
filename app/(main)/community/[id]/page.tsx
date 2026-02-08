@@ -21,6 +21,17 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { ReportDialog } from '@/components/admin/ReportDialog'
+import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface CommunityPost {
   id: string
@@ -72,6 +83,8 @@ export default function CommunityPostDetailPage() {
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showHiddenConfirm, setShowHiddenConfirm] = useState(false)
 
   const openGallery = useCallback((images: string[], index: number) => {
     setGalleryImages(images)
@@ -272,8 +285,13 @@ export default function CommunityPostDetailPage() {
     }
   }
 
-  async function deletePost() {
-    if (!post || !confirm('정말로 이 게시글을 삭제하시겠습니까?')) return
+  function requestDeletePost() {
+    if (!post) return
+    setShowDeleteConfirm(true)
+  }
+
+  async function confirmDeletePost() {
+    if (!post) return
 
     try {
       setIsDeleting(true)
@@ -286,7 +304,7 @@ export default function CommunityPostDetailPage() {
 
       if (error) {
         logger.error('Post deletion error:', error)
-        alert('게시글 삭제 중 오류가 발생했습니다')
+        toast.error('게시글 삭제 중 오류가 발생했습니다')
         return
       }
 
@@ -294,21 +312,22 @@ export default function CommunityPostDetailPage() {
       router.refresh()
     } catch (err) {
       logger.error('Delete error:', err)
-      alert('게시글 삭제 중 오류가 발생했습니다')
+      toast.error('게시글 삭제 중 오류가 발생했습니다')
     } finally {
       setIsDeleting(false)
+      setShowDeleteConfirm(false)
     }
   }
 
-  async function toggleHidden() {
+  function requestToggleHidden() {
+    if (!post || !currentUserId) return
+    setShowHiddenConfirm(true)
+  }
+
+  async function confirmToggleHidden() {
     if (!post || !currentUserId) return
 
     const willHide = !post.is_hidden
-    const confirmMessage = willHide
-      ? '이 게시글을 숨기시겠습니까? 숨긴 게시글은 관리자만 볼 수 있습니다.'
-      : '이 게시글을 다시 표시하시겠습니까?'
-
-    if (!confirm(confirmMessage)) return
 
     try {
       const supabase = createClient()
@@ -324,14 +343,16 @@ export default function CommunityPostDetailPage() {
 
       if (error) {
         logger.error('Toggle hidden error:', error)
-        alert('게시글 숨김 처리 중 오류가 발생했습니다')
+        toast.error('게시글 숨김 처리 중 오류가 발생했습니다')
         return
       }
 
       fetchPost()
     } catch (err) {
       logger.error('Toggle hidden error:', err)
-      alert('게시글 숨김 처리 중 오류가 발생했습니다')
+      toast.error('게시글 숨김 처리 중 오류가 발생했습니다')
+    } finally {
+      setShowHiddenConfirm(false)
     }
   }
 
@@ -402,7 +423,7 @@ export default function CommunityPostDetailPage() {
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onClick={deletePost}
+                        onClick={requestDeletePost}
                         disabled={isDeleting}
                         className="text-destructive focus:text-destructive"
                       >
@@ -414,7 +435,7 @@ export default function CommunityPostDetailPage() {
                   {isAdmin && (
                     <>
                       {isAuthor && <DropdownMenuSeparator />}
-                      <DropdownMenuItem onClick={toggleHidden}>
+                      <DropdownMenuItem onClick={requestToggleHidden}>
                         {post.is_hidden ? (
                           <>
                             <Eye className="w-4 h-4 mr-2" />
@@ -429,7 +450,7 @@ export default function CommunityPostDetailPage() {
                       </DropdownMenuItem>
                       {!isAuthor && (
                         <DropdownMenuItem
-                          onClick={deletePost}
+                          onClick={requestDeletePost}
                           disabled={isDeleting}
                           className="text-destructive focus:text-destructive"
                         >
@@ -660,6 +681,44 @@ export default function CommunityPostDetailPage() {
         targetType="community_post"
         targetId={postId}
       />
+
+      {/* 삭제 확인 다이얼로그 */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>게시글 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              정말로 이 게시글을 삭제하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeletePost} disabled={isDeleting}>
+              {isDeleting ? '삭제 중...' : '삭제'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 숨김 확인 다이얼로그 */}
+      <AlertDialog open={showHiddenConfirm} onOpenChange={setShowHiddenConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>게시글 {post?.is_hidden ? '표시' : '숨김'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {post?.is_hidden
+                ? '이 게시글을 다시 표시하시겠습니까?'
+                : '이 게시글을 숨기시겠습니까? 숨긴 게시글은 관리자만 볼 수 있습니다.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmToggleHidden}>
+              확인
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

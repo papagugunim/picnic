@@ -7,6 +7,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { CommentThread } from './CommentThread'
 import { createClient } from '@/lib/supabase/client'
 import { createNamespacedLogger } from '@/lib/logger'
+import { formatTimeAgo } from '@/lib/utils/date'
+import { toast } from 'sonner'
 import type { ThreadedComment } from '@/types'
 
 const logger = createNamespacedLogger('CommentSection')
@@ -34,18 +36,6 @@ export function CommentSection({
   // Use ref to avoid infinite loop with onCommentCountChange callback
   const onCommentCountChangeRef = useRef(onCommentCountChange)
   onCommentCountChangeRef.current = onCommentCountChange
-
-  const formatTimeAgo = useCallback((dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-
-    if (diffInSeconds < 60) return '방금 전'
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}분 전`
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}시간 전`
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}일 전`
-    return date.toLocaleDateString('ko-KR')
-  }, [])
 
   // Build tree structure from flat comments
   const buildCommentTree = useCallback((flatComments: ThreadedComment[]): ThreadedComment[] => {
@@ -275,7 +265,7 @@ export function CommentSection({
 
       if (error) {
         logger.error('Comment delete error:', error)
-        alert('댓글 삭제 중 오류가 발생했습니다')
+        toast.error('댓글 삭제 중 오류가 발생했습니다')
         return
       }
 
@@ -283,7 +273,7 @@ export function CommentSection({
       await fetchComments()
     } catch (err) {
       logger.error('Delete error:', err)
-      alert('댓글 삭제 중 오류가 발생했습니다')
+      toast.error('댓글 삭제 중 오류가 발생했습니다')
     }
   }, [fetchComments])
 

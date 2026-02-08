@@ -88,7 +88,7 @@ export async function GET(request: Request) {
 // Alpha Vantage에서 USD/RUB OHLC 데이터 가져오기
 async function fetchAlphaVantageOHLC(from: string, to: string): Promise<OHLCData[]> {
   try {
-    const apiKey = process.env.NEXT_PUBLIC_ALPHA_VANTAGE_API_KEY
+    const apiKey = process.env.ALPHA_VANTAGE_API_KEY
     if (!apiKey || apiKey === 'demo') {
       logger.warn('Alpha Vantage API 키가 설정되지 않았습니다.')
       return []

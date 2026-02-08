@@ -6,10 +6,7 @@ const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { MapPin, Calendar, Package, Users, MessageCircle, Heart, Bookmark, Flag } from 'lucide-react'
-import {
-  MOSCOW_METRO_STATIONS,
-  SPB_METRO_STATIONS,
-} from '@/lib/constants'
+import { useMetroStations } from '@/lib/hooks/useMetroStations'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -19,6 +16,16 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import { getLoadingMessage } from '@/lib/loading-messages'
 import { BreadLevelModal } from '@/components/bread-level-modal'
 import { ReportDialog } from '@/components/admin/ReportDialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface Profile {
   id: string
@@ -68,6 +75,8 @@ export default function ProfilePage() {
   const [mounted, setMounted] = useState(false)
   const [isBreadModalOpen, setIsBreadModalOpen] = useState(false)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const metroStations = useMetroStations(profile?.city)
 
   useEffect(() => {
     setMounted(true)
@@ -232,9 +241,11 @@ export default function ProfilePage() {
     }
   }
 
-  async function handleLogout() {
-    if (!confirm('로그아웃 하시겠습니까?')) return
+  function requestLogout() {
+    setShowLogoutConfirm(true)
+  }
 
+  async function confirmLogout() {
     try {
       const supabase = createClient()
       await supabase.auth.signOut()
@@ -242,6 +253,8 @@ export default function ProfilePage() {
       router.refresh()
     } catch (err) {
       logger.error('Logout error:', err)
+    } finally {
+      setShowLogoutConfirm(false)
     }
   }
 
@@ -284,15 +297,8 @@ export default function ProfilePage() {
     return parts.slice(0, 2).join(' / ')
   }
 
-  const getMetroStations = () => {
-    if (!profile?.city) return []
-    const stations = profile.city === 'moscow' ? MOSCOW_METRO_STATIONS : SPB_METRO_STATIONS
-    return stations
-  }
-
   const getStationInfo = (stationValue: string) => {
-    const stations = getMetroStations()
-    return stations.find((s) => s.value === stationValue)
+    return metroStations.find((s) => s.value === stationValue)
   }
 
   return (
@@ -743,7 +749,7 @@ export default function ProfilePage() {
       {isOwnProfile && (
         <div className="max-w-4xl mx-auto px-4 pb-24">
           <button
-            onClick={handleLogout}
+            onClick={requestLogout}
             className="w-full py-4 text-center text-muted-foreground hover:text-destructive transition-colors border-t border-border"
           >
             로그아웃
@@ -764,6 +770,24 @@ export default function ProfilePage() {
         targetType="user"
         targetId={userId}
       />
+
+      {/* 로그아웃 확인 다이얼로그 */}
+      <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>로그아웃</AlertDialogTitle>
+            <AlertDialogDescription>
+              로그아웃 하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmLogout}>
+              로그아웃
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

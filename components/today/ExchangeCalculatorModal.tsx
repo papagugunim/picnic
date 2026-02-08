@@ -1,8 +1,14 @@
 'use client'
 
 import { memo, useCallback, useState, useMemo } from 'react'
-import { Calculator, X } from 'lucide-react'
+import { Calculator } from 'lucide-react'
 import { ExchangeRates } from './types'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface ExchangeCalculatorModalProps {
   exchangeRates: ExchangeRates
@@ -57,43 +63,20 @@ function ExchangeCalculatorModalComponent({ exchangeRates, onClose }: ExchangeCa
     }
   }, [exchangeRates])
 
-  // 배경 클릭 시 닫기
-  const handleBackdropClick = useCallback(() => {
-    onClose()
-  }, [onClose])
-
-  // 모달 내용 클릭 시 이벤트 전파 중단
-  const handleContentClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-  }, [])
-
   // 현재 환율 텍스트
   const rateText = useMemo(() => {
     return `현재 환율: 1₽ = ${(1 / exchangeRates.krwToRub).toFixed(2)}원`
   }, [exchangeRates.krwToRub])
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={handleBackdropClick}
-    >
-      <div
-        className="glass-strong rounded-xl p-6 max-w-md w-full"
-        onClick={handleContentClick}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="glass-strong rounded-xl max-w-md border-0 p-6">
+        <DialogHeader className="mb-4">
+          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
             <Calculator className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <h2 className="text-lg font-bold">환율 계산기</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-background rounded-lg transition-colors"
-            aria-label="닫기"
-          >
-            <X className="w-5 h-5 text-muted-foreground" />
-          </button>
-        </div>
+            환율 계산기
+          </DialogTitle>
+        </DialogHeader>
 
         <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
           <div className="space-y-2">
@@ -134,8 +117,8 @@ function ExchangeCalculatorModalComponent({ exchangeRates, onClose }: ExchangeCa
         <div className="mt-4 text-xs text-muted-foreground text-center">
           {rateText}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

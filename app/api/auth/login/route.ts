@@ -47,10 +47,10 @@ export async function POST(request: NextRequest) {
       const refreshTokenMaxAge = rememberMe ? 60 * 60 * 24 * 180 : 60 * 60 * 24 * 30  // 180일 또는 30일
 
       // access_token과 refresh_token을 쿠키에 저장
-      // httpOnly를 false로 설정하여 클라이언트에서도 접근 가능하게 함
+      // httpOnly: true로 XSS 공격 시 토큰 탈취 방지
       response.cookies.set('sb-access-token', data.session.access_token, {
         path: '/',
-        httpOnly: false,
+        httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: accessTokenMaxAge,
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
       response.cookies.set('sb-refresh-token', data.session.refresh_token, {
         path: '/',
-        httpOnly: false,
+        httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: refreshTokenMaxAge,

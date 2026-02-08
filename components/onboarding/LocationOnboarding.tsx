@@ -9,6 +9,7 @@ import { useForm, FormProvider } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { MapPin, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
@@ -44,7 +45,7 @@ export default function LocationOnboarding({ userId }: LocationOnboardingProps) 
     setIsRequestingLocation(true)
 
     if (!navigator.geolocation) {
-      alert('브라우저에서 위치 정보를 지원하지 않습니다')
+      toast.error('브라우저에서 위치 정보를 지원하지 않습니다')
       setIsRequestingLocation(false)
       return
     }
@@ -68,11 +69,11 @@ export default function LocationOnboarding({ userId }: LocationOnboardingProps) 
         form.setValue('city', nearestCity)
 
         setIsRequestingLocation(false)
-        alert(`위치를 감지했습니다! ${nearestCity === 'moscow' ? '모스크바' : '상트페테르부르크'}에 가까우시군요.`)
+        toast.success(`위치를 감지했습니다! ${nearestCity === 'moscow' ? '모스크바' : '상트페테르부르크'}에 가까우시군요.`)
       },
       (error) => {
         logger.error('Location error:', error)
-        alert('위치 정보를 가져올 수 없습니다. 수동으로 선택해주세요.')
+        toast.error('위치 정보를 가져올 수 없습니다. 수동으로 선택해주세요.')
         setIsRequestingLocation(false)
       }
     )
@@ -95,7 +96,7 @@ export default function LocationOnboarding({ userId }: LocationOnboardingProps) 
 
       if (error) {
         logger.error('Profile update error:', error)
-        alert('프로필 업데이트 중 오류가 발생했습니다')
+        toast.error('프로필 업데이트 중 오류가 발생했습니다')
         return
       }
 
@@ -104,7 +105,7 @@ export default function LocationOnboarding({ userId }: LocationOnboardingProps) 
       router.refresh()
     } catch (err) {
       logger.error('Submit error:', err)
-      alert('오류가 발생했습니다')
+      toast.error('오류가 발생했습니다')
     } finally {
       setIsSubmitting(false)
     }

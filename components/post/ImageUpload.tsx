@@ -170,6 +170,7 @@ export default function ImageUpload({
                   onClick={() => removeImage(index)}
                   className="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10 shadow-lg"
                   title="삭제"
+                  aria-label="이미지 삭제"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -194,6 +195,7 @@ export default function ImageUpload({
                       onClick={() => moveImageLeft(index)}
                       className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
                       title="왼쪽으로 이동"
+                      aria-label="왼쪽으로 이동"
                     >
                       <ChevronLeft className="w-5 h-5" />
                     </button>
@@ -206,6 +208,7 @@ export default function ImageUpload({
                       onClick={() => moveImageRight(index)}
                       className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
                       title="오른쪽으로 이동"
+                      aria-label="오른쪽으로 이동"
                     >
                       <ChevronRight className="w-5 h-5" />
                     </button>

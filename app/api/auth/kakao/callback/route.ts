@@ -1,5 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import crypto from 'crypto'
+
+function hashKakaoPassword(kakaoId: string): string {
+  const secret = process.env.KAKAO_OAUTH_SECRET || process.env.KAKAO_REST_API_KEY || ''
+  return crypto.createHmac('sha256', secret).update(`kakao_oauth_${kakaoId}`).digest('hex')
+}
+
+function redirectWithCleanup(url: string): NextResponse {
+  const response = NextResponse.redirect(url)
+  response.cookies.delete('kakao_oauth_state')
+  return response
+}
 
 interface KakaoTokenResponse {
   access_token: string
@@ -45,6 +57,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=kakao_no_code`)
   }
 
+  // CSRF 방지: state 파라미터 검증
+  const state = searchParams.get('state')
+  const storedState = request.cookies.get('kakao_oauth_state')?.value
+  if (!state || !storedState || state !== storedState) {
+    return NextResponse.redirect(`${origin}/login?error=kakao_csrf_error`)
+  }
+
   const kakaoRestApiKey = process.env.KAKAO_REST_API_KEY
   const redirectUri = process.env.KAKAO_REDIRECT_URI || `${origin}/api/auth/kakao/callback`
 
@@ -70,7 +89,7 @@ export async function GET(request: NextRequest) {
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.json()
       console.error('Kakao token error:', errorData)
-      return NextResponse.redirect(`${origin}/login?error=kakao_token_error`)
+      return redirectWithCleanup(`${origin}/login?error=kakao_token_error`)
     }
 
     const tokenData: KakaoTokenResponse = await tokenResponse.json()
@@ -85,7 +104,7 @@ export async function GET(request: NextRequest) {
 
     if (!userResponse.ok) {
       console.error('Kakao user info error')
-      return NextResponse.redirect(`${origin}/login?error=kakao_user_error`)
+      return redirectWithCleanup(`${origin}/login?error=kakao_user_error`)
     }
 
     const userData: KakaoUserResponse = await userResponse.json()
@@ -103,7 +122,7 @@ export async function GET(request: NextRequest) {
 
     // 이메일이 없는 경우 (동의 안 함)
     if (!email) {
-      return NextResponse.redirect(`${origin}/login?error=kakao_email_required`)
+      return redirectWithCleanup(`${origin}/login?error=kakao_email_required`)
     }
 
     // 3. Supabase Auth 연동
@@ -111,16 +130,17 @@ export async function GET(request: NextRequest) {
 
     // Kakao ID를 provider_id로 사용하여 이메일 기반 로그인
     // 기존 계정이 있으면 로그인, 없으면 자동 생성
+    const hashedPassword = hashKakaoPassword(kakaoId)
     const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
       email: `kakao_${kakaoId}@picnic.oauth`,
-      password: kakaoId, // Kakao ID를 비밀번호로 사용 (OAuth 전용 계정)
+      password: hashedPassword,
     })
 
     // 계정이 없으면 새로 생성
     if (signInError) {
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: `kakao_${kakaoId}@picnic.oauth`,
-        password: kakaoId,
+        password: hashedPassword,
         options: {
           data: {
             provider: 'kakao',
@@ -134,7 +154,7 @@ export async function GET(request: NextRequest) {
 
       if (signUpError) {
         console.error('Supabase sign up error:', signUpError)
-        return NextResponse.redirect(`${origin}/login?error=signup_error`)
+        return redirectWithCleanup(`${origin}/login?error=signup_error`)
       }
 
       // 프로필 생성 (트리거가 자동으로 처리하지만 실패할 수 있음)
@@ -153,7 +173,7 @@ export async function GET(request: NextRequest) {
         }
 
         // 신규 가입이므로 온보딩 시작 (닉네임 설정부터)
-        return NextResponse.redirect(`${origin}/onboarding/step/1`)
+        return redirectWithCleanup(`${origin}/onboarding/step/1`)
       }
     }
 
@@ -167,18 +187,18 @@ export async function GET(request: NextRequest) {
 
       // 프로필이 없거나 온보딩 미완료 시
       if (profileError || !profile || !profile.onboarding_completed) {
-        return NextResponse.redirect(`${origin}/onboarding/step/1`)
+        return redirectWithCleanup(`${origin}/onboarding/step/1`)
       }
 
       // 온보딩 완료 사용자는 피드로
-      return NextResponse.redirect(`${origin}/feed`)
+      return redirectWithCleanup(`${origin}/feed`)
     }
 
     // 예상치 못한 상황
-    return NextResponse.redirect(`${origin}/login?error=unknown_error`)
+    return redirectWithCleanup(`${origin}/login?error=unknown_error`)
 
   } catch (error) {
     console.error('Kakao OAuth error:', error)
-    return NextResponse.redirect(`${origin}/login?error=server_error`)
+    return redirectWithCleanup(`${origin}/login?error=server_error`)
   }
 }

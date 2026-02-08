@@ -21,7 +21,7 @@ import { Calendar } from 'lucide-react'
 import type { CreateAppointmentParams } from '@/types/purchase'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import { MOSCOW_METRO_STATIONS, SPB_METRO_STATIONS } from '@/lib/constants'
+import { useMetroStations } from '@/lib/hooks/useMetroStations'
 
 interface AppointmentProposalFormProps {
   roomId: string
@@ -75,10 +75,11 @@ export function AppointmentProposalForm({
     }
   }, [open, postId])
 
+  const metroStations = useMetroStations(postCity)
+
   // 지하철역 정보 가져오기 (한글 이름 + 노선 색상)
   const getStationInfo = (stationValue: string) => {
-    const stations = postCity?.toLowerCase() === 'moscow' ? MOSCOW_METRO_STATIONS : SPB_METRO_STATIONS
-    const station = stations.find(s => s.value === stationValue)
+    const station = metroStations.find(s => s.value === stationValue)
     if (!station) return null
 
     // label 형식: "한글 / 러시아어 / 영어"에서 한글 부분만 추출

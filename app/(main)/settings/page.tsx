@@ -11,10 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import {
-  MOSCOW_METRO_STATIONS,
-  SPB_METRO_STATIONS,
-} from '@/lib/constants'
+import { useMetroStations } from '@/lib/hooks/useMetroStations'
 import { getLoadingMessage } from '@/lib/loading-messages'
 
 interface Profile {
@@ -83,9 +80,7 @@ export default function SettingsPage() {
     fetchProfile()
   }, [router])
 
-  const metroStations = (selectedCity?.toLowerCase() === 'moscow' || selectedCity === 'Moscow')
-    ? MOSCOW_METRO_STATIONS
-    : SPB_METRO_STATIONS
+  const metroStations = useMetroStations(selectedCity)
 
   const filteredStations = useMemo(() => {
     if (!searchQuery) return metroStations

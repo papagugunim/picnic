@@ -10,6 +10,7 @@ import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadEmoji } from '@/lib/bread'
 import { SwipeableChatItem } from '@/components/chat/SwipeableChatItem'
 import { toast } from 'sonner'
+import { formatTimeAgo } from '@/lib/utils/date'
 
 export default function ChatsPage() {
   const { chatRooms, isLoading, error, mutate } = useChats()
@@ -31,20 +32,6 @@ export default function ChatsPage() {
       logger.error('Delete room error:', error)
       toast.error('채팅방 삭제에 실패했습니다')
     }
-  }
-
-  const formatTimeAgo = (dateString: string | null) => {
-    if (!dateString) return ''
-
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-
-    if (diffInSeconds < 60) return '방금 전'
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}분 전`
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}시간 전`
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}일 전`
-    return date.toLocaleDateString('ko-KR')
   }
 
   if (isLoading) {
@@ -120,7 +107,7 @@ export default function ChatsPage() {
                               {room.post.title}
                             </h3>
                             <span className="text-xs text-muted-foreground flex-shrink-0">
-                              {formatTimeAgo(room.last_message_at)}
+                              {room.last_message_at ? formatTimeAgo(room.last_message_at) : ''}
                             </span>
                           </div>
                         )}

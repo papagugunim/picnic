@@ -61,30 +61,45 @@ export function useUnreadCount() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // 새로운 메시지가 추가되거나 읽음 상태가 변경되면 다시 가져오기
+      // 새 메시지 수신 또는 읽음 상태 변경 시에만 다시 가져오기
       subscription = supabase
         .channel(`unread-messages-${user.id}`)
         .on(
           'postgres_changes',
           {
-            event: '*',
+            event: 'INSERT',
             schema: 'public',
             table: 'chat_messages',
           },
-          () => {
-            logger.log('Chat message changed, refetching unread count...')
+          (payload) => {
+            // 자신이 보낸 메시지는 무시
+            if (payload.new && (payload.new as any).sender_id === user.id) return
+            logger.log('New chat message received, refetching unread count...')
             fetchUnreadCount()
           }
         )
         .on(
           'postgres_changes',
           {
-            event: '*',
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'chat_messages',
+          },
+          () => {
+            // 읽음 상태 변경 감지 (is_read 업데이트)
+            logger.log('Chat message updated, refetching unread count...')
+            fetchUnreadCount()
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
             schema: 'public',
             table: 'chat_rooms',
           },
           () => {
-            logger.log('Chat room changed, refetching unread count...')
+            logger.log('New chat room created, refetching unread count...')
             fetchUnreadCount()
           }
         )

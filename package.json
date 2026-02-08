@@ -7,9 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:push": "SUPABASE_ACCESS_TOKEN=sbp_daa35652b319ef47003c7112b51d870cb75ea6f1 supabase db push",
-    "db:pull": "SUPABASE_ACCESS_TOKEN=sbp_daa35652b319ef47003c7112b51d870cb75ea6f1 supabase db pull",
-    "db:reset": "SUPABASE_ACCESS_TOKEN=sbp_daa35652b319ef47003c7112b51d870cb75ea6f1 supabase db reset"
+    "db:push": "supabase db push",
+    "db:pull": "supabase db pull",
+    "db:reset": "supabase db reset"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

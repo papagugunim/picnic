@@ -41,7 +41,11 @@ export async function GET(request: NextRequest) {
     .range(from, to)
 
   if (search) {
-    query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`)
+    // 특수문자 이스케이프하여 필터 구문 조작 방지
+    const sanitized = search.replace(/[%_.,()]/g, '')
+    if (sanitized) {
+      query = query.or(`full_name.ilike.%${sanitized}%,email.ilike.%${sanitized}%`)
+    }
   }
 
   if (role && role !== 'all') {

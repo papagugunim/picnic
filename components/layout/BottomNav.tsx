@@ -49,7 +49,7 @@ function BottomNav() {
 
   return (
     <nav className={`fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background transition-transform duration-300 ease-in-out ${scrollHidden ? 'translate-y-full' : 'translate-y-0'}`}>
-      <div className="flex items-center justify-around h-12 max-w-screen-xl mx-auto">
+      <div className="flex items-center justify-around h-14 max-w-screen-xl mx-auto">
         {navItems.map((item) => {
           const isActive = pathname?.startsWith(item.href)
           const Icon = item.icon
@@ -61,7 +61,7 @@ function BottomNav() {
               href={item.href}
               prefetch={true}
               className={cn(
-                'flex items-center justify-center flex-1 h-full transition-colors relative',
+                'flex flex-col items-center justify-center flex-1 h-full transition-colors relative gap-0.5',
                 isActive
                   ? 'text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
@@ -70,15 +70,18 @@ function BottomNav() {
             >
               <div className="relative">
                 <Icon
-                  className={cn('w-6 h-6', isActive && 'stroke-[2.5]')}
+                  className={cn('w-5 h-5', isActive && 'stroke-[2.5]')}
                   strokeWidth={isActive ? 2.5 : 2}
                 />
                 {showBadge && (
-                  <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                  <div className="absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </div>
                 )}
               </div>
+              <span className={cn('text-[10px] leading-tight', isActive && 'font-semibold')}>
+                {item.name}
+              </span>
             </Link>
           )
         })}

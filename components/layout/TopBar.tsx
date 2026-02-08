@@ -7,7 +7,7 @@ import { Bell, Settings, Search, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/contexts/UserContext'
-import { useNotifications } from '@/lib/hooks/useNotifications'
+import { useNotificationCount } from '@/lib/hooks/useNotificationCount'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +23,7 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
   const router = useRouter()
   const pathname = usePathname()
   const { profile, refreshProfile } = useUser()
-  const { unreadCount } = useNotifications()
+  const { unreadCount } = useNotificationCount()
 
   // 스크롤 방향 감지 - 직접 구현
   const [scrollHidden, setScrollHidden] = useState(false)
