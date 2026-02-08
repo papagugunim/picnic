@@ -62,7 +62,7 @@ export function PostDetailModal({
   }, [onCommentCountChange])
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
+    <Dialog open onOpenChange={(open) => !open && window.history.back()}>
       <DialogContent
         hideCloseButton
         className="fixed inset-0 max-w-none w-screen h-screen translate-x-0 translate-y-0 left-0 top-0 bg-background p-0 border-0 rounded-none gap-0 flex flex-col"
@@ -78,7 +78,7 @@ export function PostDetailModal({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onClose}
+              onClick={() => window.history.back()}
               aria-label="뒤로 가기"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -96,7 +96,7 @@ export function PostDetailModal({
                 {currentUserId === post.user_id && (
                   <>
                     <DropdownMenuItem onClick={() => {
-                      onClose()
+                      window.history.back()
                       window.location.href = `/community/${post.id}/edit`
                     }}>
                       <Edit className="w-4 h-4 mr-2" />
@@ -143,7 +143,7 @@ export function PostDetailModal({
           <div className="p-4 max-w-3xl mx-auto">
             {/* Author Info */}
             <div className="flex items-start gap-3 mb-4">
-              <Link href={`/profile/${post.user_id}`} onClick={onClose}>
+              <Link href={`/profile/${post.user_id}`} onClick={() => window.history.back()}>
                 <UserAvatar
                   src={post.profiles.avatar_url}
                   alt={post.profiles.full_name || '사용자'}
@@ -156,7 +156,7 @@ export function PostDetailModal({
                 <div className="flex items-center gap-2 flex-wrap">
                   <Link
                     href={`/profile/${post.user_id}`}
-                    onClick={onClose}
+                    onClick={() => window.history.back()}
                     className="font-semibold hover:underline flex items-center gap-1"
                   >
                     <span>{post.profiles.full_name || '익명'}</span>

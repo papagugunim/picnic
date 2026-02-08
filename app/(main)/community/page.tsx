@@ -211,7 +211,7 @@ export default function CommunityPage() {
     return allPosts.filter(post => post.category === selectedCategory)
   }, [allPosts, selectedCategory])
 
-  // Post detail modal functions
+  // Post detail modal functions with browser back button support
   const openPostModal = useCallback(async (post: CommunityPost, e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault()
@@ -219,6 +219,7 @@ export default function CommunityPage() {
     }
     setSelectedPost(post)
     setIsPostModalOpen(true)
+    window.history.pushState({ modal: 'post', postId: post.id }, '')
 
     if (currentUserId && post.user_id !== currentUserId) {
       const supabase = createClient()
@@ -235,6 +236,18 @@ export default function CommunityPage() {
     setIsPostModalOpen(false)
     setSelectedPost(null)
   }, [])
+
+  // Browser back button closes modal instead of navigating away
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (isPostModalOpen) {
+        setIsPostModalOpen(false)
+        setSelectedPost(null)
+      }
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [isPostModalOpen])
 
   const requestDeletePost = useCallback(() => {
     if (!selectedPost) return
