@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { MapPin, Calendar, Package, Users, MessageCircle, Heart, Bookmark, Flag } from 'lucide-react'
+import { Package, Users, MessageCircle, Heart, Bookmark, Flag } from 'lucide-react'
 import { useMetroStations } from '@/lib/hooks/useMetroStations'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
@@ -304,7 +304,7 @@ export default function ProfilePage() {
   return (
     <div className="bg-background">
       {/* 프로필 헤더 */}
-      <div className="pb-4 pt-2 bg-card border-b border-border">
+      <div className="pb-4 pt-2">
         <div className="max-w-4xl mx-auto px-4">
 
           {/* 프로필 정보 */}
@@ -316,49 +316,18 @@ export default function ProfilePage() {
                 alt={profile.full_name || '프로필'}
                 breadLevel={profile.bread_level || 1}
                 size="xl"
-                className="border-2 border-border"
               />
             </div>
 
             {/* 정보 */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-1">
-                <h1 className="text-2xl font-bold">
+              <div className="flex items-center justify-between mb-2">
+                <h1 className="text-2xl font-bold truncate">
                   {profile.full_name || '이름 없음'}
                 </h1>
-                {/* 채팅하기/신고 버튼 (다른 사람 프로필일 경우만) */}
-                {!isOwnProfile && (
-                  <div className="flex gap-2 flex-shrink-0">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="gap-1.5"
-                      onClick={startChat}
-                      disabled={isStartingChat}
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      <span className="text-xs">{isStartingChat ? '로딩중' : '채팅'}</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      onClick={() => setIsReportDialogOpen(true)}
-                    >
-                      <Flag className="w-3.5 h-3.5" />
-                      <span className="text-xs">신고</span>
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
+                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0 ml-2">
                   <span>{formatDate(profile.created_at)}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
+                  <span>·</span>
                   <span>{getCityLabel(profile.city)}</span>
                 </div>
               </div>
@@ -403,9 +372,9 @@ export default function ProfilePage() {
                 })()}
               </div>
 
-              {/* 지하철역 - 아이콘 없이 */}
+              {/* 지하철역 */}
               {profile.preferred_metro_stations && profile.preferred_metro_stations.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5 mb-2">
                   {profile.preferred_metro_stations.map((stationValue) => {
                     const station = getStationInfo(stationValue)
                     if (!station) return null
@@ -427,6 +396,31 @@ export default function ProfilePage() {
                       </span>
                     )
                   })}
+                </div>
+              )}
+
+              {/* 채팅하기/신고 버튼 (다른 사람 프로필일 경우만) */}
+              {!isOwnProfile && (
+                <div className="flex gap-2 mt-3">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={startChat}
+                    disabled={isStartingChat}
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span className="text-xs">{isStartingChat ? '로딩중' : '채팅'}</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setIsReportDialogOpen(true)}
+                  >
+                    <Flag className="w-3.5 h-3.5" />
+                    <span className="text-xs">신고</span>
+                  </Button>
                 </div>
               )}
             </div>
@@ -455,7 +449,7 @@ export default function ProfilePage() {
       </div>
 
       {/* 탭 */}
-      <div className="border-b border-border">
+      <div>
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex gap-4 overflow-x-auto scrollbar-hide">
             <button
@@ -511,14 +505,9 @@ export default function ProfilePage() {
       </div>
 
       {/* 게시물 목록 */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-4">
         {activeTab === 'likes' ? (
           <>
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Heart className="w-5 h-5" />
-              좋아요한 게시글
-            </h2>
-
             {likedPosts.length === 0 ? (
               <div className="text-center py-16">
                 <Heart className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
@@ -569,11 +558,6 @@ export default function ProfilePage() {
           </>
         ) : activeTab === 'interests' ? (
           <>
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Bookmark className="w-5 h-5" />
-              관심 있는 거래
-            </h2>
-
             {interestedPosts.length === 0 ? (
               <div className="text-center py-16">
                 <Bookmark className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
@@ -624,11 +608,6 @@ export default function ProfilePage() {
           </>
         ) : activeTab === 'marketplace' ? (
           <>
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Package className="w-5 h-5" />
-              {isOwnProfile ? '내 중고거래' : '중고거래'}
-            </h2>
-
         {posts.length === 0 ? (
           <div className="text-center py-16">
             <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
@@ -686,11 +665,6 @@ export default function ProfilePage() {
           </>
         ) : (
           <>
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              {isOwnProfile ? '내 동네생활' : '동네생활'}
-            </h2>
-
             {communityPosts.length === 0 ? (
               <div className="text-center py-16">
                 <Users className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
@@ -750,7 +724,7 @@ export default function ProfilePage() {
         <div className="max-w-4xl mx-auto px-4 pb-24">
           <button
             onClick={requestLogout}
-            className="w-full py-4 text-center text-muted-foreground hover:text-destructive transition-colors border-t border-border"
+            className="w-full py-4 text-center text-muted-foreground hover:text-destructive transition-colors"
           >
             로그아웃
           </button>
