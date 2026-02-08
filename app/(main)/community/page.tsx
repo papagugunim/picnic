@@ -3,7 +3,7 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('CommunityPage')
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Search, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -220,17 +220,7 @@ export default function CommunityPage() {
     setSelectedPost(post)
     setIsPostModalOpen(true)
     window.history.pushState({ modal: 'post', postId: post.id }, '')
-
-    if (currentUserId && post.user_id !== currentUserId) {
-      const supabase = createClient()
-      await supabase
-        .from('community_posts')
-        .update({ view_count: (post.view_count || 0) + 1 })
-        .eq('id', post.id)
-
-      updateItem(post.id, (p) => ({ ...p, view_count: (p.view_count || 0) + 1 }))
-    }
-  }, [currentUserId, updateItem])
+  }, [])
 
   const closePostModal = useCallback(() => {
     setIsPostModalOpen(false)
@@ -368,6 +358,34 @@ export default function CommunityPage() {
     }
   }
 
+  // 화면에 노출되면 조회수 증가 (세션당 게시글 1회)
+  const viewedPostIds = useRef(new Set<string>())
+
+  const handlePostView = useCallback((postId: string) => {
+    if (!currentUserId || viewedPostIds.current.has(postId)) return
+    viewedPostIds.current.add(postId)
+
+    // 낙관적 UI 업데이트
+    updateItem(postId, (p) => ({ ...p, view_count: (p.view_count || 0) + 1 }))
+
+    // DB 업데이트 (fire-and-forget)
+    const supabase = createClient()
+    supabase
+      .from('community_posts')
+      .select('view_count')
+      .eq('id', postId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          supabase
+            .from('community_posts')
+            .update({ view_count: (data.view_count || 0) + 1 })
+            .eq('id', postId)
+            .then(() => {})
+        }
+      })
+  }, [currentUserId, updateItem])
+
   const getCategoryEmoji = (category: string) => {
     const cat = categories.find((c) => c.id === category)
     return cat?.emoji || '📌'
@@ -471,7 +489,7 @@ export default function CommunityPage() {
                 </Button>
               </div>
             ) : (
-              <div className="divide-y divide-border">
+              <div>
                 {filteredPosts.map((post) => (
                   <CommunityPostItem
                     key={post.id}
@@ -479,6 +497,7 @@ export default function CommunityPage() {
                     onPostClick={openPostModal}
                     onLikeToggle={toggleLike}
                     onImageClick={openGallery}
+                    onView={handlePostView}
                     formatTimeAgo={formatTimeAgo}
                     getCategoryEmoji={getCategoryEmoji}
                     getCategoryName={getCategoryName}

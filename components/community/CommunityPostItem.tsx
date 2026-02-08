@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect, useRef } from 'react'
 import { Heart, MessageCircle, BarChart2 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -33,6 +33,7 @@ interface CommunityPostItemProps {
   onPostClick: (post: CommunityPost, e?: React.MouseEvent) => void
   onLikeToggle: (postId: string, currentlyLiked: boolean) => void
   onImageClick: (images: string[], index: number, e: React.MouseEvent) => void
+  onView?: (postId: string) => void
   formatTimeAgo: (dateString: string) => string
   getCategoryEmoji: (category: string) => string
   getCategoryName: (category: string) => string
@@ -43,11 +44,33 @@ export function CommunityPostItem({
   onPostClick,
   onLikeToggle,
   onImageClick,
+  onView,
   formatTimeAgo,
   getCategoryEmoji,
   getCategoryName,
 }: CommunityPostItemProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const articleRef = useRef<HTMLElement>(null)
+  const viewedRef = useRef(false)
+
+  // 화면에 노출되면 조회수 카운팅
+  useEffect(() => {
+    const el = articleRef.current
+    if (!el || !onView || viewedRef.current) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !viewedRef.current) {
+          viewedRef.current = true
+          onView(post.id)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.5 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [post.id, onView])
   const contentLength = post.content.length
   const shouldTruncate = contentLength > 150
 
@@ -59,6 +82,7 @@ export function CommunityPostItem({
 
   return (
     <article
+      ref={articleRef}
       className="flex gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer"
       onClick={() => onPostClick(post)}
     >
