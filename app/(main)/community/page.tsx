@@ -110,10 +110,6 @@ export default function CommunityPage() {
       .order('created_at', { ascending: false })
       .limit(PAGE_SIZE)
 
-    if (selectedCategory !== 'all') {
-      query = query.eq('category', selectedCategory)
-    }
-
     if (cursor) {
       query = query.lt('created_at', cursor)
     }
@@ -190,10 +186,10 @@ export default function CommunityPage() {
       nextCursor,
       hasMore: (postsData?.length || 0) === PAGE_SIZE,
     }
-  }, [selectedCategory, userCity, user])
+  }, [userCity, user])
 
   const {
-    data: posts,
+    data: allPosts,
     isLoading,
     isFetchingMore,
     isRefreshing,
@@ -209,12 +205,11 @@ export default function CommunityPage() {
     enabled: isInitialized,
   })
 
-  // Reset when category changes
-  useEffect(() => {
-    if (isInitialized) {
-      reset()
-    }
-  }, [selectedCategory])
+  // Client-side category filtering
+  const posts = useMemo(() => {
+    if (selectedCategory === 'all') return allPosts
+    return allPosts.filter(post => post.category === selectedCategory)
+  }, [allPosts, selectedCategory])
 
   // Post detail modal functions
   const openPostModal = useCallback(async (post: CommunityPost, e?: React.MouseEvent) => {
