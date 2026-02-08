@@ -9,11 +9,11 @@ interface MainContentProps {
 export default function MainContent({ children }: MainContentProps) {
   const pathname = usePathname()
 
-  // 채팅방 페이지 확인 - padding 조정용
-  const isChatRoomPage = pathname?.match(/^\/chats\/[^/]+$/)
+  // 전체화면 페이지 확인 - padding 조정용
+  const isFullscreenPage = pathname?.match(/^\/chats\/[^/]+$/) || pathname?.match(/^\/post\/[^/]+$/)
 
   return (
-    <main className={`${isChatRoomPage ? '' : 'pt-14 pb-12'} max-w-screen-xl mx-auto`}>
+    <main className={`${isFullscreenPage ? '' : 'pt-14 pb-12'} max-w-screen-xl mx-auto`}>
       {children}
     </main>
   )
