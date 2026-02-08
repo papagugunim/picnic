@@ -31,10 +31,10 @@ import type { CommunityPost } from '@/components/community/CommunityPostItem'
 
 const categories = [
   { id: 'all', name: '전체', emoji: '🏘️' },
-  { id: 'question', name: '질문', emoji: '❓' },
-  { id: 'info', name: '정보', emoji: '💡' },
-  { id: 'event', name: '이벤트', emoji: '🎉' },
   { id: 'chat', name: '잡담', emoji: '💬' },
+  { id: 'info', name: '정보', emoji: '💡' },
+  { id: 'question', name: '질문', emoji: '❓' },
+  { id: 'event', name: '이벤트', emoji: '🎉' },
   { id: 'lost_found', name: '분실물', emoji: '🔍' },
 ]
 
