@@ -339,12 +339,19 @@ export default function FeedClient({ initialPosts, userId }: FeedClientProps) {
 
         {/* Posts list */}
         {posts.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-muted-foreground mb-4">아직 게시글이 없습니다</p>
-            <Link href="/post/new">
-              <Button>첫 게시글 작성하기</Button>
-            </Link>
-          </div>
+          isLoading || !isInitialized ? (
+            <div className="text-center py-16">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground mx-auto mb-2" />
+              <p className="text-muted-foreground">게시글을 불러오는 중...</p>
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground mb-4">아직 게시글이 없습니다</p>
+              <Link href="/post/new">
+                <Button>첫 게시글 작성하기</Button>
+              </Link>
+            </div>
+          )
         ) : (
           <div className="divide-y divide-border">
             {posts.map((post) => (
