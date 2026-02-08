@@ -428,26 +428,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* 통계 */}
-      <div>
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex gap-8">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{posts.length + communityPosts.length}</div>
-              <div className="text-sm text-muted-foreground">전체 게시물</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">{posts.length}</div>
-              <div className="text-sm text-muted-foreground">중고거래</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">{communityPosts.length}</div>
-              <div className="text-sm text-muted-foreground">동네생활</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* 탭 */}
       <div>
         <div className="max-w-4xl mx-auto px-4">
