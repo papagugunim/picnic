@@ -498,6 +498,7 @@ export default function CommunityPage() {
                     onLikeToggle={toggleLike}
                     onImageClick={openGallery}
                     onView={handlePostView}
+                    currentUserRole={currentUserRole}
                     formatTimeAgo={formatTimeAgo}
                     getCategoryEmoji={getCategoryEmoji}
                     getCategoryName={getCategoryName}

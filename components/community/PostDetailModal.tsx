@@ -172,9 +172,6 @@ export function PostDetailModal({
               </div>
             </div>
 
-            {/* Title */}
-            <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
-
             {/* Content */}
             <div className="prose prose-sm max-w-none mb-6 whitespace-pre-wrap">
               {post.content}
@@ -225,10 +222,12 @@ export function PostDetailModal({
                 <span>{modalCommentCount}</span>
               </div>
 
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <span>조회</span>
-                <span>{post.view_count || 0}</span>
-              </div>
+              {currentUserRole === 'developer' && (
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <span>조회</span>
+                  <span>{post.view_count || 0}</span>
+                </div>
+              )}
             </div>
           </div>
 

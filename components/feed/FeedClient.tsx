@@ -446,7 +446,9 @@ export default function FeedClient({ initialPosts, userId }: FeedClientProps) {
                       </span>
                     </button>
 
-                    <span>조회 {post.view_count || 0}</span>
+                    {profile?.user_role === 'developer' && (
+                      <span>조회 {post.view_count || 0}</span>
+                    )}
                   </div>
                 </div>
               </Link>

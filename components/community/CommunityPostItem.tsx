@@ -34,6 +34,7 @@ interface CommunityPostItemProps {
   onLikeToggle: (postId: string, currentlyLiked: boolean) => void
   onImageClick: (images: string[], index: number, e: React.MouseEvent) => void
   onView?: (postId: string) => void
+  currentUserRole?: string | null
   formatTimeAgo: (dateString: string) => string
   getCategoryEmoji: (category: string) => string
   getCategoryName: (category: string) => string
@@ -45,6 +46,7 @@ export function CommunityPostItem({
   onLikeToggle,
   onImageClick,
   onView,
+  currentUserRole,
   formatTimeAgo,
   getCategoryEmoji,
   getCategoryName,
@@ -123,11 +125,6 @@ export function CommunityPostItem({
             {formatTimeAgo(post.created_at)}
           </span>
         </div>
-
-        {/* Title */}
-        <h3 className="font-semibold text-[15px] mb-1">
-          {post.title}
-        </h3>
 
         {/* Body */}
         <div className="text-[15px] leading-relaxed mb-2">
@@ -209,10 +206,12 @@ export function CommunityPostItem({
             <span className="text-sm">{post.likes_count || 0}</span>
           </button>
 
-          <div className="flex items-center gap-2 p-2 rounded-full">
-            <BarChart2 className="w-[18px] h-[18px]" />
-            <span className="text-sm">{post.view_count || 0}</span>
-          </div>
+          {currentUserRole === 'developer' && (
+            <div className="flex items-center gap-2 p-2 rounded-full">
+              <BarChart2 className="w-[18px] h-[18px]" />
+              <span className="text-sm">{post.view_count || 0}</span>
+            </div>
+          )}
         </div>
       </div>
     </article>

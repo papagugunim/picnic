@@ -853,10 +853,12 @@ export default function PostDetailClient({
                 )}
               </button>
 
-              <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                <span>조회</span>
-                <span>{post.view_count || 0}</span>
-              </div>
+              {currentUserRole === 'developer' && (
+                <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                  <span>조회</span>
+                  <span>{post.view_count || 0}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
