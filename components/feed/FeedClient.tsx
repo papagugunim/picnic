@@ -357,7 +357,7 @@ export default function FeedClient({ initialPosts, userId }: FeedClientProps) {
             </div>
           )
         ) : (
-          <div className="divide-y divide-border">
+          <div>
             {posts.map((post) => (
               <Link
                 key={post.id}
