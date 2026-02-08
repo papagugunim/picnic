@@ -41,7 +41,7 @@ export function WeatherSection({
     return (
       <div className="bg-background border-b border-border">
         <div className="px-4 py-4">
-          <h1 className="text-2xl font-bold mb-2">오늘의 피크닉</h1>
+          <h1 className="text-lg font-bold mb-2">오늘의 피크닉</h1>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <CalendarIcon className="w-4 h-4 animate-pulse" />
             <span>로딩 중...</span>
@@ -56,7 +56,7 @@ export function WeatherSection({
       <div className="px-4 py-4">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">오늘의 피크닉</h1>
+            <h1 className="text-lg font-bold">오늘의 피크닉</h1>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <CalendarIcon className="w-4 h-4" />
               <span>{formatDate()}</span>

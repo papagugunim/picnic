@@ -390,7 +390,7 @@ export default function CommunityPage() {
       <div className="bg-background min-h-screen">
         <div className="max-w-4xl mx-auto">
           <div className="px-4 py-4">
-            <h1 className="text-2xl font-bold mb-4">동네생활</h1>
+            <h1 className="text-lg font-bold mb-4">동네생활</h1>
             <div className="text-center py-16 text-muted-foreground">
               {getLoadingMessage('post')}
             </div>
@@ -406,7 +406,7 @@ export default function CommunityPage() {
           {/* Header */}
           <div className="bg-background">
             <div className="px-4 py-4">
-              <h1 className="text-2xl font-bold mb-4">동네생활</h1>
+              <h1 className="text-lg font-bold mb-4">동네생활</h1>
 
               {/* Search */}
               <div className="relative mb-4">

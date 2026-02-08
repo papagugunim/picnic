@@ -59,7 +59,7 @@ export default function ChatsPage() {
         {/* Header */}
         <div className="bg-background border-b border-border">
           <div className="px-4 py-4">
-            <h1 className="text-2xl font-bold">채팅</h1>
+            <h1 className="text-lg font-bold">채팅</h1>
           </div>
         </div>
 
