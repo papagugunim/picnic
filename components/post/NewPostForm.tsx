@@ -41,6 +41,7 @@ export default function NewPostForm() {
   const [images, setImages] = useState<File[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [freeLabel, setFreeLabel] = useState('무료나눔')
 
   const form = useForm<PostFormValues>({
     resolver: zodResolver(postSchema),
@@ -238,14 +239,21 @@ export default function NewPostForm() {
                   />
                   <button
                     type="button"
-                    onClick={() => field.onChange(field.value === '0' ? '' : '0')}
-                    className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
+                    onClick={() => {
+                      const toFree = field.value !== '0'
+                      field.onChange(toFree ? '0' : '')
+                      if (toFree) {
+                        setFreeLabel('당신은 천사')
+                        setTimeout(() => setFreeLabel('무료나눔'), 1500)
+                      }
+                    }}
+                    className={`px-5 py-1.5 rounded-full text-sm whitespace-nowrap transition-all ${
                       field.value === '0'
                         ? 'bg-foreground text-background font-semibold'
                         : 'bg-secondary text-secondary-foreground hover:bg-muted'
                     }`}
                   >
-                    무료나눔
+                    {freeLabel}
                   </button>
                 </div>
               </FormControl>
