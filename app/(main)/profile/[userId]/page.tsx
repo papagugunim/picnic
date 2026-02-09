@@ -325,10 +325,9 @@ export default function ProfilePage() {
                 <h1 className="text-2xl font-bold truncate">
                   {profile.full_name || '이름 없음'}
                 </h1>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0 ml-2">
-                  <span>{formatDate(profile.created_at)}</span>
-                  <span>·</span>
-                  <span>{getCityLabel(profile.city)}</span>
+                <div className="flex flex-col items-end text-xs text-muted-foreground flex-shrink-0 ml-2 gap-0.5">
+                  <span>📅 {formatDate(profile.created_at)}</span>
+                  <span>📍 {getCityLabel(profile.city)}</span>
                 </div>
               </div>
 
