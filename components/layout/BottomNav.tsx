@@ -42,7 +42,7 @@ function BottomNav() {
   const scrollHidden = useScrollDirection({ threshold: 10, topOffset: 50 })
 
   // 채팅방, 게시글 상세 페이지에서는 네비게이션바 숨기기
-  const isFullscreenPage = pathname?.match(/^\/chats\/[^/]+$/) || pathname?.match(/^\/post\/[^/]+$/) || pathname === '/settings'
+  const isFullscreenPage = pathname?.match(/^\/chats\/[^/]+$/) || pathname?.match(/^\/post\/[^/]+$/) || pathname?.match(/^\/community\/[^/]+$/) || pathname === '/settings'
   if (isFullscreenPage) {
     return null
   }

@@ -10,7 +10,7 @@ export default function MainContent({ children }: MainContentProps) {
   const pathname = usePathname()
 
   // 전체화면 페이지 확인 - padding 조정용
-  const isFullscreenPage = pathname?.match(/^\/chats\/[^/]+$/) || pathname?.match(/^\/post\/[^/]+$/) || pathname === '/settings'
+  const isFullscreenPage = pathname?.match(/^\/chats\/[^/]+$/) || pathname?.match(/^\/post\/[^/]+$/) || pathname?.match(/^\/community\/[^/]+$/) || pathname === '/settings'
 
   return (
     <main className={`${isFullscreenPage ? '' : 'pt-14 pb-12'} max-w-screen-xl mx-auto`}>

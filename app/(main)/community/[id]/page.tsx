@@ -586,6 +586,7 @@ export default function CommunityPostDetailPage() {
           currentUserId={currentUserId}
           isAdmin={isAdmin}
           onCommentCountChange={setCommentCount}
+          isFullscreen
         />
       </div>
 

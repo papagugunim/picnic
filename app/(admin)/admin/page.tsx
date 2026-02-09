@@ -2,6 +2,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { RecentReports } from '@/components/admin/RecentReports'
+import { getBreadEmoji } from '@/lib/bread'
 
 async function getAdminStats() {
   const supabase = await createServerClient()
@@ -39,7 +40,7 @@ async function getRecentUsers() {
   const supabase = await createServerClient()
   const { data } = await supabase
     .from('profiles')
-    .select('id, full_name, avatar_url, city, created_at, updated_at, post_count')
+    .select('id, full_name, avatar_url, city, created_at, updated_at, post_count, bread_level, user_role')
     .order('created_at', { ascending: false })
     .limit(5)
 
@@ -132,7 +133,10 @@ export default async function AdminDashboardPage() {
                     <AvatarFallback className="text-xs">{(user.full_name || '?').slice(0, 2)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs md:text-sm font-medium truncate">{user.full_name || '이름 없음'}</p>
+                    <p className="text-xs md:text-sm font-medium truncate">
+                      {user.full_name || '이름 없음'}
+                      <span className="ml-0.5">{getBreadEmoji(user.bread_level, user.user_role || undefined)}</span>
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {user.city === 'Moscow' ? '모스크바' : user.city === 'Saint Petersburg' ? '상트' : '-'}
                       <span className="hidden sm:inline">
