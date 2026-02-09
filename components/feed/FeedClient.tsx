@@ -37,9 +37,9 @@ interface Post {
 }
 
 const categories = [
-  { id: 'all', label: '전체' },
+  { id: 'all', label: '최신순' },
   { id: 'nearby', label: '가까운 동네' },
-  { id: 'recent', label: '방금 전' },
+  { id: 'free', label: '무료나눔' },
 ]
 
 const PAGE_SIZE = 20
@@ -50,7 +50,7 @@ interface FeedClientProps {
 }
 
 export default function FeedClient({ initialPosts, userId }: FeedClientProps) {
-  const [selectedTab, setSelectedTab] = useState<'all' | 'nearby' | 'recent'>('all')
+  const [selectedTab, setSelectedTab] = useState<'all' | 'nearby' | 'free'>('all')
   const { user, profile, loading: userLoading } = useUser()
 
   const userCity = profile?.city || null
@@ -204,10 +204,8 @@ export default function FeedClient({ initialPosts, userId }: FeedClientProps) {
         }
         return allPosts
 
-      case 'recent': {
-        const oneHourAgo = Date.now() - 60 * 60 * 1000
-        return allPosts.filter(post => new Date(post.created_at).getTime() > oneHourAgo)
-      }
+      case 'free':
+        return allPosts.filter(post => post.price === 0 || post.price === null)
 
       case 'all':
       default:
@@ -317,7 +315,7 @@ export default function FeedClient({ initialPosts, userId }: FeedClientProps) {
             {categories.map((category) => (
               <button
                 key={category.id}
-                onClick={() => setSelectedTab(category.id as 'all' | 'nearby' | 'recent')}
+                onClick={() => setSelectedTab(category.id as 'all' | 'nearby' | 'free')}
                 className={`
                   px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors
                   ${
