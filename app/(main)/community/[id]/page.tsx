@@ -395,11 +395,10 @@ export default function CommunityPostDetailPage() {
   const category = categories[post.category as keyof typeof categories]
 
   return (
-    <div className="bg-background pb-20">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="bg-background border-b border-border">
-          <div className="flex items-center justify-between px-4 py-3">
+    <div className="h-dvh flex flex-col bg-background">
+      {/* Header */}
+      <div className="flex-shrink-0 border-b border-border">
+        <div className="flex items-center justify-between px-4 py-3 max-w-4xl mx-auto">
             <Button
               variant="ghost"
               size="icon"
@@ -474,6 +473,9 @@ export default function CommunityPostDetailPage() {
           </div>
         </div>
 
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="max-w-4xl mx-auto">
         {/* Post Content */}
         <div className="p-4">
           {/* Author Info */}
@@ -586,8 +588,8 @@ export default function CommunityPostDetailPage() {
           currentUserId={currentUserId}
           isAdmin={isAdmin}
           onCommentCountChange={setCommentCount}
-          isFullscreen
         />
+        </div>
       </div>
 
       {/* Image gallery modal */}
