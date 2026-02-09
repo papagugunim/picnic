@@ -2,7 +2,6 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import EditPostForm from '@/components/post/EditPostForm'
 
 export default function EditPostPage() {
@@ -12,23 +11,19 @@ export default function EditPostPage() {
 
   return (
     <div className="bg-background">
-      {/* Header */}
-      <div className="bg-background border-b border-border">
-        <div className="max-w-4xl mx-auto flex items-center justify-between px-4 py-3">
-          <Button
-            variant="ghost"
-            size="icon"
+      <div className="max-w-3xl mx-auto px-4">
+        {/* 헤더 */}
+        <div className="flex items-center gap-2 py-3">
+          <button
             onClick={() => router.back()}
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="text-lg font-semibold">게시글 수정</h1>
-          <div className="w-10" />
+          </button>
+          <h1 className="text-lg font-semibold">게시물 수정</h1>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 py-6">
+        {/* 폼 */}
         <EditPostForm postId={postId} />
       </div>
     </div>

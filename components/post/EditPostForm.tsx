@@ -240,46 +240,7 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* 기존 이미지 */}
-        {existingImages.length > 0 && (
-          <div>
-            <label className="text-sm font-medium mb-2 block">
-              현재 이미지
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {existingImages.map((url, index) => (
-                <div key={url} className="relative aspect-square">
-                  <img
-                    src={url}
-                    alt={`기존 이미지 ${index + 1}`}
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeExistingImage(index)}
-                    className="absolute top-2 right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 새 이미지 업로드 */}
-        <div>
-          <label className="text-sm font-medium mb-2 block">
-            이미지 추가 (최대 {5 - existingImages.length}장)
-          </label>
-          <ImageUpload
-            value={images}
-            onChange={setImages}
-            maxFiles={5 - existingImages.length}
-          />
-        </div>
-
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-8">
         {/* 제목 */}
         <FormField
           control={form.control}
@@ -291,7 +252,6 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
                 <Input
                   placeholder="판매할 물건의 제목을 입력하세요"
                   {...field}
-                  className="glass"
                 />
               </FormControl>
               <FormMessage />
@@ -308,15 +268,58 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
               <FormLabel>설명</FormLabel>
               <FormControl>
                 <textarea
-                  placeholder="물건의 상태, 구매 시기, 사용 횟수 등을 자세히 설명해주세요"
+                  placeholder="물건의 상태, 구매 시기 등을 설명해주세요"
                   {...field}
-                  className="glass w-full min-h-[150px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
+                  onChange={(e) => {
+                    field.onChange(e)
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  className="w-full min-h-[100px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring overflow-hidden"
                 />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+
+        {/* 사진 */}
+        <div>
+          <label className="text-sm font-medium mb-1.5 block">
+            사진 (최대 5장)
+          </label>
+          {/* 기존 이미지 */}
+          {existingImages.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-2">
+              {existingImages.map((url, index) => (
+                <div key={url} className="relative w-20 h-20 flex-shrink-0">
+                  <div className="absolute top-1 left-1 w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[10px] font-bold z-10">
+                    {index + 1}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeExistingImage(index)}
+                    className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                    aria-label="이미지 삭제"
+                  >
+                    <span className="text-xs">×</span>
+                  </button>
+                  <img
+                    src={url}
+                    alt={`기존 이미지 ${index + 1}`}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          {/* 새 이미지 추가 */}
+          <ImageUpload
+            value={images}
+            onChange={setImages}
+            maxFiles={5 - existingImages.length}
+          />
+        </div>
 
         {/* 가격 */}
         <FormField
@@ -392,20 +395,17 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
             <FormItem>
               <FormLabel>카테고리</FormLabel>
               <FormControl>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="flex flex-wrap gap-2">
                   {CATEGORIES.map((cat) => (
                     <button
                       key={cat.value}
                       type="button"
                       onClick={() => field.onChange(cat.value)}
-                      className={`
-                        px-4 py-3 rounded-lg border-2 transition-all
-                        ${
-                          field.value === cat.value
-                            ? 'border-primary bg-primary/10 text-primary font-semibold'
-                            : 'border-border bg-background hover:border-primary/50'
-                        }
-                      `}
+                      className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+                        field.value === cat.value
+                          ? 'bg-foreground text-background font-semibold'
+                          : 'bg-secondary text-secondary-foreground hover:bg-muted'
+                      }`}
                     >
                       {cat.label}
                     </button>
@@ -419,33 +419,22 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
 
         {/* 에러 메시지 */}
         {error && (
-          <div className="text-sm text-destructive p-3 glass-strong rounded-lg">
+          <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-lg">
             {error}
           </div>
         )}
 
         {/* 제출 버튼 */}
-        <div className="flex gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-            disabled={isLoading}
-            className="flex-1"
-          >
-            취소
-          </Button>
-          <Button type="submit" disabled={isLoading} className="flex-1">
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                수정 중...
-              </>
-            ) : (
-              '수정하기'
-            )}
-          </Button>
-        </div>
+        <Button type="submit" disabled={isLoading} className="w-full h-11 text-base">
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              수정 중...
+            </>
+          ) : (
+            '수정하기'
+          )}
+        </Button>
       </form>
     </Form>
   )
