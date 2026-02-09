@@ -3,7 +3,7 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('EditPostForm')
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -48,6 +48,24 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
   const [isFetchingPost, setIsFetchingPost] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [freeLabel, setFreeLabel] = useState('무료나눔')
+  const [freeBounce, setFreeBounce] = useState(false)
+  const [confettiParticles, setConfettiParticles] = useState<{ id: number; emoji: string; x: number; y: number; delay: number }[]>([])
+  const freeBtnRef = useRef<HTMLButtonElement>(null)
+
+  const triggerFreeEffect = useCallback(() => {
+    setFreeBounce(true)
+    setTimeout(() => setFreeBounce(false), 600)
+    const emojis = ['💛', '✨', '🎉', '😇', '⭐', '💖']
+    const particles = Array.from({ length: 8 }, (_, i) => ({
+      id: Date.now() + i,
+      emoji: emojis[Math.floor(Math.random() * emojis.length)],
+      x: (Math.random() - 0.5) * 120,
+      y: -(Math.random() * 60 + 20),
+      delay: Math.random() * 0.2,
+    }))
+    setConfettiParticles(particles)
+    setTimeout(() => setConfettiParticles([]), 1000)
+  }, [])
 
   const form = useForm<PostFormValues>({
     resolver: zodResolver(postSchema),
@@ -319,24 +337,46 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
                     }}
                     className="flex-1"
                   />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const toFree = field.value !== '0'
-                      field.onChange(toFree ? '0' : '')
-                      if (toFree) {
-                        setFreeLabel('당신은 천사')
-                        setTimeout(() => setFreeLabel('무료나눔'), 1500)
-                      }
-                    }}
-                    className={`px-5 py-1.5 rounded-full text-sm whitespace-nowrap transition-all ${
-                      field.value === '0'
-                        ? 'bg-foreground text-background font-semibold'
-                        : 'bg-secondary text-secondary-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {freeLabel}
-                  </button>
+                  <div className="relative">
+                    <button
+                      ref={freeBtnRef}
+                      type="button"
+                      onClick={() => {
+                        const toFree = field.value !== '0'
+                        field.onChange(toFree ? '0' : '')
+                        if (toFree) {
+                          setFreeLabel('당신은 천사')
+                          triggerFreeEffect()
+                          setTimeout(() => setFreeLabel('무료나눔'), 1500)
+                        }
+                      }}
+                      className={`px-5 py-1.5 rounded-full text-sm whitespace-nowrap transition-all ${
+                        freeBounce ? 'animate-free-bounce' : ''
+                      } ${
+                        field.value === '0'
+                          ? 'bg-foreground text-background font-semibold'
+                          : 'bg-secondary text-secondary-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {freeLabel}
+                    </button>
+                    {confettiParticles.map((p) => (
+                      <span
+                        key={p.id}
+                        className="absolute pointer-events-none text-sm"
+                        style={{
+                          left: '50%',
+                          top: '50%',
+                          animation: `confetti-burst 0.8s ease-out ${p.delay}s forwards`,
+                          ['--cx' as string]: `${p.x}px`,
+                          ['--cy' as string]: `${p.y}px`,
+                          opacity: 0,
+                        }}
+                      >
+                        {p.emoji}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </FormControl>
               <FormMessage />

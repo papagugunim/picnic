@@ -322,6 +322,35 @@
   background-color: hsl(var(--muted));
 }
 
+/* 무료나눔 컨페티 효과 */
+@keyframes confetti-burst {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(0, 0) scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(var(--cx), var(--cy)) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(calc(var(--cx) * 1.5), calc(var(--cy) * 1.8)) scale(0.6);
+  }
+}
+
+/* 무료나눔 바운스 효과 */
+@keyframes free-bounce {
+  0%, 100% { transform: scale(1); }
+  20% { transform: scale(1.25); }
+  40% { transform: scale(0.9); }
+  60% { transform: scale(1.1); }
+  80% { transform: scale(0.95); }
+}
+
+.animate-free-bounce {
+  animation: free-bounce 0.6s ease-in-out;
+}
+
 /* Hide scrollbar utility */
 .scrollbar-hide {
   -ms-overflow-style: none; /* IE and Edge */
