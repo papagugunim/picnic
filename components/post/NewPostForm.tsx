@@ -133,9 +133,9 @@ export default function NewPostForm() {
         category: values.category,
         images: imageUrls,
         city: profile.city,
-        neighborhood: profile.city, // 일단 city를 neighborhood에도 저장
-        preferred_metro_stations: profile.preferred_metro_stations || [], // 프로필의 지하철역 정보 저장
-        trade_method: [], // 빈 배열로 설정
+        neighborhood: profile.city,
+        preferred_metro_stations: profile.preferred_metro_stations || [],
+        trade_method: [],
         status: 'active',
       }
 
@@ -149,11 +149,6 @@ export default function NewPostForm() {
 
       if (postError) {
         logger.error('Post creation error:', postError)
-        logger.error('Error details:', JSON.stringify(postError, null, 2))
-        logger.error('Error message:', postError.message)
-        logger.error('Error code:', postError.code)
-        logger.error('Error hint:', postError.hint)
-        logger.error('Error details:', postError.details)
         setError(`게시물 작성 중 오류가 발생했습니다: ${postError.message || JSON.stringify(postError)}`)
         return
       }
@@ -171,15 +166,7 @@ export default function NewPostForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* 이미지 업로드 */}
-        <div>
-          <label className="text-sm font-medium mb-2 block">
-            이미지 (최대 5장)
-          </label>
-          <ImageUpload value={images} onChange={setImages} maxFiles={5} />
-        </div>
-
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-8">
         {/* 제목 */}
         <FormField
           control={form.control}
@@ -191,7 +178,6 @@ export default function NewPostForm() {
                 <Input
                   placeholder="판매할 물건의 제목을 입력하세요"
                   {...field}
-                  className="glass"
                 />
               </FormControl>
               <FormMessage />
@@ -208,9 +194,9 @@ export default function NewPostForm() {
               <FormLabel>설명</FormLabel>
               <FormControl>
                 <textarea
-                  placeholder="물건의 상태, 구매 시기, 사용 횟수 등을 자세히 설명해주세요"
+                  placeholder="물건의 상태, 구매 시기 등을 설명해주세요"
                   {...field}
-                  className="glass w-full min-h-[150px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
+                  className="w-full min-h-[100px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </FormControl>
               <FormMessage />
@@ -218,24 +204,30 @@ export default function NewPostForm() {
           )}
         />
 
+        {/* 사진 */}
+        <div>
+          <label className="text-sm font-medium mb-1.5 block">
+            사진 (최대 5장)
+          </label>
+          <ImageUpload value={images} onChange={setImages} maxFiles={5} />
+        </div>
+
         {/* 가격 */}
         <FormField
           control={form.control}
           name="price"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>가격 (루블)</FormLabel>
+              <FormLabel>가격 (₽)</FormLabel>
               <FormControl>
                 <Input
                   type="text"
                   placeholder="무료나눔은 0 또는 비워두세요"
                   value={field.value ? Number(field.value).toLocaleString() : ''}
                   onChange={(e) => {
-                    // 숫자만 추출
                     const numericValue = e.target.value.replace(/[^0-9]/g, '')
                     field.onChange(numericValue)
                   }}
-                  className="glass"
                 />
               </FormControl>
               <FormMessage />
@@ -251,20 +243,17 @@ export default function NewPostForm() {
             <FormItem>
               <FormLabel>카테고리</FormLabel>
               <FormControl>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="flex flex-wrap gap-2">
                   {CATEGORIES.map((cat) => (
                     <button
                       key={cat.value}
                       type="button"
                       onClick={() => field.onChange(cat.value)}
-                      className={`
-                        px-4 py-3 rounded-lg border-2 transition-all
-                        ${
-                          field.value === cat.value
-                            ? 'border-primary bg-primary text-primary-foreground font-semibold shadow-md'
-                            : 'border-border bg-background hover:border-primary/50 hover:bg-muted/50'
-                        }
-                      `}
+                      className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+                        field.value === cat.value
+                          ? 'bg-foreground text-background font-semibold'
+                          : 'bg-secondary text-secondary-foreground hover:bg-muted'
+                      }`}
                     >
                       {cat.label}
                     </button>
@@ -276,16 +265,15 @@ export default function NewPostForm() {
           )}
         />
 
-
         {/* 에러 메시지 */}
         {error && (
-          <div className="text-sm text-destructive p-3 glass-strong rounded-lg">
+          <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-lg">
             {error}
           </div>
         )}
 
         {/* 제출 버튼 */}
-        <Button type="submit" disabled={isLoading} className="w-full h-12 text-base font-semibold">
+        <Button type="submit" disabled={isLoading} className="w-full h-11 text-base">
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />

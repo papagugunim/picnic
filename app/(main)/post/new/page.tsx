@@ -1,30 +1,24 @@
 import NewPostForm from '@/components/post/NewPostForm'
-import { ArrowLeft } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 
 export default function NewPostPage() {
   return (
-    <div className="bg-background py-8">
+    <div className="bg-background">
       <div className="max-w-3xl mx-auto px-4">
         {/* 헤더 */}
-        <div className="mb-6">
+        <div className="flex items-center gap-2 py-3">
           <Link
             href="/feed"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" />
-            뒤로 가기
+            <ChevronLeft className="w-5 h-5" />
           </Link>
-          <h1 className="text-3xl font-bold">새 게시물 작성</h1>
-          <p className="text-muted-foreground mt-2">
-            판매하고 싶은 물건의 정보를 입력해주세요
-          </p>
+          <h1 className="text-lg font-semibold">게시물 작성</h1>
         </div>
 
         {/* 폼 */}
-        <div className="glass-strong rounded-2xl p-6 md:p-8">
-          <NewPostForm />
-        </div>
+        <NewPostForm />
       </div>
     </div>
   )

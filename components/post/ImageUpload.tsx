@@ -112,119 +112,68 @@ export default function ImageUpload({
   }
 
   return (
-    <div className="space-y-4">
-      {/* 업로드 영역 */}
-      {value.length < maxFiles && (
-        <label
-          htmlFor="image-upload-input"
-          className="flex items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg transition-colors cursor-pointer hover:bg-muted/50 hover:border-primary/50"
-        >
-          <div className="text-center">
-            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-foreground font-medium mb-1">
-              사진 촬영 또는 앨범 선택
-            </p>
-            <p className="text-xs text-muted-foreground">
-              (최대 {maxSize / 1024 / 1024}MB, {maxFiles}개까지 업로드 가능)
-            </p>
+    <div className="space-y-2">
+      {/* 업로드된 이미지 미리보기 + 추가 버튼 */}
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+        {value.map((file, index) => (
+          <div key={index} className="relative w-20 h-20 flex-shrink-0 group">
+            {/* 순서 번호 */}
+            <div className="absolute top-1 left-1 w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[10px] font-bold z-10">
+              {index + 1}
+            </div>
+
+            {/* 삭제 버튼 */}
+            <button
+              type="button"
+              onClick={() => removeImage(index)}
+              className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+              aria-label="이미지 삭제"
+            >
+              <X className="w-3 h-3" />
+            </button>
+
+            <div className="w-full h-full rounded-lg overflow-hidden">
+              <Image
+                src={URL.createObjectURL(file)}
+                alt={`미리보기 ${index + 1}`}
+                width={80}
+                height={80}
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
-          <input
-            id="image-upload-input"
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-        </label>
-      )}
+        ))}
+
+        {/* 추가 버튼 */}
+        {value.length < maxFiles && (
+          <label
+            htmlFor="image-upload-input"
+            className="flex items-center justify-center w-20 h-20 flex-shrink-0 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-colors"
+          >
+            <div className="text-center">
+              <Upload className="w-5 h-5 mx-auto text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground">{value.length}/{maxFiles}</span>
+            </div>
+            <input
+              id="image-upload-input"
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+          </label>
+        )}
+      </div>
 
       {/* 에러 메시지 */}
       {error && (
-        <div className={`p-4 rounded-lg text-sm ${
+        <div className={`p-2 rounded-lg text-xs ${
           error.startsWith('✅')
             ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
             : 'bg-destructive/10 text-destructive'
         }`}>
           {error}
         </div>
-      )}
-
-      {/* 업로드된 이미지 미리보기 */}
-      {value.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">
-            📌 첫 번째 사진이 대표 이미지로 표시됩니다
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {value.map((file, index) => (
-              <div key={index} className="relative aspect-square group">
-                {/* 순서 번호 */}
-                <div className="absolute top-2 left-2 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold z-10">
-                  {index + 1}
-                </div>
-
-                {/* 삭제 버튼 (항상 표시) */}
-                <button
-                  type="button"
-                  onClick={() => removeImage(index)}
-                  className="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10 shadow-lg"
-                  title="삭제"
-                  aria-label="이미지 삭제"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-
-                {/* 이미지 미리보기 */}
-                <div className="w-full h-full rounded-lg overflow-hidden border-2 border-border">
-                  <Image
-                    src={URL.createObjectURL(file)}
-                    alt={`미리보기 ${index + 1}`}
-                    width={200}
-                    height={200}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                {/* 순서 변경 버튼들 (hover 시 표시) */}
-                <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  {/* 왼쪽으로 이동 */}
-                  {index > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => moveImageLeft(index)}
-                      className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
-                      title="왼쪽으로 이동"
-                      aria-label="왼쪽으로 이동"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                  )}
-
-                  {/* 오른쪽으로 이동 */}
-                  {index < value.length - 1 && (
-                    <button
-                      type="button"
-                      onClick={() => moveImageRight(index)}
-                      className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
-                      title="오른쪽으로 이동"
-                      aria-label="오른쪽으로 이동"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 안내 메시지 */}
-      {value.length > 0 && (
-        <p className="text-xs text-muted-foreground text-center">
-          {value.length}/{maxFiles}개 선택됨
-          {value.length < maxFiles && ' • 추가 선택 가능'}
-        </p>
       )}
     </div>
   )
