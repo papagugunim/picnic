@@ -305,19 +305,31 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
           name="price"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>가격 (루블)</FormLabel>
+              <FormLabel>가격 (₽)</FormLabel>
               <FormControl>
-                <Input
-                  type="text"
-                  placeholder="무료나눔은 0 또는 비워두세요"
-                  value={field.value ? Number(field.value).toLocaleString() : ''}
-                  onChange={(e) => {
-                    // 숫자만 추출
-                    const numericValue = e.target.value.replace(/[^0-9]/g, '')
-                    field.onChange(numericValue)
-                  }}
-                  className="glass"
-                />
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="text"
+                    placeholder="가격을 입력하세요"
+                    value={field.value ? Number(field.value).toLocaleString() : ''}
+                    onChange={(e) => {
+                      const numericValue = e.target.value.replace(/[^0-9]/g, '')
+                      field.onChange(numericValue)
+                    }}
+                    className="flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => field.onChange(field.value === '0' ? '' : '0')}
+                    className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
+                      field.value === '0'
+                        ? 'bg-foreground text-background font-semibold'
+                        : 'bg-secondary text-secondary-foreground hover:bg-muted'
+                    }`}
+                  >
+                    무료나눔
+                  </button>
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
