@@ -310,9 +310,14 @@ export default function EditCommunityPostPage() {
             <Textarea
               placeholder="이웃들에게 도움이 되는 정보를 공유해주세요"
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={(e) => {
+                setContent(e.target.value)
+                e.target.style.height = 'auto'
+                e.target.style.height = e.target.scrollHeight + 'px'
+              }}
               rows={10}
               maxLength={2000}
+              className="resize-none overflow-hidden"
             />
             <p className="text-xs text-muted-foreground mt-1">
               {content.length}/2000

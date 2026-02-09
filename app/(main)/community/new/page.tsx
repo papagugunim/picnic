@@ -209,10 +209,14 @@ export default function NewCommunityPostPage() {
             <Textarea
               placeholder="오늘 무슨 일 있었어요? 편하게 얘기해주세요 :)"
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={(e) => {
+                setContent(e.target.value)
+                e.target.style.height = 'auto'
+                e.target.style.height = e.target.scrollHeight + 'px'
+              }}
               rows={10}
               maxLength={2000}
-              className="text-base"
+              className="text-base resize-none overflow-hidden"
             />
             <p className="text-xs text-muted-foreground mt-1">
               {content.length}/2000
