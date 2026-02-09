@@ -196,7 +196,12 @@ export default function NewPostForm() {
                 <textarea
                   placeholder="물건의 상태, 구매 시기 등을 설명해주세요"
                   {...field}
-                  className="w-full min-h-[100px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onChange={(e) => {
+                    field.onChange(e)
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  className="w-full min-h-[100px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring overflow-hidden"
                 />
               </FormControl>
               <FormMessage />
