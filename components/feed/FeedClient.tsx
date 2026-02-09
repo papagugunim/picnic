@@ -15,6 +15,7 @@ import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
 import { useUser } from '@/lib/contexts/UserContext'
 import { formatTimeAgo } from '@/lib/utils/date'
 import { getCityNameInKorean } from '@/lib/constants'
+import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 interface Post {
   id: string
@@ -344,7 +345,7 @@ export default function FeedClient({ initialPosts, userId }: FeedClientProps) {
           isLoading || !isInitialized ? (
             <div className="text-center py-16">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground mx-auto mb-2" />
-              <p className="text-muted-foreground">게시글을 불러오는 중...</p>
+              <p className="text-muted-foreground">{getRandomLoadingMessage()}</p>
             </div>
           ) : (
             <div className="text-center py-16">
