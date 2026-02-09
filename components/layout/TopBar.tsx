@@ -54,7 +54,7 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
   }, [])
 
   // 채팅방, 게시글 상세 페이지에서는 TopBar 숨기기
-  const isFullscreenPage = pathname?.match(/^\/chats\/[^/]+$/) || pathname?.match(/^\/post\/[^/]+$/)
+  const isFullscreenPage = pathname?.match(/^\/chats\/[^/]+$/) || pathname?.match(/^\/post\/[^/]+$/) || pathname === '/settings'
   if (isFullscreenPage) {
     return null
   }

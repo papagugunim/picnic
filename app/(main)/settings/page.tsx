@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, ChevronLeft, X, Search, Sun, Moon, Monitor, AlertTriangle } from 'lucide-react'
+import { Camera, ChevronLeft, X, Search, Sun, Moon, Monitor } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -65,7 +65,6 @@ export default function SettingsPage() {
         }
 
         setProfile(profileData)
-        // Convert DB city value to display format
         const displayCity = profileData.city?.toLowerCase() === 'moscow' ? 'Moscow' : 'Saint Petersburg'
         setSelectedCity(displayCity)
         setSelectedStations(profileData.preferred_metro_stations || [])
@@ -173,7 +172,6 @@ export default function SettingsPage() {
         avatarUrl = publicUrl
       }
 
-      // Convert display city value to DB format
       const cityValue = selectedCity === 'Moscow' ? 'moscow' : 'spb'
 
       const { error: updateError } = await supabase
@@ -194,8 +192,8 @@ export default function SettingsPage() {
 
       setSuccess('설정이 저장되었습니다!')
       setTimeout(() => {
-        router.push('/profile/' + user.id)
-      }, 1500)
+        router.back()
+      }, 1000)
     } catch (err) {
       logger.error('Save error:', err)
       setError('저장 중 오류가 발생했습니다')
@@ -206,28 +204,32 @@ export default function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">{getLoadingMessage('settings')}</div>
+      <div className="flex flex-col h-dvh bg-background">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-muted-foreground">{getLoadingMessage('settings')}</div>
+        </div>
       </div>
     )
   }
 
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground mb-4">프로필을 찾을 수 없습니다</p>
-          <Button onClick={() => router.push('/feed')}>피드로 가기</Button>
+      <div className="flex flex-col h-dvh bg-background">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-muted-foreground mb-4">프로필을 찾을 수 없습니다</p>
+            <Button onClick={() => router.push('/feed')}>피드로 가기</Button>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="bg-background">
-      <div className="max-w-2xl mx-auto px-4 py-4">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-4">
+    <div className="flex flex-col h-dvh bg-background">
+      {/* Header - Fixed */}
+      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
@@ -236,12 +238,23 @@ export default function SettingsPage() {
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-lg font-bold">설정</h1>
+          <h1 className="text-lg font-semibold">설정</h1>
         </div>
+        <Button
+          onClick={handleSave}
+          disabled={isSaving}
+          size="sm"
+        >
+          {isSaving ? '저장 중...' : '저장'}
+        </Button>
+      </div>
 
-        <div className="space-y-3">
-          {/* 프로필 */}
-          <div className="flex items-center gap-4 py-3 border-b border-border">
+      {/* Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto px-4 pb-8" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="max-w-2xl mx-auto space-y-6">
+
+          {/* 프로필 사진 */}
+          <div className="flex items-center gap-4">
             <div className="relative flex-shrink-0">
               {avatarPreview ? (
                 <img
@@ -275,7 +288,7 @@ export default function SettingsPage() {
           </div>
 
           {/* 테마 */}
-          <div className="py-3 border-b border-border">
+          <div>
             <div className="text-sm font-medium text-muted-foreground mb-2">테마</div>
             {mounted && (
               <div className="flex gap-2">
@@ -283,7 +296,7 @@ export default function SettingsPage() {
                   onClick={() => setTheme('light')}
                   className={'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ' +
                     (theme === 'light'
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-foreground text-background font-semibold'
                       : 'bg-secondary hover:bg-muted')}
                 >
                   <Sun className="w-4 h-4" />
@@ -293,7 +306,7 @@ export default function SettingsPage() {
                   onClick={() => setTheme('dark')}
                   className={'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ' +
                     (theme === 'dark'
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-foreground text-background font-semibold'
                       : 'bg-secondary hover:bg-muted')}
                 >
                   <Moon className="w-4 h-4" />
@@ -303,7 +316,7 @@ export default function SettingsPage() {
                   onClick={() => setTheme('system')}
                   className={'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ' +
                     (theme === 'system'
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-foreground text-background font-semibold'
                       : 'bg-secondary hover:bg-muted')}
                 >
                   <Monitor className="w-4 h-4" />
@@ -314,14 +327,14 @@ export default function SettingsPage() {
           </div>
 
           {/* 도시 */}
-          <div className="py-3 border-b border-border">
+          <div>
             <div className="text-sm font-medium text-muted-foreground mb-2">도시</div>
             <div className="flex gap-2">
               <button
                 onClick={() => handleCityChange('Moscow')}
                 className={'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ' +
                   (selectedCity === 'Moscow' || selectedCity === 'moscow'
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-foreground text-background font-semibold'
                     : 'bg-secondary hover:bg-muted')}
               >
                 <span>🏛️</span>
@@ -331,7 +344,7 @@ export default function SettingsPage() {
                 onClick={() => handleCityChange('Saint Petersburg')}
                 className={'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ' +
                   (selectedCity === 'Saint Petersburg' || selectedCity === 'spb'
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-foreground text-background font-semibold'
                     : 'bg-secondary hover:bg-muted')}
               >
                 <span>⛲</span>
@@ -342,7 +355,7 @@ export default function SettingsPage() {
 
           {/* 지하철역 */}
           {selectedCity && (
-            <div className="py-3 border-b border-border">
+            <div>
               <div className="text-sm font-medium text-muted-foreground mb-2">
                 선호 지하철역 ({selectedStations.length}/5)
               </div>
@@ -409,15 +422,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* 저장 버튼 */}
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="w-full h-10 text-sm font-medium"
-          >
-            {isSaving ? '저장 중...' : '저장하기'}
-          </Button>
-
+          {/* 알림 메시지 */}
           {success && (
             <div className="p-3 bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400 rounded-lg text-sm text-center">
               {success}
@@ -431,7 +436,7 @@ export default function SettingsPage() {
           )}
 
           {/* 회원 탈퇴 */}
-          <div className="pt-4">
+          <div>
             <Link href="/settings/delete-account">
               <button className="w-full text-sm text-muted-foreground hover:text-destructive transition-colors py-2">
                 회원 탈퇴
