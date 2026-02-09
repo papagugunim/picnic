@@ -64,7 +64,7 @@ function NewsModalComponent({ news, isAdmin, onClose, onEdit, onDelete }: NewsMo
           <p className="whitespace-pre-wrap text-sm">{news.content}</p>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-3">
+        <div className="flex items-center justify-between text-xs text-muted-foreground pt-3">
           <span>{formattedDate}</span>
           {isAdmin && (
             <div className="flex gap-2">
