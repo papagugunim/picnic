@@ -3,16 +3,17 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('CommunityDetailPage')
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Heart, MessageCircle, MoreVertical, Trash2, EyeOff, Eye, Edit, X, Flag } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Heart, MessageCircle, MoreVertical, Trash2, EyeOff, Eye, Edit, X, Flag, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadEmoji } from '@/lib/bread'
-import { CommentSection } from '@/components/comment/CommentSection'
+import { CommentSection, type CommentSectionHandle } from '@/components/comment/CommentSection'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,6 +86,9 @@ export default function CommunityPostDetailPage() {
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showHiddenConfirm, setShowHiddenConfirm] = useState(false)
+  const [newComment, setNewComment] = useState('')
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false)
+  const commentSectionRef = useRef<CommentSectionHandle>(null)
 
   const openGallery = useCallback((images: string[], index: number) => {
     setGalleryImages(images)
@@ -356,6 +360,14 @@ export default function CommunityPostDetailPage() {
     }
   }
 
+  async function handleSubmitComment() {
+    if (!newComment.trim() || isSubmittingComment) return
+    setIsSubmittingComment(true)
+    const success = await commentSectionRef.current?.submitComment(newComment.trim())
+    if (success) setNewComment('')
+    setIsSubmittingComment(false)
+  }
+
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString)
     const now = new Date()
@@ -395,7 +407,7 @@ export default function CommunityPostDetailPage() {
   const category = categories[post.category as keyof typeof categories]
 
   return (
-    <div className="h-dvh flex flex-col bg-background">
+    <div className="flex flex-col bg-background" style={{ height: '100dvh' }}>
       {/* Header */}
       <div className="flex-shrink-0 border-b border-border">
         <div className="flex items-center justify-between px-4 py-3 max-w-4xl mx-auto">
@@ -584,11 +596,43 @@ export default function CommunityPostDetailPage() {
 
         {/* Comments Section */}
         <CommentSection
+          ref={commentSectionRef}
           postId={postId}
           currentUserId={currentUserId}
           isAdmin={isAdmin}
           onCommentCountChange={setCommentCount}
+          hideInput
         />
+        </div>
+      </div>
+
+      {/* Comment Input - outside scroll area */}
+      <div className="flex-shrink-0 bg-background border-t border-border">
+        <div className="max-w-4xl mx-auto px-4 py-2">
+          <div className="flex gap-2 items-center">
+            <Textarea
+              placeholder="댓글을 입력하세요..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              rows={1}
+              className="resize-none min-h-0 h-10 py-2"
+              style={{ fontSize: '16px' }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSubmitComment()
+                }
+              }}
+            />
+            <Button
+              onClick={handleSubmitComment}
+              disabled={!newComment.trim() || isSubmittingComment}
+              size="icon"
+              className="flex-shrink-0 h-10 w-10"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
 

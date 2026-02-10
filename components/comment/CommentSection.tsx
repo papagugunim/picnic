@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react'
 import { Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -19,15 +19,21 @@ interface CommentSectionProps {
   isAdmin: boolean
   onCommentCountChange?: (count: number) => void
   isFullscreen?: boolean
+  hideInput?: boolean
 }
 
-export function CommentSection({
+export interface CommentSectionHandle {
+  submitComment: (text: string) => Promise<boolean>
+}
+
+export const CommentSection = forwardRef<CommentSectionHandle, CommentSectionProps>(function CommentSection({
   postId,
   currentUserId,
   isAdmin,
   onCommentCountChange,
   isFullscreen = false,
-}: CommentSectionProps) {
+  hideInput = false,
+}, ref) {
   const [comments, setComments] = useState<ThreadedComment[]>([])
   const [newComment, setNewComment] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -315,6 +321,30 @@ export function CommentSection({
 
   const totalCommentCount = countAllComments(comments)
 
+  useImperativeHandle(ref, () => ({
+    submitComment: async (text: string) => {
+      if (!text.trim() || !currentUserId || isSubmitting) return false
+      try {
+        setIsSubmitting(true)
+        const supabase = createClient()
+        const { error } = await supabase
+          .from('community_comments')
+          .insert({
+            post_id: postId,
+            user_id: currentUserId,
+            content: text.trim(),
+          })
+        if (error) return false
+        await fetchComments()
+        return true
+      } catch {
+        return false
+      } finally {
+        setIsSubmitting(false)
+      }
+    }
+  }), [currentUserId, isSubmitting, postId, fetchComments])
+
   return (
     <div className="flex flex-col">
       {/* Comments header */}
@@ -353,37 +383,39 @@ export function CommentSection({
       </div>
 
       {/* Comment input */}
-      <div className={isFullscreen
-        ? "fixed bottom-0 left-0 right-0 bg-background border-t border-border px-4 py-2 z-10 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
-        : "sticky bottom-0 bg-background border-t border-border px-4 py-2"
-      }>
-        <div className="flex gap-2 items-center max-w-3xl mx-auto">
-          <Textarea
-            placeholder="댓글을 입력하세요..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            rows={1}
-            className="resize-none min-h-0 h-10 py-2"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                handleSubmitComment()
-              }
-            }}
-          />
-          <Button
-            onClick={handleSubmitComment}
-            disabled={!newComment.trim() || isSubmitting}
-            size="icon"
-            className="flex-shrink-0 h-10 w-10"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
+      {!hideInput && (
+        <div className={isFullscreen
+          ? "fixed bottom-0 left-0 right-0 bg-background border-t border-border px-4 py-2 z-10 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
+          : "sticky bottom-0 bg-background border-t border-border px-4 py-2"
+        }>
+          <div className="flex gap-2 items-center max-w-3xl mx-auto">
+            <Textarea
+              placeholder="댓글을 입력하세요..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              rows={1}
+              className="resize-none min-h-0 h-10 py-2"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSubmitComment()
+                }
+              }}
+            />
+            <Button
+              onClick={handleSubmitComment}
+              disabled={!newComment.trim() || isSubmitting}
+              size="icon"
+              className="flex-shrink-0 h-10 w-10"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Spacer for fixed input when fullscreen */}
-      {isFullscreen && <div className="h-16" />}
+      {isFullscreen && !hideInput && <div className="h-16" />}
     </div>
   )
-}
+})
