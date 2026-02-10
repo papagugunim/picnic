@@ -89,6 +89,23 @@ export default function CommunityPostDetailPage() {
   const [newComment, setNewComment] = useState('')
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
   const commentSectionRef = useRef<CommentSectionHandle>(null)
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
+
+  // iOS Safari: visualViewport API로 실제 보이는 영역 높이 측정
+  useEffect(() => {
+    function updateHeight() {
+      if (window.visualViewport) {
+        setViewportHeight(window.visualViewport.height)
+      }
+    }
+    updateHeight()
+    window.visualViewport?.addEventListener('resize', updateHeight)
+    window.visualViewport?.addEventListener('scroll', updateHeight)
+    return () => {
+      window.visualViewport?.removeEventListener('resize', updateHeight)
+      window.visualViewport?.removeEventListener('scroll', updateHeight)
+    }
+  }, [])
 
   const openGallery = useCallback((images: string[], index: number) => {
     setGalleryImages(images)
@@ -407,7 +424,7 @@ export default function CommunityPostDetailPage() {
   const category = categories[post.category as keyof typeof categories]
 
   return (
-    <div className="flex flex-col bg-background" style={{ height: '100dvh' }}>
+    <div className="flex flex-col bg-background" style={{ height: viewportHeight ? `${viewportHeight}px` : '100dvh' }}>
       {/* Header */}
       <div className="flex-shrink-0 border-b border-border">
         <div className="flex items-center justify-between px-4 py-3 max-w-4xl mx-auto">
