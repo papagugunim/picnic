@@ -96,25 +96,29 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
   const [newComment, setNewComment] = useState('')
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
   const commentSectionRef = useRef<CommentSectionHandle>(null)
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const inputBarRef = useRef<HTMLDivElement>(null)
 
-  // iOS Safari: 키보드 높이 계산 (채팅 페이지와 동일한 방식)
+  // iOS Safari: 키보드 열릴 때 fixed 입력창을 키보드 위로 이동
   useEffect(() => {
     if (typeof window === 'undefined') return
-
     const viewport = window.visualViewport
     if (!viewport) return
 
     const handleViewportChange = () => {
-      const windowHeight = window.innerHeight
-      const viewportHeight = viewport.height
-      const newKeyboardHeight = windowHeight - viewportHeight
-      setKeyboardHeight(newKeyboardHeight > 50 ? newKeyboardHeight : 0)
+      if (!inputBarRef.current) return
+      // iOS에서 키보드가 올라오면 visualViewport.height가 줄어듦
+      const offsetFromBottom = window.innerHeight - viewport.height - viewport.offsetTop
+      if (offsetFromBottom > 50) {
+        // 키보드가 열린 상태: 입력창을 키보드 바로 위로
+        inputBarRef.current.style.bottom = `${offsetFromBottom}px`
+      } else {
+        // 키보드가 닫힌 상태: 원래 위치
+        inputBarRef.current.style.bottom = '0px'
+      }
     }
 
     viewport.addEventListener('resize', handleViewportChange)
     viewport.addEventListener('scroll', handleViewportChange)
-
     return () => {
       viewport.removeEventListener('resize', handleViewportChange)
       viewport.removeEventListener('scroll', handleViewportChange)
@@ -449,9 +453,9 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
   const category = categories[post.category as keyof typeof categories]
 
   return (
-    <div className="flex flex-col bg-background" style={{ height: keyboardHeight > 0 ? `calc(100dvh - ${keyboardHeight}px)` : '100svh' }}>
-      {/* Header */}
-      <div className="flex-shrink-0 border-b border-border">
+    <div className="bg-background min-h-screen">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-40 bg-background border-b border-border">
         <div className="flex items-center justify-between px-4 py-3 max-w-4xl mx-auto">
             <Button
               variant="ghost"
@@ -527,9 +531,8 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
           </div>
         </div>
 
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="max-w-4xl mx-auto">
+      {/* Content - 일반 문서 흐름, 하단에 입력창 높이만큼 패딩 */}
+      <div className="max-w-4xl mx-auto pb-20">
         {/* Post Content */}
         <div className="p-4">
           {/* Author Info */}
@@ -645,12 +648,14 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
           onCommentCountChange={setCommentCount}
           hideInput
         />
-        </div>
       </div>
 
-      {/* Comment Input - outside scroll area */}
-      <div className="flex-shrink-0 bg-background border-t border-border pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-        <div className="max-w-4xl mx-auto px-4 py-2">
+      {/* Fixed Comment Input - 화면 하단에 고정 */}
+      <div
+        ref={inputBarRef}
+        className="fixed left-0 right-0 bottom-0 z-40 bg-background border-t border-border"
+      >
+        <div className="max-w-4xl mx-auto px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <div className="flex gap-2 items-center">
             <Textarea
               placeholder="댓글을 입력하세요..."
