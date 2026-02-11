@@ -119,13 +119,10 @@ export default function PostDetailClient({
       if (!initialPost) {
         fetchPost()
       } else {
-        // 조회수 증가 (본인 게시글이 아닌 경우에만)
+        // 조회수 증가 (본인 게시글이 아닌 경우에만) - RPC로 원자적 증가
         if (initialPost.author_id !== user.id) {
           const supabase = createClient()
-          supabase
-            .from('posts')
-            .update({ view_count: (initialPost.view_count || 0) + 1 })
-            .eq('id', postId)
+          supabase.rpc('increment_post_view_count', { p_post_id: postId }).then(() => {})
         }
       }
     }
@@ -146,16 +143,11 @@ export default function PostDetailClient({
         setPost(cached)
         setIsLoading(false)
 
-        // 캐시 히트해도 조회수는 증가 (본인 게시글이 아닌 경우)
+        // 캐시 히트해도 조회수는 증가 (본인 게시글이 아닌 경우) - RPC로 원자적 증가
         if (cached.author_id !== user.id) {
-          supabase
-            .from('posts')
-            .update({ view_count: (cached.view_count || 0) + 1 })
-            .eq('id', postId)
-            .then(() => {
-              // 캐시 무효화 (다음에 최신 조회수 반영)
-              setCache(cacheKey, { ...cached, view_count: (cached.view_count || 0) + 1 }, 5 * 60 * 1000)
-            })
+          supabase.rpc('increment_post_view_count', { p_post_id: postId }).then(() => {
+            setCache(cacheKey, { ...cached, view_count: (cached.view_count || 0) + 1 }, 5 * 60 * 1000)
+          })
         }
         return
       }
@@ -243,12 +235,9 @@ export default function PostDetailClient({
 
       setPost(postWithDetails)
 
-      // 조회수 증가 (본인 게시글이 아닌 경우에만)
+      // 조회수 증가 (본인 게시글이 아닌 경우에만) - RPC로 원자적 증가
       if (postData.author_id !== user.id) {
-        await supabase
-          .from('posts')
-          .update({ view_count: (postData.view_count || 0) + 1 })
-          .eq('id', postId)
+        supabase.rpc('increment_post_view_count', { p_post_id: postId }).then(() => {})
       }
     } catch (err) {
       logger.error('Fetch error:', err)

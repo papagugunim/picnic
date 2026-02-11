@@ -33,7 +33,7 @@ export async function middleware(request: NextRequest) {
     '/api/auth/callback',
   ]
 
-  // 2. 정적 리소스 및 SEO 파일은 통과
+  // 2. 정적 리소스 및 SEO 파일은 통과 (Supabase 클라이언트 생성 전 조기 반환)
   if (
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/favicon') ||
@@ -44,12 +44,24 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // 3. 공개 페이지/API인지 확인
+  // 3. 공개 페이지/API인지 확인 (Supabase 클라이언트 생성 전 조기 반환)
   const isPublicPage = publicPaths.some(path => pathname === path)
   const isPublicApi = publicApiPaths.some(path => pathname === path || pathname.startsWith(path + '/'))
   const isPublicPath = isPublicPage || isPublicApi
 
-  // 4. Supabase 세션 갱신 및 인증 검증
+  // 공개 경로는 Supabase 인증 검증 없이 바로 통과 (100-200ms 절약)
+  if (isPublicPath) {
+    const response = NextResponse.next({ request })
+    response.headers.set('X-Frame-Options', 'DENY')
+    response.headers.set('X-Content-Type-Options', 'nosniff')
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+    response.headers.set('X-XSS-Protection', '1; mode=block')
+    const duration = Date.now() - startTime
+    response.headers.set('Server-Timing', `middleware;dur=${duration}`)
+    return response
+  }
+
+  // 4. Supabase 세션 갱신 및 인증 검증 (비공개 경로만)
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -74,8 +86,8 @@ export async function middleware(request: NextRequest) {
   // 실제 토큰 검증 (만료된 토큰 자동 갱신 포함)
   const { data: { user } } = await supabase.auth.getUser()
 
-  // 5. 비공개 경로에 인증되지 않은 사용자 → 로그인으로 리다이렉트
-  if (!isPublicPath && !user) {
+  // 5. 인증되지 않은 사용자 → 로그인으로 리다이렉트 (공개 경로는 이미 위에서 반환됨)
+  if (!user) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     const redirectResponse = NextResponse.redirect(loginUrl)

@@ -12,6 +12,8 @@ export interface UseInfiniteScrollOptions<T> {
   }>
   getItemId?: (item: T) => string
   enabled?: boolean
+  initialData?: T[]
+  initialCursor?: string | null
 }
 
 export interface UseInfiniteScrollReturn<T> {
@@ -36,14 +38,17 @@ export function useInfiniteScroll<T>({
   fetchFn,
   getItemId = (item: any) => item.id,
   enabled = true,
+  initialData,
+  initialCursor,
 }: UseInfiniteScrollOptions<T>): UseInfiniteScrollReturn<T> {
-  const [data, setData] = useState<T[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const hasInitialData = initialData && initialData.length > 0
+  const [data, setData] = useState<T[]>(hasInitialData ? initialData : [])
+  const [isLoading, setIsLoading] = useState(!hasInitialData)
   const [isFetchingMore, setIsFetchingMore] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [hasMore, setHasMore] = useState(true)
+  const [hasMore, setHasMore] = useState(hasInitialData ? initialData.length >= pageSize : true)
   const [error, setError] = useState<Error | null>(null)
-  const [cursor, setCursor] = useState<string | null>(null)
+  const [cursor, setCursor] = useState<string | null>(hasInitialData ? (initialCursor ?? null) : null)
 
   const sentinelRef = useRef<HTMLDivElement>(null!)
   const containerRef = useRef<HTMLDivElement>(null!)
@@ -121,8 +126,13 @@ export function useInfiniteScroll<T>({
     ))
   }, [getItemId])
 
-  // Initial load
+  // Initial load (skip if initialData was provided)
+  const skipInitialLoad = useRef(!!hasInitialData)
   useEffect(() => {
+    if (skipInitialLoad.current) {
+      skipInitialLoad.current = false
+      return
+    }
     loadInitial()
   }, [loadInitial])
 

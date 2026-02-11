@@ -25,6 +25,10 @@ const nextConfig: NextConfig = {
   // 실험적 기능
   experimental: {
     optimizePackageImports: ['lucide-react', '@supabase/supabase-js', 'dayjs', 'sonner'],
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
   },
   // 정적 생성 최적화
   staticPageGenerationTimeout: 120,
