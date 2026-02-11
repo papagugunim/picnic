@@ -96,21 +96,28 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
   const [newComment, setNewComment] = useState('')
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
   const commentSectionRef = useRef<CommentSectionHandle>(null)
-  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
 
-  // iOS Safari: visualViewport API로 실제 보이는 영역 높이 측정
+  // iOS Safari: 키보드 높이 계산 (채팅 페이지와 동일한 방식)
   useEffect(() => {
-    function updateHeight() {
-      if (window.visualViewport) {
-        setViewportHeight(window.visualViewport.height)
-      }
+    if (typeof window === 'undefined') return
+
+    const viewport = window.visualViewport
+    if (!viewport) return
+
+    const handleViewportChange = () => {
+      const windowHeight = window.innerHeight
+      const viewportHeight = viewport.height
+      const newKeyboardHeight = windowHeight - viewportHeight
+      setKeyboardHeight(newKeyboardHeight > 50 ? newKeyboardHeight : 0)
     }
-    updateHeight()
-    window.visualViewport?.addEventListener('resize', updateHeight)
-    window.visualViewport?.addEventListener('scroll', updateHeight)
+
+    viewport.addEventListener('resize', handleViewportChange)
+    viewport.addEventListener('scroll', handleViewportChange)
+
     return () => {
-      window.visualViewport?.removeEventListener('resize', updateHeight)
-      window.visualViewport?.removeEventListener('scroll', updateHeight)
+      viewport.removeEventListener('resize', handleViewportChange)
+      viewport.removeEventListener('scroll', handleViewportChange)
     }
   }, [])
 
@@ -442,7 +449,7 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
   const category = categories[post.category as keyof typeof categories]
 
   return (
-    <div className="flex flex-col bg-background" style={{ height: viewportHeight ? `${viewportHeight}px` : '100dvh' }}>
+    <div className="flex flex-col bg-background" style={{ height: keyboardHeight > 0 ? `calc(100dvh - ${keyboardHeight}px)` : '100svh' }}>
       {/* Header */}
       <div className="flex-shrink-0 border-b border-border">
         <div className="flex items-center justify-between px-4 py-3 max-w-4xl mx-auto">
