@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('PostDetail')
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye, Flag } from 'lucide-react'
+import { ChevronLeft, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye, Flag, Tag } from 'lucide-react'
 import { ImageGalleryModal } from '@/components/community/ImageGalleryModal'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -22,6 +22,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
+import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -365,6 +366,36 @@ export default function PostDetailClient({
     }
   }
 
+  async function changePostStatus(newStatus: PostStatus) {
+    if (!post || !currentUserId) return
+
+    const prevStatus = post.status
+    // 낙관적 업데이트
+    setPost({ ...post, status: newStatus })
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('posts')
+        .update({ status: newStatus })
+        .eq('id', postId)
+
+      if (error) {
+        logger.error('Change post status error:', error)
+        toast.error('상태 변경 중 오류가 발생했습니다')
+        setPost({ ...post, status: prevStatus })
+        return
+      }
+
+      const statusInfo = getPostStatusInfo(newStatus)
+      toast.success(`${statusInfo.label}(으)로 변경되었습니다`)
+    } catch (err) {
+      logger.error('Change post status error:', err)
+      toast.error('상태 변경 중 오류가 발생했습니다')
+      setPost({ ...post, status: prevStatus })
+    }
+  }
+
   async function toggleLike() {
     if (!post || !user) return
 
@@ -571,6 +602,37 @@ export default function PostDetailClient({
                         <Trash2 className="w-4 h-4 mr-2" />
                         {isDeleting ? '삭제 중...' : '삭제'}
                       </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {post.status === 'active' && (
+                        <>
+                          <DropdownMenuItem onClick={() => changePostStatus('reserved')}>
+                            <Tag className="w-4 h-4 mr-2 text-orange-500" />
+                            예약중으로 변경
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => changePostStatus('sold')}>
+                            <Tag className="w-4 h-4 mr-2 text-gray-500" />
+                            판매완료로 변경
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      {post.status === 'reserved' && (
+                        <>
+                          <DropdownMenuItem onClick={() => changePostStatus('active')}>
+                            <Tag className="w-4 h-4 mr-2 text-green-500" />
+                            판매중으로 변경
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => changePostStatus('sold')}>
+                            <Tag className="w-4 h-4 mr-2 text-gray-500" />
+                            판매완료로 변경
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      {post.status === 'sold' && (
+                        <DropdownMenuItem onClick={() => changePostStatus('active')}>
+                          <Tag className="w-4 h-4 mr-2 text-green-500" />
+                          판매중으로 변경
+                        </DropdownMenuItem>
+                      )}
                     </>
                   )}
                   {isAdmin && (
@@ -706,6 +768,11 @@ export default function PostDetailClient({
 
           {/* Status Badge */}
           <div className="flex gap-2 mb-4">
+            {post.status === 'reserved' && (
+              <div className="inline-block px-3 py-1 bg-orange-500/10 text-orange-700 rounded-full text-sm font-medium">
+                예약중
+              </div>
+            )}
             {post.status === 'sold' && (
               <div className="inline-block px-3 py-1 bg-muted text-muted-foreground rounded-full text-sm font-medium">
                 판매완료

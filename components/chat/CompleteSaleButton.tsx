@@ -17,7 +17,7 @@ export function CompleteSaleButton({
       onClick={onReviewRequest}
     >
       <CheckCircle2 className="h-4 w-4" />
-      판매완료
+      거래 완료하기
     </Button>
   )
 }

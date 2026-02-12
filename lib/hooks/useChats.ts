@@ -83,7 +83,7 @@ export function useChats() {
         postIds.length > 0
           ? supabase
               .from('posts')
-              .select('id, title, price, images')
+              .select('id, title, price, images, status')
               .in('id', postIds)
           : Promise.resolve({ data: [] })
       ])

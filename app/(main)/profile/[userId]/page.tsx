@@ -514,6 +514,13 @@ export default function ProfilePage() {
                           <Package className="w-8 h-8" />
                         </div>
                       )}
+                      {post.status === 'reserved' && (
+                        <div className="absolute inset-0 bg-orange-900/60 flex items-center justify-center">
+                          <span className="text-white font-bold text-lg">
+                            예약중
+                          </span>
+                        </div>
+                      )}
                       {post.status === 'sold' && (
                         <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                           <span className="text-white font-bold text-lg">
@@ -562,6 +569,13 @@ export default function ProfilePage() {
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                           <Package className="w-8 h-8" />
+                        </div>
+                      )}
+                      {post.status === 'reserved' && (
+                        <div className="absolute inset-0 bg-orange-900/60 flex items-center justify-center">
+                          <span className="text-white font-bold text-lg">
+                            예약중
+                          </span>
                         </div>
                       )}
                       {post.status === 'sold' && (
