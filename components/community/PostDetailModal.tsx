@@ -229,13 +229,12 @@ export function PostDetailModal({
             </div>
           </div>
 
-          {/* Comments Section */}
-          <div className="max-w-3xl mx-auto">
+          {/* Comments Section - 인라인 입력 포함 */}
+          <div className="max-w-3xl mx-auto pb-16">
             <CommentSection
               postId={post.id}
               currentUserId={currentUserId}
               isAdmin={currentUserRole === 'admin' || currentUserRole === 'developer'}
-              isFullscreen={true}
               onCommentCountChange={handleCommentCountChange}
             />
           </div>

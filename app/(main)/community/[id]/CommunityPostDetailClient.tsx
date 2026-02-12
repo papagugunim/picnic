@@ -5,15 +5,14 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('CommunityDetailPage')
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Heart, MessageCircle, MoreVertical, Trash2, EyeOff, Eye, Edit, X, Flag, Send } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Heart, MessageCircle, MoreVertical, Trash2, EyeOff, Eye, Edit, X, Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadEmoji } from '@/lib/bread'
-import { CommentSection, type CommentSectionHandle } from '@/components/comment/CommentSection'
+import { CommentSection } from '@/components/comment/CommentSection'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,37 +92,6 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showHiddenConfirm, setShowHiddenConfirm] = useState(false)
-  const [newComment, setNewComment] = useState('')
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false)
-  const commentSectionRef = useRef<CommentSectionHandle>(null)
-  const inputBarRef = useRef<HTMLDivElement>(null)
-
-  // iOS Safari: 키보드 열릴 때 fixed 입력창을 키보드 위로 이동
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const viewport = window.visualViewport
-    if (!viewport) return
-
-    const handleViewportChange = () => {
-      if (!inputBarRef.current) return
-      // iOS에서 키보드가 올라오면 visualViewport.height가 줄어듦
-      const offsetFromBottom = window.innerHeight - viewport.height - viewport.offsetTop
-      if (offsetFromBottom > 50) {
-        // 키보드가 열린 상태: 입력창을 키보드 바로 위로
-        inputBarRef.current.style.bottom = `${offsetFromBottom}px`
-      } else {
-        // 키보드가 닫힌 상태: 원래 위치
-        inputBarRef.current.style.bottom = '0px'
-      }
-    }
-
-    viewport.addEventListener('resize', handleViewportChange)
-    viewport.addEventListener('scroll', handleViewportChange)
-    return () => {
-      viewport.removeEventListener('resize', handleViewportChange)
-      viewport.removeEventListener('scroll', handleViewportChange)
-    }
-  }, [])
 
   const openGallery = useCallback((images: string[], index: number) => {
     setGalleryImages(images)
@@ -406,14 +374,6 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
     }
   }
 
-  async function handleSubmitComment() {
-    if (!newComment.trim() || isSubmittingComment) return
-    setIsSubmittingComment(true)
-    const success = await commentSectionRef.current?.submitComment(newComment.trim())
-    if (success) setNewComment('')
-    setIsSubmittingComment(false)
-  }
-
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString)
     const now = new Date()
@@ -531,8 +491,8 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
           </div>
         </div>
 
-      {/* Content - 일반 문서 흐름, 하단에 입력창 높이만큼 패딩 */}
-      <div className="max-w-4xl mx-auto pb-20">
+      {/* Content */}
+      <div className="max-w-4xl mx-auto">
         {/* Post Content */}
         <div className="p-4">
           {/* Author Info */}
@@ -639,48 +599,13 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
           </div>
         </div>
 
-        {/* Comments Section */}
+        {/* Comments Section - 인라인 입력 포함 */}
         <CommentSection
-          ref={commentSectionRef}
           postId={postId}
           currentUserId={currentUserId}
           isAdmin={isAdmin}
           onCommentCountChange={setCommentCount}
-          hideInput
         />
-      </div>
-
-      {/* Fixed Comment Input - 화면 하단에 고정 */}
-      <div
-        ref={inputBarRef}
-        className="fixed left-0 right-0 bottom-0 z-40 bg-background border-t border-border"
-      >
-        <div className="max-w-4xl mx-auto px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          <div className="flex gap-2 items-center">
-            <Textarea
-              placeholder="댓글을 입력하세요..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              rows={1}
-              className="resize-none min-h-0 h-10 py-2"
-              style={{ fontSize: '16px' }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  handleSubmitComment()
-                }
-              }}
-            />
-            <Button
-              onClick={handleSubmitComment}
-              disabled={!newComment.trim() || isSubmittingComment}
-              size="icon"
-              className="flex-shrink-0 h-10 w-10"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
       </div>
 
       {/* Image gallery modal */}
