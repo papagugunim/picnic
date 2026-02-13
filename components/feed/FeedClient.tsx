@@ -4,7 +4,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('FeedClient')
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Plus, Heart, Bookmark, Loader2 } from 'lucide-react'
+import { Plus, Heart, Bookmark, Eye, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -446,7 +446,10 @@ export default function FeedClient({ initialPosts, userId }: FeedClientProps) {
                     </button>
 
                     {profile?.user_role === 'developer' && (
-                      <span>조회 {post.view_count || 0}</span>
+                      <div className="flex items-center gap-1">
+                        <Eye className="w-4 h-4" />
+                        <span>{post.view_count || 0}</span>
+                      </div>
                     )}
                   </div>
                 </div>

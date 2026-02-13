@@ -570,7 +570,7 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
           )}
 
           {/* Actions */}
-          <div className="flex items-center gap-6 py-4 border-y border-border">
+          <div className="flex items-center gap-6 py-4">
             <button
               onClick={togglePostLike}
               className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
@@ -592,8 +592,8 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
               <span>{commentCount}</span>
             </div>
 
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <span>조회</span>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Eye className="w-6 h-6" />
               <span>{post.view_count || 0}</span>
             </div>
           </div>

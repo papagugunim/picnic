@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Heart, MessageCircle, ChevronLeft, MoreVertical, Trash2, Edit, Flag } from 'lucide-react'
+import { Heart, MessageCircle, Eye, ChevronLeft, MoreVertical, Trash2, Edit, Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -202,7 +202,7 @@ export function PostDetailModal({
             )}
 
             {/* Actions */}
-            <div className="flex items-center gap-6 py-4 border-y border-border">
+            <div className="flex items-center gap-6 py-4">
               <button
                 onClick={onLikeToggle}
                 className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
@@ -225,8 +225,8 @@ export function PostDetailModal({
                 <span>{modalCommentCount}</span>
               </div>
 
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <span>조회</span>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Eye className="w-6 h-6" />
                 <span>{post.view_count || 0}</span>
               </div>
             </div>
