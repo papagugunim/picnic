@@ -57,19 +57,26 @@ export function CommentSection({
       }
     })
 
-    // Sort all levels by created_at
+    // 대댓글은 시간순 (대화 흐름 유지)
     const sortByDate = (a: ThreadedComment, b: ThreadedComment) =>
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
 
+    // 루트 댓글: 좋아요 많은 순 → 최신순
+    const sortByPopularity = (a: ThreadedComment, b: ThreadedComment) => {
+      if (b.likes_count !== a.likes_count) return b.likes_count - a.likes_count
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    }
+
     const sortReplies = (comments: ThreadedComment[]) => {
-      comments.sort(sortByDate)
       comments.forEach(c => {
         if (c.replies && c.replies.length > 0) {
+          c.replies.sort(sortByDate)
           sortReplies(c.replies)
         }
       })
     }
 
+    rootComments.sort(sortByPopularity)
     sortReplies(rootComments)
     return rootComments
   }, [])
