@@ -203,18 +203,26 @@ export function CommentSection({
     try {
       const supabase = createClient()
 
+      // 클라이언트 인증 확인
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setComments(prev => updateLikeInTree(prev))
+        toast.error('로그인이 필요합니다.')
+        return
+      }
+
       if (isLiked) {
         await supabase
           .from('community_likes')
           .delete()
           .eq('comment_id', commentId)
-          .eq('user_id', currentUserId)
+          .eq('user_id', user.id)
       } else {
         await supabase
           .from('community_likes')
           .insert({
             comment_id: commentId,
-            user_id: currentUserId,
+            user_id: user.id,
           })
       }
     } catch (err) {
@@ -231,17 +239,25 @@ export function CommentSection({
     try {
       const supabase = createClient()
 
+      // 클라이언트 인증 확인 - RLS와 일치하는 실제 user.id 사용
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        toast.error('로그인이 필요합니다. 페이지를 새로고침해주세요.')
+        return
+      }
+
       const { error } = await supabase
         .from('community_comments')
         .insert({
           post_id: postId,
-          user_id: currentUserId,
+          user_id: user.id,
           content: content.trim(),
           parent_id: parentId,
         })
 
       if (error) {
         logger.error('Reply submit error:', error)
+        toast.error(error.message || '답글 작성 중 오류가 발생했습니다')
         throw error
       }
 
@@ -249,7 +265,9 @@ export function CommentSection({
       await fetchComments()
     } catch (err) {
       logger.error('Reply error:', err)
-      toast.error('답글 작성 중 오류가 발생했습니다')
+      if (!(err as any)?.message) {
+        toast.error('답글 작성 중 오류가 발생했습니다')
+      }
       throw err
     }
   }, [postId, currentUserId, fetchComments])
@@ -284,17 +302,24 @@ export function CommentSection({
       setIsSubmitting(true)
       const supabase = createClient()
 
+      // 클라이언트 인증 확인 - RLS와 일치하는 실제 user.id 사용
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        toast.error('로그인이 필요합니다. 페이지를 새로고침해주세요.')
+        return
+      }
+
       const { error } = await supabase
         .from('community_comments')
         .insert({
           post_id: postId,
-          user_id: currentUserId,
+          user_id: user.id,
           content: newComment.trim(),
         })
 
       if (error) {
         logger.error('Comment submit error:', error)
-        toast.error('댓글 작성 중 오류가 발생했습니다')
+        toast.error(error.message || '댓글 작성 중 오류가 발생했습니다')
         return
       }
 
