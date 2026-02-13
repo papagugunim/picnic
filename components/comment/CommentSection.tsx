@@ -35,6 +35,30 @@ export function CommentSection({
   const onCommentCountChangeRef = useRef(onCommentCountChange)
   onCommentCountChangeRef.current = onCommentCountChange
 
+  // 루트 댓글: 좋아요 많은 순 -> 동일 좋아요면 최신순
+  // 답글: 시간순(오래된 순)으로 대화 흐름 유지
+  const sortCommentTree = useCallback((tree: ThreadedComment[]): ThreadedComment[] => {
+    const sortByDateAsc = (a: ThreadedComment, b: ThreadedComment) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+
+    const sortByPopularity = (a: ThreadedComment, b: ThreadedComment) => {
+      if (b.likes_count !== a.likes_count) return b.likes_count - a.likes_count
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    }
+
+    const cloneAndSort = (comments: ThreadedComment[], isRoot: boolean): ThreadedComment[] => {
+      const cloned = comments.map(comment => ({
+        ...comment,
+        replies: comment.replies ? cloneAndSort(comment.replies, false) : [],
+      }))
+
+      cloned.sort(isRoot ? sortByPopularity : sortByDateAsc)
+      return cloned
+    }
+
+    return cloneAndSort(tree, true)
+  }, [])
+
   // Build tree structure from flat comments
   const buildCommentTree = useCallback((flatComments: ThreadedComment[]): ThreadedComment[] => {
     const commentMap = new Map<string, ThreadedComment>()
@@ -57,33 +81,14 @@ export function CommentSection({
       }
     })
 
-    // 대댓글은 시간순 (대화 흐름 유지)
-    const sortByDate = (a: ThreadedComment, b: ThreadedComment) =>
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    return sortCommentTree(rootComments)
+  }, [sortCommentTree])
 
-    // 루트 댓글: 좋아요 많은 순 → 최신순
-    const sortByPopularity = (a: ThreadedComment, b: ThreadedComment) => {
-      if (b.likes_count !== a.likes_count) return b.likes_count - a.likes_count
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    }
-
-    const sortReplies = (comments: ThreadedComment[]) => {
-      comments.forEach(c => {
-        if (c.replies && c.replies.length > 0) {
-          c.replies.sort(sortByDate)
-          sortReplies(c.replies)
-        }
-      })
-    }
-
-    rootComments.sort(sortByPopularity)
-    sortReplies(rootComments)
-    return rootComments
-  }, [])
-
-  const fetchComments = useCallback(async () => {
+  const fetchComments = useCallback(async (showLoading: boolean = true) => {
     try {
-      setIsLoading(true)
+      if (showLoading) {
+        setIsLoading(true)
+      }
       const supabase = createClient()
 
       logger.log('Fetching comments for post:', postId)
@@ -123,7 +128,7 @@ export function CommentSection({
 
       // Fetch all likes for these comments in one query
       let likesData: { comment_id: string; user_id: string }[] = []
-      if (commentIds.length > 0 && currentUserId) {
+      if (commentIds.length > 0) {
         const { data } = await supabase
           .from('community_likes')
           .select('comment_id, user_id')
@@ -173,7 +178,9 @@ export function CommentSection({
     } catch (err) {
       logger.error('Fetch comments error:', err)
     } finally {
-      setIsLoading(false)
+      if (showLoading) {
+        setIsLoading(false)
+      }
     }
   }, [postId, currentUserId, buildCommentTree])
 
@@ -182,11 +189,14 @@ export function CommentSection({
   }, [postId, currentUserId])
 
   const handleLike = useCallback(async (commentId: string, isLiked: boolean) => {
-    if (!currentUserId) return
+    if (!currentUserId) {
+      toast.error('로그인이 필요합니다.')
+      return
+    }
 
     // Optimistic update helper
-    const updateLikeInTree = (comments: ThreadedComment[]): ThreadedComment[] => {
-      return comments.map(comment => {
+    const updateLikeInTree = (tree: ThreadedComment[]): ThreadedComment[] => {
+      return tree.map(comment => {
         if (comment.id === commentId) {
           return {
             ...comment,
@@ -197,7 +207,7 @@ export function CommentSection({
         if (comment.replies && comment.replies.length > 0) {
           return {
             ...comment,
-            replies: updateLikeInTree(comment.replies),
+            replies: updateLikeInTree(comment.replies)
           }
         }
         return comment
@@ -205,7 +215,7 @@ export function CommentSection({
     }
 
     // Optimistic update
-    setComments(prev => updateLikeInTree(prev))
+    setComments(prev => sortCommentTree(updateLikeInTree(prev)))
 
     try {
       const supabase = createClient()
@@ -213,32 +223,37 @@ export function CommentSection({
       // 클라이언트 인증 확인
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        setComments(prev => updateLikeInTree(prev))
+        setComments(prev => sortCommentTree(updateLikeInTree(prev)))
         toast.error('로그인이 필요합니다.')
         return
       }
 
       if (isLiked) {
-        await supabase
+        const { error } = await supabase
           .from('community_likes')
           .delete()
           .eq('comment_id', commentId)
           .eq('user_id', user.id)
+        if (error) throw error
       } else {
-        await supabase
+        const { error } = await supabase
           .from('community_likes')
           .insert({
             comment_id: commentId,
             user_id: user.id,
           })
+        if (error) throw error
       }
+
+      // 서버 기준으로 한 번 더 동기화해서 정렬/카운트 일관성 유지
+      await fetchComments(false)
     } catch (err) {
       logger.error('Toggle like error:', err)
       toast.error('좋아요 처리 중 오류가 발생했습니다')
       // Revert on error
-      setComments(prev => updateLikeInTree(prev))
+      setComments(prev => sortCommentTree(updateLikeInTree(prev)))
     }
-  }, [currentUserId])
+  }, [currentUserId, fetchComments, sortCommentTree])
 
   const handleReply = useCallback(async (parentId: string, content: string) => {
     if (!currentUserId || !content.trim()) return
@@ -269,7 +284,7 @@ export function CommentSection({
       }
 
       // Refresh comments to get the new reply
-      await fetchComments()
+      await fetchComments(false)
     } catch (err) {
       logger.error('Reply error:', err)
       if (!(err as any)?.message) {
@@ -295,7 +310,7 @@ export function CommentSection({
       }
 
       // Refresh comments
-      await fetchComments()
+      await fetchComments(false)
     } catch (err) {
       logger.error('Delete error:', err)
       toast.error('댓글 삭제 중 오류가 발생했습니다')
@@ -331,7 +346,7 @@ export function CommentSection({
       }
 
       setNewComment('')
-      await fetchComments()
+      await fetchComments(false)
     } catch (err) {
       logger.error('Submit error:', err)
       toast.error('댓글 작성 중 오류가 발생했습니다')
