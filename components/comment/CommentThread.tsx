@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { getBreadEmoji } from '@/lib/bread'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 import type { ThreadedComment } from '@/types'
 import { ReportDialog } from '@/components/admin/ReportDialog'
 import {
@@ -59,6 +60,8 @@ export function CommentThread({
       await onReply(comment.id, replyContent.trim())
       setReplyContent('')
       setShowReplyInput(false)
+    } catch (err) {
+      toast.error('답글 작성 중 오류가 발생했습니다')
     } finally {
       setIsSubmitting(false)
     }

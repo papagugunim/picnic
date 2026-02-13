@@ -219,6 +219,7 @@ export function CommentSection({
       }
     } catch (err) {
       logger.error('Toggle like error:', err)
+      toast.error('좋아요 처리 중 오류가 발생했습니다')
       // Revert on error
       setComments(prev => updateLikeInTree(prev))
     }
@@ -248,6 +249,7 @@ export function CommentSection({
       await fetchComments()
     } catch (err) {
       logger.error('Reply error:', err)
+      toast.error('답글 작성 중 오류가 발생했습니다')
       throw err
     }
   }, [postId, currentUserId, fetchComments])
@@ -292,6 +294,7 @@ export function CommentSection({
 
       if (error) {
         logger.error('Comment submit error:', error)
+        toast.error('댓글 작성 중 오류가 발생했습니다')
         return
       }
 
@@ -299,6 +302,7 @@ export function CommentSection({
       await fetchComments()
     } catch (err) {
       logger.error('Submit error:', err)
+      toast.error('댓글 작성 중 오류가 발생했습니다')
     } finally {
       setIsSubmitting(false)
     }
@@ -324,30 +328,34 @@ export function CommentSection({
 
       {/* Inline comment input - X.com 스타일: 댓글 목록 위에 배치 */}
       <div className="px-4 pb-4 border-b border-border">
-        <div className="flex gap-2 items-center">
-          <Textarea
-            placeholder="댓글을 입력하세요..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            rows={1}
-            className="resize-none min-h-0 h-10 py-2"
-            style={{ fontSize: '16px' }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                handleSubmitComment()
-              }
-            }}
-          />
-          <Button
-            onClick={handleSubmitComment}
-            disabled={!newComment.trim() || isSubmitting}
-            size="icon"
-            className="flex-shrink-0 h-10 w-10"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
+        {currentUserId ? (
+          <div className="flex gap-2 items-center">
+            <Textarea
+              placeholder="댓글을 입력하세요..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              rows={1}
+              className="resize-none min-h-0 h-10 py-2"
+              style={{ fontSize: '16px' }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSubmitComment()
+                }
+              }}
+            />
+            <Button
+              onClick={handleSubmitComment}
+              disabled={!newComment.trim() || isSubmitting}
+              size="icon"
+              className="flex-shrink-0 h-10 w-10"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground py-2">로그인 후 댓글을 작성할 수 있습니다</p>
+        )}
       </div>
 
       {/* Comments list */}

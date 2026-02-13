@@ -172,6 +172,9 @@ export function PostDetailModal({
               </div>
             </div>
 
+            {/* Title */}
+            <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
+
             {/* Content */}
             <div className="prose prose-sm max-w-none mb-6 whitespace-pre-wrap">
               {post.content}
