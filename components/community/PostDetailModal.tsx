@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Heart, MessageCircle, Eye, ChevronLeft, MoreVertical, Trash2, Edit, Flag } from 'lucide-react'
+import { Heart, MessageCircle, BarChart2, ChevronLeft, MoreVertical, Trash2, Edit, Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -226,7 +226,7 @@ export function PostDetailModal({
               </div>
 
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Eye className="w-6 h-6" />
+                <BarChart2 className="w-6 h-6" />
                 <span>{post.view_count || 0}</span>
               </div>
             </div>

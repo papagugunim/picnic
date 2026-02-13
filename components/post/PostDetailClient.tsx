@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('PostDetail')
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye, Flag, Tag } from 'lucide-react'
+import { ChevronLeft, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye, BarChart2, Flag, Tag } from 'lucide-react'
 import { ImageGalleryModal } from '@/components/community/ImageGalleryModal'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -867,7 +867,7 @@ export default function PostDetailClient({
 
               {currentUserRole === 'developer' && (
                 <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                  <Eye className="w-5 h-5" />
+                  <BarChart2 className="w-5 h-5" />
                   <span>{post.view_count || 0}</span>
                 </div>
               )}

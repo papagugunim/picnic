@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('CommunityDetailPage')
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Heart, MessageCircle, MoreVertical, Trash2, EyeOff, Eye, Edit, X, Flag } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Heart, MessageCircle, MoreVertical, Trash2, EyeOff, Eye, BarChart2, Edit, X, Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -593,7 +593,7 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
             </div>
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Eye className="w-6 h-6" />
+              <BarChart2 className="w-6 h-6" />
               <span>{post.view_count || 0}</span>
             </div>
           </div>
