@@ -16,6 +16,8 @@ export default async function FeedPage() {
 
   // 서버에서 초기 게시글 목록 가져오기
   let initialPosts: any[] = []
+  let initialCursor: string | null = null
+  let initialCity: string | null = null
 
   if (userId) {
     // 사용자 프로필에서 city 가져오기
@@ -24,6 +26,7 @@ export default async function FeedPage() {
       .select('city')
       .eq('id', userId)
       .single()
+    initialCity = profile?.city || null
 
     let query = supabase
       .from('posts')
@@ -95,8 +98,18 @@ export default async function FeedPage() {
         user_liked: userLikesSet.has(post.id),
         user_interested: userInterestsSet.has(post.id),
       }))
+
+      if (postsData.length === 20) {
+        initialCursor = postsData[postsData.length - 1].created_at
+      }
     }
   }
 
-  return <FeedClient initialPosts={initialPosts} userId={userId} />
+  return (
+    <FeedClient
+      initialPosts={initialPosts}
+      initialCursor={initialCursor}
+      initialCity={initialCity}
+    />
+  )
 }

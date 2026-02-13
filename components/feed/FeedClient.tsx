@@ -3,7 +3,7 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('FeedClient')
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Plus, Heart, Bookmark, BarChart2, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -47,10 +47,11 @@ const PAGE_SIZE = 20
 
 interface FeedClientProps {
   initialPosts: Post[]
-  userId: string | null
+  initialCursor: string | null
+  initialCity: string | null
 }
 
-export default function FeedClient({ initialPosts, userId }: FeedClientProps) {
+export default function FeedClient({ initialPosts, initialCursor, initialCity }: FeedClientProps) {
   const [selectedTab, setSelectedTab] = useState<'all' | 'nearby' | 'free'>('all')
   const { user, profile, loading: userLoading } = useUser()
 
@@ -174,14 +175,20 @@ export default function FeedClient({ initialPosts, userId }: FeedClientProps) {
     pageSize: PAGE_SIZE,
     threshold: 300,
     enabled: isInitialized,
+    initialData: initialPosts,
+    initialCursor,
   })
 
   // Reset only when city changes (not tab - tabs filter client-side)
+  const previousCityRef = useRef<string | null>(initialCity)
+
   useEffect(() => {
-    if (isInitialized) {
-      reset()
-    }
-  }, [userCity])
+    if (!isInitialized) return
+    if (previousCityRef.current === userCity) return
+
+    previousCityRef.current = userCity
+    reset()
+  }, [isInitialized, userCity, reset])
 
   // Nearby 필터용 역 목록 (async lazy load)
   const [nearbyStationsList, setNearbyStationsList] = useState<string[]>([])

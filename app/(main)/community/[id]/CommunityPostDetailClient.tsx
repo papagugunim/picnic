@@ -12,7 +12,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadEmoji } from '@/lib/bread'
-import { CommentSection } from '@/components/comment/CommentSection'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +33,15 @@ import {
 } from '@/components/ui/alert-dialog'
 
 const ReportDialog = dynamic(() => import('@/components/admin/ReportDialog').then(m => m.ReportDialog))
+const CommentSection = dynamic(
+  () => import('@/components/comment/CommentSection').then(m => m.CommentSection),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="px-4 py-6 text-sm text-muted-foreground">댓글을 불러오는 중...</div>
+    ),
+  }
+)
 
 export interface CommunityPost {
   id: string

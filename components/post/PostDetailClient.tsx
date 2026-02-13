@@ -4,9 +4,9 @@ import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('PostDetail')
 import { useState, useEffect, useRef, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye, BarChart2, Flag, Tag } from 'lucide-react'
-import { ImageGalleryModal } from '@/components/community/ImageGalleryModal'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -37,8 +37,17 @@ import {
 import { getBreadInfo, getBreadEmoji } from '@/lib/bread'
 import { getCache, setCache } from '@/lib/cache'
 import { UserAvatar } from '@/components/ui/user-avatar'
-import { ReportDialog } from '@/components/admin/ReportDialog'
 import { useUser } from '@/lib/contexts/UserContext'
+
+const ReportDialog = dynamic(
+  () => import('@/components/admin/ReportDialog').then(m => m.ReportDialog),
+  { ssr: false }
+)
+
+const ImageGalleryModal = dynamic(
+  () => import('@/components/community/ImageGalleryModal').then(m => m.ImageGalleryModal),
+  { ssr: false }
+)
 
 interface Post {
   id: string
