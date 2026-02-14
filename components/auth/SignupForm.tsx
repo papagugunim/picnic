@@ -134,7 +134,7 @@ export default function SignupForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>이메일</FormLabel>
+              <FormLabel>이메일로 가입하기</FormLabel>
               <FormControl>
                 <Input
                   type="email"

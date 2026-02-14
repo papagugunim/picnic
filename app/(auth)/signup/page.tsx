@@ -26,6 +26,8 @@ export default function SignupPage() {
             <SignupForm />
           </Suspense>
 
+          <p className="text-center text-sm text-muted-foreground">또는</p>
+
           <Suspense fallback={<div className="h-16" />}>
             <SocialLogin mode="signup" providers={['google']} />
           </Suspense>
