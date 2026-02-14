@@ -47,7 +47,6 @@ export default function OnboardingStep1() {
   const router = useRouter()
   const [nickname, setNickname] = useState('')
   const [suggestedNickname, setSuggestedNickname] = useState('')
-  const [currentName, setCurrentName] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -62,17 +61,6 @@ export default function OnboardingStep1() {
       if (!user) {
         router.push('/login')
         return
-      }
-
-      // 현재 프로필 이름 가져오기
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .single()
-
-      if (profile?.full_name) {
-        setCurrentName(profile.full_name)
       }
 
       // 랜덤 닉네임 제안
@@ -99,6 +87,7 @@ export default function OnboardingStep1() {
 
       if (!existingProfile) {
         setSuggestedNickname(candidate)
+        setNickname((prev) => (prev.trim().length > 0 ? prev : candidate))
         return
       }
 
@@ -108,6 +97,7 @@ export default function OnboardingStep1() {
     // 20번 시도해도 유니크한 닉네임을 못 만들면 숫자 추가
     const fallback = `${generateRandomNickname()}${Math.floor(Math.random() * 100)}`
     setSuggestedNickname(fallback)
+    setNickname((prev) => (prev.trim().length > 0 ? prev : fallback))
   }
 
   const handleUseSuggested = () => {
@@ -199,37 +189,23 @@ export default function OnboardingStep1() {
     <OnboardingLayout
       currentStep={1}
       totalSteps={5}
-      title="닉네임을 설정해주세요"
+      title="닉네임 설정"
       onNext={handleNext}
       nextDisabled={!canProceed}
       nextLoading={isLoading}
       hidePrevious
     >
-      <div className="mb-6">
-        <div className="glass-strong rounded-lg p-6 mb-6">
-          <div className="text-center mb-6">
-            <div className="text-6xl mb-4">😊</div>
-            <h2 className="text-xl font-bold mb-2">
-              적당한 익명성을 유지해요
-            </h2>
-            <p className="text-sm text-muted-foreground mb-1">
-              개인정보 보호를 위해 닉네임을 사용합니다
-            </p>
-            <p className="text-xs text-destructive/80">
-              ⚠️ 닉네임 추후 변경 필요시, 관리자 승인을 통해서만 변경 가능 합니다.
-            </p>
+      <div className="mb-4">
+        <div className="glass-strong rounded-lg p-4 space-y-4">
+          <div className="text-center space-y-1">
+            <div className="text-3xl">😊</div>
+            <p className="text-sm font-semibold">닉네임으로 안전하게 활동해요</p>
+            <p className="text-xs text-muted-foreground">닉네임 변경은 관리자 승인 후 가능합니다.</p>
           </div>
 
-          {currentName && (
-            <div className="mb-4 p-3 bg-muted/50 rounded-lg">
-              <p className="text-xs text-muted-foreground mb-1">현재 이름</p>
-              <p className="text-sm font-medium">{currentName}</p>
-            </div>
-          )}
-
           {suggestedNickname && (
-            <div className="mb-4 p-6 bg-primary/5 border border-primary/20 rounded-lg">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-medium text-primary">추천 닉네임</p>
                 <button
                   onClick={handleRefreshSuggestion}
@@ -239,15 +215,16 @@ export default function OnboardingStep1() {
                   <RefreshCw className={`w-4 h-4 ${isCheckingDuplicate ? 'animate-spin' : ''}`} />
                 </button>
               </div>
-              <div className="text-center mb-4">
-                <p className="text-2xl font-bold text-primary mb-4">{suggestedNickname}</p>
+              <div className="flex items-center gap-2">
+                <p className="flex-1 text-lg font-bold text-primary truncate">{suggestedNickname}</p>
                 <Button
-                  size="lg"
-                  className="w-full bg-[#8BA888] hover:bg-[#7a9777] text-white"
+                  type="button"
+                  size="sm"
+                  className="bg-[#8BA888] hover:bg-[#7a9777] text-white"
                   onClick={handleUseSuggested}
                   disabled={isLoading}
                 >
-                  사용하기
+                  사용
                 </Button>
               </div>
             </div>
@@ -271,13 +248,14 @@ export default function OnboardingStep1() {
                 }
               }}
             />
-            <p className="text-xs text-muted-foreground">
-              2-20자, 한글/영문/숫자 사용 가능
-            </p>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>2-20자 사용 가능</span>
+              <span>{nickname.length}/20</span>
+            </div>
           </div>
 
           {error && (
-            <div className="mt-4 p-3 bg-destructive/10 text-destructive rounded-lg text-sm text-center">
+            <div className="p-2.5 bg-destructive/10 text-destructive rounded-lg text-sm text-center">
               {error}
             </div>
           )}

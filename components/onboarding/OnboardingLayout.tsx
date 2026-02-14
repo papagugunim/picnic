@@ -48,14 +48,14 @@ export default function OnboardingLayout({
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-background px-4 py-4">
+      <div className="w-full max-w-md mx-auto">
         {/* 상단 헤더 */}
-        <div className="text-center space-y-3 mb-8">
-          <h1 className="text-4xl font-bold gradient-text">picnic</h1>
+        <div className="text-center space-y-2 mb-5">
+          <h1 className="text-4xl font-bold home-hero-title">picnic</h1>
 
           {/* 프로그레스 인디케이터 */}
-          <div className="flex items-center justify-center gap-2 mb-4">
+          <div className="flex items-center justify-center gap-2 mb-2">
             {Array.from({ length: totalSteps }).map((_, index) => (
               <div
                 key={index}
@@ -71,12 +71,12 @@ export default function OnboardingLayout({
           </div>
 
           {/* 스텝 번호 */}
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {currentStep} / {totalSteps}
           </p>
 
           {/* 타이틀 */}
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-base">
             {title}
           </p>
 
