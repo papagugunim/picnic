@@ -3,7 +3,7 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('PostDetail')
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, MessageCircle, Heart, MoreVertical, Edit, Trash2, Bookmark, EyeOff, Eye, BarChart2, Flag, Tag } from 'lucide-react'
@@ -48,6 +48,57 @@ const ImageGalleryModal = dynamic(
   () => import('@/components/community/ImageGalleryModal').then(m => m.ImageGalleryModal),
   { ssr: false }
 )
+
+function splitUrlAndTrailingPunctuation(rawUrl: string) {
+  const trailingMatch = rawUrl.match(/([),.;!?]+)$/)
+  const trailing = trailingMatch ? trailingMatch[1] : ''
+  const cleanUrl = trailing ? rawUrl.slice(0, -trailing.length) : rawUrl
+
+  return { cleanUrl, trailing }
+}
+
+function renderTextWithLinks(text: string): ReactNode[] {
+  const nodes: ReactNode[] = []
+  let lastIndex = 0
+
+  for (const match of text.matchAll(/((?:https?:\/\/|www\.)[^\s<>"']+)/gi)) {
+    const start = match.index ?? 0
+    const rawUrl = match[0]
+
+    if (start > lastIndex) {
+      nodes.push(text.slice(lastIndex, start))
+    }
+
+    const { cleanUrl, trailing } = splitUrlAndTrailingPunctuation(rawUrl)
+    const href = cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')
+      ? cleanUrl
+      : `https://${cleanUrl}`
+
+    nodes.push(
+      <a
+        key={`desc-link-${start}-${href}`}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer nofollow"
+        className="text-primary underline underline-offset-2 break-all hover:opacity-80"
+      >
+        {cleanUrl}
+      </a>
+    )
+
+    if (trailing) {
+      nodes.push(trailing)
+    }
+
+    lastIndex = start + rawUrl.length
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex))
+  }
+
+  return nodes
+}
 
 interface Post {
   id: string
@@ -767,8 +818,8 @@ export default function PostDetailClient({
 
           {/* Title & Price */}
           <div className="mb-4">
-            <h1 className="text-2xl font-bold mb-2">{post.title}</h1>
-            <div className="text-3xl font-bold text-primary">
+            <h1 className="text-xl font-bold mb-2">{post.title}</h1>
+            <div className="text-2xl font-bold text-primary">
               {post.price === 0 || post.price === null
                 ? '무료나눔'
                 : `${post.price.toLocaleString()}₽`}
@@ -796,8 +847,8 @@ export default function PostDetailClient({
           </div>
 
           {/* Description */}
-          <div className="prose prose-sm max-w-none mb-6 whitespace-pre-wrap">
-            {post.description}
+          <div className="prose prose-sm max-w-none mb-6 whitespace-pre-wrap break-words leading-relaxed">
+            {renderTextWithLinks(post.description)}
           </div>
 
           {/* Details */}
