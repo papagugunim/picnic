@@ -89,9 +89,10 @@ export default function OnboardingStep2() {
         <div className="space-y-4 mb-6">
           <button
             onClick={() => handleCitySelect('Moscow')}
-            className={`w-full h-auto py-6 px-4 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
+            data-emoji-burst="🏛️,❄️,✨"
+            className={`onboarding-choice w-full h-auto py-6 px-4 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
               selectedCity === 'Moscow'
-                ? 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/50'
+                ? 'onboarding-choice-selected border-primary bg-primary text-primary-foreground ring-2 ring-primary/50 shadow-[0_6px_18px_rgba(84,122,94,0.26)]'
                 : 'border-border hover:border-primary/50 hover:bg-primary/5'
             }`}
           >
@@ -104,9 +105,10 @@ export default function OnboardingStep2() {
 
           <button
             onClick={() => handleCitySelect('Saint Petersburg')}
-            className={`w-full h-auto py-6 px-4 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
+            data-emoji-burst="⛲,🌉,✨"
+            className={`onboarding-choice w-full h-auto py-6 px-4 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
               selectedCity === 'Saint Petersburg'
-                ? 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/50'
+                ? 'onboarding-choice-selected border-primary bg-primary text-primary-foreground ring-2 ring-primary/50 shadow-[0_6px_18px_rgba(84,122,94,0.26)]'
                 : 'border-border hover:border-primary/50 hover:bg-primary/5'
             }`}
           >

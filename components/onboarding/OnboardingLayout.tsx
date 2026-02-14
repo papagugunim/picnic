@@ -1,8 +1,10 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import type { MouseEvent } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { EmojiBurstLayer, useEmojiBurst } from '@/components/ui/emoji-burst'
 
 interface OnboardingLayoutProps {
   currentStep: number
@@ -38,6 +40,7 @@ export default function OnboardingLayout({
   hideNext = false,
 }: OnboardingLayoutProps) {
   const router = useRouter()
+  const { particles, burstFromElement } = useEmojiBurst()
 
   const handlePrevious = () => {
     if (onPrevious) {
@@ -47,8 +50,34 @@ export default function OnboardingLayout({
     }
   }
 
+  const handleButtonClickCapture = (event: MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement
+    const button = target.closest('button')
+
+    if (!button || button.hasAttribute('disabled') || button.getAttribute('aria-disabled') === 'true') {
+      return
+    }
+
+    const burstData = button.dataset.emojiBurst
+    if (burstData?.trim().toLowerCase() === 'none') {
+      return
+    }
+
+    const emojis = burstData
+      ? burstData
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : undefined
+
+    burstFromElement(button, emojis)
+  }
+
   return (
-    <div className="min-h-screen bg-background px-4 py-4">
+    <div
+      className="min-h-screen bg-background px-4 py-4"
+      onClickCapture={handleButtonClickCapture}
+    >
       <div className="w-full max-w-md mx-auto">
         {/* 상단 헤더 */}
         <div className="text-center space-y-2 mb-5">
@@ -101,6 +130,7 @@ export default function OnboardingLayout({
                 onClick={handlePrevious}
                 className="flex items-center gap-1"
                 disabled={nextLoading}
+                data-emoji-burst="⬅️,✨,🍞"
               >
                 <ChevronLeft className="w-4 h-4" />
                 이전
@@ -113,6 +143,7 @@ export default function OnboardingLayout({
                 onClick={onNext}
                 className="flex-1"
                 disabled={nextDisabled || nextLoading}
+                data-emoji-burst="✨,🎉,🍞"
               >
                 {nextLoading ? '처리 중...' : nextLabel}
               </Button>
@@ -125,12 +156,14 @@ export default function OnboardingLayout({
               onClick={onSkip}
               className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
               disabled={nextLoading}
+              data-emoji-burst="⏭️,✨,💫"
             >
               건너뛰기
             </button>
           )}
         </div>
       </div>
+      <EmojiBurstLayer particles={particles} />
     </div>
   )
 }

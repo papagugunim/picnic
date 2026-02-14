@@ -410,6 +410,68 @@
   animation: free-bounce 0.6s ease-in-out;
 }
 
+/* 온보딩 버튼 인터랙션 */
+.onboarding-choice {
+  transform: translateZ(0);
+}
+
+.onboarding-choice:active {
+  transform: scale(0.97);
+}
+
+.onboarding-choice-selected {
+  animation: onboarding-choice-pop 0.36s ease;
+}
+
+@keyframes onboarding-choice-pop {
+  0% {
+    transform: scale(0.94);
+  }
+  65% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 버튼 클릭 시 이모지 버스트 */
+.emoji-burst-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 80;
+  overflow: hidden;
+}
+
+.emoji-burst-item {
+  position: fixed;
+  left: 0;
+  top: 0;
+  font-size: var(--emoji-size);
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  animation: emoji-burst-fly var(--emoji-duration) cubic-bezier(0.22, 0.9, 0.22, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes emoji-burst-fly {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.7) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(
+      calc(-50% + var(--emoji-dx)),
+      calc(-50% + var(--emoji-dy))
+    ) scale(1.05) rotate(var(--emoji-rotate));
+  }
+}
+
 /* Hide scrollbar utility */
 .scrollbar-hide {
   -ms-overflow-style: none; /* IE and Edge */

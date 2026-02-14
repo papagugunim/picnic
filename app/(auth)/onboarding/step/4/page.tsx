@@ -39,6 +39,21 @@ const categoryIcons = {
   other: Package,
 }
 
+const categoryBurstEmojis: Record<string, string[]> = {
+  electronics: ['💻', '⚡', '✨'],
+  furniture: ['🛋️', '🏠', '✨'],
+  clothing: ['👕', '🧥', '✨'],
+  books: ['📚', '✍️', '✨'],
+  sports: ['🏃', '🏋️', '✨'],
+  beauty: ['💄', '💅', '✨'],
+  baby: ['🧸', '🍼', '✨'],
+  food: ['🍲', '🥟', '✨'],
+  vehicles: ['🚗', '🛵', '✨'],
+  realestate: ['🏡', '🪟', '✨'],
+  jobs: ['💼', '📈', '✨'],
+  other: ['🎁', '⭐', '✨'],
+}
+
 export default function OnboardingStep4() {
   const router = useRouter()
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
@@ -160,9 +175,10 @@ export default function OnboardingStep4() {
               <button
                 key={category.value}
                 onClick={() => handleCategoryToggle(category.value)}
-                className={`h-auto py-4 px-2 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
+                data-emoji-burst={categoryBurstEmojis[category.value]?.join(',') ?? '✨,🍞'}
+                className={`onboarding-choice h-auto py-4 px-2 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
                   isSelected
-                    ? 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/50'
+                    ? 'onboarding-choice-selected border-primary bg-primary text-primary-foreground ring-2 ring-primary/50 shadow-[0_6px_18px_rgba(84,122,94,0.26)]'
                     : 'border-border hover:border-primary/50 hover:bg-primary/5'
                 }`}
               >
