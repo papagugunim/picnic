@@ -12,6 +12,36 @@ import { SwipeableChatItem } from '@/components/chat/SwipeableChatItem'
 import { toast } from 'sonner'
 import { formatTimeAgo } from '@/lib/utils/date'
 
+function getPostThumbnailUrl(post: any): string | null {
+  const images = post?.images
+
+  if (Array.isArray(images)) {
+    const url = images.find((img) => typeof img === 'string' && img.trim().length > 0)
+    return url || null
+  }
+
+  if (typeof images === 'string') {
+    const trimmed = images.trim()
+    if (!trimmed) return null
+
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) {
+          const url = parsed.find((img) => typeof img === 'string' && img.trim().length > 0)
+          return url || null
+        }
+      } catch {
+        return null
+      }
+    }
+
+    return trimmed
+  }
+
+  return null
+}
+
 export default function ChatsPage() {
   const { chatRooms, isLoading, error, mutate } = useChats()
 
@@ -75,7 +105,9 @@ export default function ChatsPage() {
             </div>
           ) : (
             <div>
-              {chatRooms.map((room) => (
+              {chatRooms.map((room) => {
+                const thumbnailUrl = getPostThumbnailUrl(room.post)
+                return (
                 <SwipeableChatItem
                   key={room.id}
                   onDelete={() => handleDeleteRoom(room.id)}
@@ -86,10 +118,10 @@ export default function ChatsPage() {
                   >
                     <div className="flex items-center gap-3 p-4">
                       {/* Product Thumbnail */}
-                      {room.post?.images?.[0] ? (
+                      {thumbnailUrl ? (
                         <img
-                          src={room.post.images[0]}
-                          alt={room.post.title || '상품 이미지'}
+                          src={thumbnailUrl}
+                          alt={room.post?.title || '상품 이미지'}
                           className="w-16 h-16 rounded-lg object-cover flex-shrink-0 border border-border"
                         />
                       ) : (
@@ -147,7 +179,8 @@ export default function ChatsPage() {
                     </div>
                   </Link>
                 </SwipeableChatItem>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

@@ -22,6 +22,36 @@ import { CompleteSaleButton } from '@/components/chat/CompleteSaleButton'
 import { ReviewModal } from '@/components/review/ReviewModal'
 import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
 
+function getPostThumbnailUrl(post: any): string | null {
+  const images = post?.images
+
+  if (Array.isArray(images)) {
+    const url = images.find((img) => typeof img === 'string' && img.trim().length > 0)
+    return url || null
+  }
+
+  if (typeof images === 'string') {
+    const trimmed = images.trim()
+    if (!trimmed) return null
+
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) {
+          const url = parsed.find((img) => typeof img === 'string' && img.trim().length > 0)
+          return url || null
+        }
+      } catch {
+        return null
+      }
+    }
+
+    return trimmed
+  }
+
+  return null
+}
+
 export default function ChatRoomPage() {
   const params = useParams()
   const router = useRouter()
@@ -218,6 +248,7 @@ export default function ChatRoomPage() {
   const isSold = room?.post?.status === 'sold'
   // 약속 확정 여부
   const isAppointmentConfirmed = appointment?.status === 'confirmed'
+  const postThumbnailUrl = room?.post ? getPostThumbnailUrl(room.post) : null
 
   if (isLoading) {
     return (
@@ -297,9 +328,9 @@ export default function ChatRoomPage() {
               href={`/post/${room.post.id}`}
               className="flex items-center gap-3 px-4 py-2 bg-background border-t border-border hover:bg-muted transition-colors"
             >
-              {room.post.images && room.post.images.length > 0 ? (
+              {postThumbnailUrl ? (
                 <img
-                  src={room.post.images[0]}
+                  src={postThumbnailUrl}
                   alt={room.post.title}
                   className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
                 />
