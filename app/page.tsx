@@ -14,12 +14,12 @@ export default async function HomePage() {
     <div className="min-h-screen flex items-center justify-center p-8">
       <div className="max-w-2xl w-full text-center space-y-8">
         <div className="space-y-4">
-          <h1 className="text-6xl font-bold gradient-text">picnic</h1>
+          <h1 className="text-6xl font-bold home-hero-title">picnic</h1>
           <p className="text-xl text-muted-foreground">
             피크닉에 오신 여러분! 환영 합니다.
           </p>
           <p className="text-sm text-muted-foreground">
-            해외 거주 한국인 교민을 위한 중고거래 및 커뮤니티 플랫폼 입니다.
+            해외 거주 도시 기반 한국인 교민 플랫폼
           </p>
         </div>
 
@@ -36,10 +36,6 @@ export default async function HomePage() {
           >
             회원가입
           </Link>
-        </div>
-
-        <div className="pt-8 text-sm text-muted-foreground">
-          <p>현재 지원 지역 : 러시아 모스크바, 상트페테르부르크</p>
         </div>
       </div>
     </div>
