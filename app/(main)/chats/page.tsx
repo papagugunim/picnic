@@ -3,7 +3,8 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('Page')
-import { MessageCircle, Package } from 'lucide-react'
+import { useEffect, useRef } from 'react'
+import { Loader2, MessageCircle, Package } from 'lucide-react'
 import Link from 'next/link'
 import { useChats } from '@/lib/hooks/useChats'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
@@ -12,7 +13,9 @@ import { SwipeableChatItem } from '@/components/chat/SwipeableChatItem'
 import { toast } from 'sonner'
 import { formatTimeAgo } from '@/lib/utils/date'
 
-function getPostThumbnailUrl(post: any): string | null {
+type PostWithImages = { images?: string[] | string | null } | null | undefined
+
+function getPostThumbnailUrl(post: PostWithImages): string | null {
   const images = post?.images
 
   if (Array.isArray(images)) {
@@ -43,7 +46,27 @@ function getPostThumbnailUrl(post: any): string | null {
 }
 
 export default function ChatsPage() {
-  const { chatRooms, isLoading, error, mutate } = useChats()
+  const { chatRooms, isLoading, isFetchingMore, hasMore, error, mutate, loadMore } = useChats()
+  const loadMoreRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!hasMore) return
+
+    const sentinel = loadMoreRef.current
+    if (!sentinel) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadMore()
+        }
+      },
+      { rootMargin: '240px 0px' }
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMore, loadMore, chatRooms.length])
 
   const handleDeleteRoom = async (roomId: string) => {
     try {
@@ -108,79 +131,95 @@ export default function ChatsPage() {
               {chatRooms.map((room) => {
                 const thumbnailUrl = getPostThumbnailUrl(room.post)
                 return (
-                <SwipeableChatItem
-                  key={room.id}
-                  onDelete={() => handleDeleteRoom(room.id)}
-                >
-                  <Link
-                    href={`/chats/${room.id}`}
-                    className="block hover:bg-muted/50 transition-colors"
+                  <SwipeableChatItem
+                    key={room.id}
+                    onDelete={() => handleDeleteRoom(room.id)}
                   >
-                    <div className="flex items-center gap-3 p-4">
-                      {/* Product Thumbnail */}
-                      {thumbnailUrl ? (
-                        <img
-                          src={thumbnailUrl}
-                          alt={room.post?.title || '상품 이미지'}
-                          className="w-16 h-16 rounded-lg object-cover flex-shrink-0 border border-border"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 border border-border">
-                          <Package className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                      )}
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        {/* Post Title */}
-                        {room.post && (
-                          <div className="flex items-center justify-between mb-1">
-                            <h3 className="font-semibold text-base truncate pr-2">
-                              {room.post.title}
-                            </h3>
-                            <span className="text-xs text-muted-foreground flex-shrink-0">
-                              {room.last_message_at ? formatTimeAgo(room.last_message_at) : ''}
-                            </span>
+                    <Link
+                      href={`/chats/${room.id}`}
+                      className="block hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 p-4">
+                        {/* Product Thumbnail */}
+                        {thumbnailUrl ? (
+                          <img
+                            src={thumbnailUrl}
+                            alt={room.post?.title || '상품 이미지'}
+                            className="w-16 h-16 rounded-lg object-cover flex-shrink-0 border border-border"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 border border-border">
+                            <Package className="w-6 h-6 text-muted-foreground" />
                           </div>
                         )}
 
-                        {/* Other User Name */}
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs text-muted-foreground">
-                              {room.other_user.full_name || '익명'}
-                            </span>
-                            <span className="text-sm">
-                              {getBreadEmoji(room.other_user.bread_level || 1, room.other_user.user_role || undefined)}
-                            </span>
-                          </div>
-                          {room.post?.price !== null && room.post?.price !== undefined && (
-                            <>
-                              <span className="text-xs text-muted-foreground">·</span>
-                              <span className="text-xs font-medium text-primary">
-                                {room.post.price === 0 ? '무료나눔' : `${room.post.price.toLocaleString()}₽`}
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          {/* Post Title */}
+                          {room.post && (
+                            <div className="flex items-center justify-between mb-1">
+                              <h3 className="font-semibold text-base truncate pr-2">
+                                {room.post.title}
+                              </h3>
+                              <span className="text-xs text-muted-foreground flex-shrink-0">
+                                {room.last_message_at ? formatTimeAgo(room.last_message_at) : ''}
                               </span>
-                            </>
+                            </div>
                           )}
+
+                          {/* Other User Name */}
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-muted-foreground">
+                                {room.other_user.full_name || '익명'}
+                              </span>
+                              <span className="text-sm">
+                                {getBreadEmoji(room.other_user.bread_level || 1, room.other_user.user_role || undefined)}
+                              </span>
+                            </div>
+                            {room.post?.price !== null && room.post?.price !== undefined && (
+                              <>
+                                <span className="text-xs text-muted-foreground">·</span>
+                                <span className="text-xs font-medium text-primary">
+                                  {room.post.price === 0 ? '무료나눔' : `${room.post.price.toLocaleString()}₽`}
+                                </span>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Last Message */}
+                          <p className={`text-sm truncate ${room.unread_count > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+                            {room.last_message || '아직 메시지가 없습니다'}
+                          </p>
                         </div>
 
-                        {/* Last Message */}
-                        <p className={`text-sm truncate ${room.unread_count > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-                          {room.last_message || '아직 메시지가 없습니다'}
-                        </p>
+                        {/* Unread Badge */}
+                        {room.unread_count > 0 && (
+                          <div className="flex-shrink-0 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                            {room.unread_count > 99 ? '99+' : room.unread_count}
+                          </div>
+                        )}
                       </div>
-
-                      {/* Unread Badge */}
-                      {room.unread_count > 0 && (
-                        <div className="flex-shrink-0 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                          {room.unread_count > 99 ? '99+' : room.unread_count}
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-                </SwipeableChatItem>
+                    </Link>
+                  </SwipeableChatItem>
                 )
               })}
+
+              {hasMore && <div ref={loadMoreRef} className="h-4" />}
+
+              {isFetchingMore && (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+
+              {!hasMore && chatRooms.length > 0 && (
+                <div className="text-center py-4 text-xs text-muted-foreground">
+                  모든 채팅방을 불러왔습니다
+                </div>
+              )}
             </div>
           )}
         </div>

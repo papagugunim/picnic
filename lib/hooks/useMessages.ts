@@ -9,6 +9,32 @@ import type { ChatMessageWithProfile, PollMessagesResponse } from '@/types/chat'
 
 // Feature Flag: Long Polling 사용 여부
 const USE_LONG_POLLING = process.env.NEXT_PUBLIC_USE_LONG_POLLING === 'true'
+const MESSAGES_PAGE_SIZE = 40
+
+type RawProfileRow = {
+  id: string
+  full_name: string | null
+  avatar_url: string | null
+}
+
+type RawMessageRow = {
+  id: string
+  room_id: string
+  sender_id: string
+  content: string
+  is_read: boolean
+  created_at: string
+  profiles: RawProfileRow | RawProfileRow[] | null
+}
+
+type InsertedMessageRow = {
+  id: string
+  room_id: string
+  sender_id: string
+  content: string
+  is_read: boolean
+  created_at: string
+}
 
 /**
  * 특정 채팅방의 메시지를 가져오고 실시간 업데이트를 제공하는 훅
@@ -18,7 +44,11 @@ export function useMessages(roomId: string) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSending, setIsSending] = useState(false)
+  const [hasOlderMessages, setHasOlderMessages] = useState(false)
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false)
   const isSendingRef = useRef(false)
+  const loadedCountRef = useRef(0)
+  const latestMessageIdRef = useRef<string | null>(null)
 
   // Long Polling 상태 관리
   const [lastMessageId, setLastMessageId] = useState<string | null>(null)
@@ -28,10 +58,34 @@ export function useMessages(roomId: string) {
     retryCount: number
   }>({ isPolling: false, abortController: null, retryCount: 0 })
 
+  const formatMessages = useCallback((messagesData: RawMessageRow[]) => {
+    return messagesData.map((message) => {
+      const senderProfile = Array.isArray(message.profiles)
+        ? message.profiles[0]
+        : message.profiles
+
+      return {
+        id: message.id,
+        room_id: message.room_id,
+        sender_id: message.sender_id,
+        content: message.content,
+        is_read: message.is_read,
+        created_at: message.created_at,
+        sender: senderProfile || {
+          id: message.sender_id,
+          full_name: null,
+          avatar_url: null,
+        },
+      }
+    })
+  }, [])
+
   const fetchMessages = useCallback(async () => {
     if (!roomId) return
 
     try {
+      setIsLoading(true)
+      setError(null)
       const supabase = createClient()
 
       const { data: messagesData, error: messagesError } = await supabase
@@ -50,7 +104,8 @@ export function useMessages(roomId: string) {
           )
         `)
         .eq('room_id', roomId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
+        .range(0, MESSAGES_PAGE_SIZE - 1)
 
       if (messagesError) {
         logger.error('Messages fetch error:', messagesError)
@@ -58,19 +113,82 @@ export function useMessages(roomId: string) {
         return
       }
 
-      const formattedMessages = messagesData.map((msg: any) => ({
-        ...msg,
-        sender: msg.profiles,
-      }))
+      const loadedMessages = (messagesData ?? []) as RawMessageRow[]
+      const formattedMessages = formatMessages([...loadedMessages].reverse())
 
-      setMessages(formattedMessages as ChatMessageWithProfile[])
+      setMessages(formattedMessages)
+      loadedCountRef.current = loadedMessages.length
+      setHasOlderMessages(loadedMessages.length === MESSAGES_PAGE_SIZE)
+
+      const newestMessageId = formattedMessages[formattedMessages.length - 1]?.id ?? null
+      latestMessageIdRef.current = newestMessageId
+      setLastMessageId(newestMessageId)
     } catch (err) {
       logger.error('Fetch error:', err)
       setError('메시지를 불러오는데 실패했습니다')
     } finally {
       setIsLoading(false)
     }
-  }, [roomId])
+  }, [roomId, formatMessages])
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!roomId || isLoadingOlder || !hasOlderMessages) return
+
+    try {
+      setIsLoadingOlder(true)
+      const supabase = createClient()
+      const start = loadedCountRef.current
+      const end = start + MESSAGES_PAGE_SIZE - 1
+
+      const { data: messagesData, error: messagesError } = await supabase
+        .from('chat_messages')
+        .select(`
+          id,
+          room_id,
+          sender_id,
+          content,
+          is_read,
+          created_at,
+          profiles:sender_id (
+            id,
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq('room_id', roomId)
+        .order('created_at', { ascending: false })
+        .range(start, end)
+
+      if (messagesError) {
+        logger.error('Older messages fetch error:', messagesError)
+        setError('이전 메시지를 불러오는데 실패했습니다')
+        return
+      }
+
+      const olderMessages = (messagesData ?? []) as RawMessageRow[]
+      const formattedOlderMessages = formatMessages([...olderMessages].reverse())
+
+      setMessages((prev) => {
+        if (formattedOlderMessages.length === 0) return prev
+
+        const existingIds = new Set(prev.map((message) => message.id))
+        const uniqueOlderMessages = formattedOlderMessages.filter(
+          (message) => !existingIds.has(message.id)
+        )
+
+        if (uniqueOlderMessages.length === 0) return prev
+        return [...uniqueOlderMessages, ...prev]
+      })
+
+      loadedCountRef.current += olderMessages.length
+      setHasOlderMessages(olderMessages.length === MESSAGES_PAGE_SIZE)
+    } catch (err) {
+      logger.error('Older fetch error:', err)
+      setError('이전 메시지를 불러오는데 실패했습니다')
+    } finally {
+      setIsLoadingOlder(false)
+    }
+  }, [roomId, isLoadingOlder, hasOlderMessages, formatMessages])
 
   // Long Polling 읽음 처리 함수
   const markMessagesAsReadAPI = useCallback(async () => {
@@ -99,13 +217,14 @@ export function useMessages(roomId: string) {
       pollingRef.current.abortController = abortController
 
       try {
+        const currentLastMessageId = latestMessageIdRef.current
         const params = new URLSearchParams({
           roomId,
           timeout: '30000',
-          ...(lastMessageId && { lastMessageId }),
+          ...(currentLastMessageId && { lastMessageId: currentLastMessageId }),
         })
 
-        logger.log(`[Long Polling] Polling with lastMessageId: ${lastMessageId}`)
+        logger.log(`[Long Polling] Polling with lastMessageId: ${currentLastMessageId}`)
 
         const response = await fetch(`/api/chat/poll?${params}`, {
           signal: abortController.signal,
@@ -131,10 +250,14 @@ export function useMessages(roomId: string) {
             }
 
             logger.log(`[Long Polling] Adding ${newMessages.length} new messages`)
+            loadedCountRef.current += newMessages.length
             return [...prev, ...newMessages]
           })
 
-          setLastMessageId(data.lastMessageId)
+          const latestMessageId =
+            data.lastMessageId ?? data.messages[data.messages.length - 1]?.id ?? null
+          latestMessageIdRef.current = latestMessageId
+          setLastMessageId(latestMessageId)
           pollingRef.current.retryCount = 0
 
           // 읽음 처리
@@ -148,8 +271,8 @@ export function useMessages(roomId: string) {
         logger.log('[Long Polling] No new messages, waiting 1s')
         pollingRef.current.retryCount = 0
         await new Promise((resolve) => setTimeout(resolve, 1000))
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
+      } catch (error: unknown) {
+        if (error instanceof Error && error.name === 'AbortError') {
           logger.log('[Long Polling] Poll aborted')
           break
         }
@@ -174,13 +297,23 @@ export function useMessages(roomId: string) {
     }
 
     logger.log('[Long Polling] Poll loop ended')
-  }, [roomId, lastMessageId, markMessagesAsReadAPI])
+  }, [roomId, markMessagesAsReadAPI])
 
   useEffect(() => {
     if (!roomId) return
 
+    setMessages([])
+    setError(null)
+    setHasOlderMessages(false)
+    setIsLoadingOlder(false)
+    setIsLoading(true)
+    loadedCountRef.current = 0
+    latestMessageIdRef.current = null
+    setLastMessageId(null)
+
     const supabase = createClient()
-    let subscription: any = null
+    const currentPollingRef = pollingRef.current
+    let subscription: ReturnType<typeof supabase.channel> | null = null
     let reconnectTimer: NodeJS.Timeout | null = null
     let reconnectAttempts = 0
     const maxReconnectAttempts = 5
@@ -242,6 +375,8 @@ export function useMessages(roomId: string) {
                       : msg
                   )
                 )
+                latestMessageIdRef.current = newMessage.id
+                setLastMessageId(newMessage.id)
                 return
               }
 
@@ -270,6 +405,9 @@ export function useMessages(roomId: string) {
                 }
 
                 logger.log('[Realtime] 📥 Adding new message from other user')
+                loadedCountRef.current += 1
+                latestMessageIdRef.current = newMessage.id
+                setLastMessageId(newMessage.id)
                 return [...prev, messageWithProfile as ChatMessageWithProfile]
               })
 
@@ -342,14 +480,6 @@ export function useMessages(roomId: string) {
     if (USE_LONG_POLLING) {
       logger.log('[Mode] Using Long Polling')
       fetchMessages().then(() => {
-        // 초기 메시지 로드 후 lastMessageId 설정
-        setMessages((prev) => {
-          if (prev.length > 0) {
-            setLastMessageId(prev[prev.length - 1].id)
-          }
-          return prev
-        })
-
         // Long Polling 시작
         startPolling()
       })
@@ -365,8 +495,8 @@ export function useMessages(roomId: string) {
     return () => {
       if (USE_LONG_POLLING) {
         logger.log('[Long Polling] Cleaning up')
-        pollingRef.current.isPolling = false
-        pollingRef.current.abortController?.abort()
+        currentPollingRef.isPolling = false
+        currentPollingRef.abortController?.abort()
       } else {
         logger.log('[Realtime] Cleaning up subscription')
         if (reconnectTimer) {
@@ -425,9 +555,10 @@ export function useMessages(roomId: string) {
 
         logger.log('[Send] ➕ Adding optimistic message to UI:', tempId)
         setMessages((prev) => [...prev, optimisticMessage])
+        loadedCountRef.current += 1
 
-        let data: any = null
-        let error: any = null
+        let data: InsertedMessageRow | null = null
+        let sendError: Error | null = null
 
         // Feature Flag에 따라 API 또는 Supabase 직접 호출
         if (USE_LONG_POLLING) {
@@ -447,10 +578,10 @@ export function useMessages(roomId: string) {
               throw new Error(errorData.error || 'API error')
             }
 
-            const result = await response.json()
+            const result = (await response.json()) as { message: InsertedMessageRow }
             data = result.message
-          } catch (err: any) {
-            error = err
+          } catch (err: unknown) {
+            sendError = err instanceof Error ? err : new Error('API error')
           }
         } else {
           logger.log('[Send] Using Supabase direct')
@@ -464,14 +595,15 @@ export function useMessages(roomId: string) {
             .select()
             .single()
 
-          data = result.data
-          error = result.error
+          data = result.data as InsertedMessageRow | null
+          sendError = result.error ? new Error(result.error.message) : null
         }
 
-        if (error) {
-          logger.error('[Send] ❌ Send message error:', error)
+        if (sendError) {
+          logger.error('[Send] ❌ Send message error:', sendError)
           // 실패 시 낙관적으로 추가한 메시지 제거
           setMessages((prev) => prev.filter((msg) => msg.id !== tempId))
+          loadedCountRef.current = Math.max(loadedCountRef.current - 1, 0)
           setError('메시지 전송에 실패했습니다')
           isSendingRef.current = false
           setIsSending(false)
@@ -499,6 +631,7 @@ export function useMessages(roomId: string) {
 
           // Long Polling 모드: lastMessageId 업데이트
           if (USE_LONG_POLLING) {
+            latestMessageIdRef.current = data.id
             setLastMessageId(data.id)
           }
         }
@@ -508,6 +641,7 @@ export function useMessages(roomId: string) {
         logger.error('Send error:', err)
         // 실패 시 낙관적으로 추가한 메시지 제거
         setMessages((prev) => prev.filter((msg) => msg.id !== tempId))
+        loadedCountRef.current = Math.max(loadedCountRef.current - 1, 0)
         setError('메시지 전송에 실패했습니다')
         return false
       } finally {
@@ -523,6 +657,10 @@ export function useMessages(roomId: string) {
     isLoading,
     error,
     isSending,
+    hasOlderMessages,
+    isLoadingOlder,
+    loadOlderMessages,
+    lastMessageId,
     sendMessage,
     refetch: fetchMessages,
   }

@@ -1,110 +1,87 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ChatRoomWithProfile } from '@/types/chat'
 import { getCache, setCache } from '@/lib/cache'
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('useChats')
+const CHAT_ROOMS_PAGE_SIZE = 20
+
+interface FetchOptions {
+  append?: boolean
+  useCache?: boolean
+}
+
+type ChatRoomRow = {
+  id: string
+  user1_id: string
+  user2_id: string
+  post_id: string | null
+  [key: string]: unknown
+}
 
 /**
- * 채팅방 목록을 가져오고 실시간 업데이트를 제공하는 훅
+ * 채팅방 목록을 가져오고 페이지 단위 로딩을 제공하는 훅
  */
 export function useChats() {
   const [chatRooms, setChatRooms] = useState<ChatRoomWithProfile[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isFetchingMore, setIsFetchingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
   const supabase = createClient()
+  const offsetRef = useRef(0)
 
-  const fetchChatRooms = useCallback(async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
+  const buildRoomsWithDetails = useCallback(
+    async (roomsData: ChatRoomRow[], userId: string): Promise<ChatRoomWithProfile[]> => {
+      if (roomsData.length === 0) return []
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setChatRooms([])
-        setIsLoading(false)
-        return
-      }
-
-      // 캐시 확인 (3분 TTL - 채팅방은 자주 변경되므로 짧게 설정)
-      const chatCacheKey = `cache_chat_rooms_${user.id}`
-      const cached = getCache<ChatRoomWithProfile[]>(chatCacheKey, 3 * 60 * 1000)
-      if (cached && cached.length > 0) {
-        logger.log('채팅방 목록 캐시 히트')
-        setChatRooms(cached)
-        setIsLoading(false)
-        // 캐시 사용 후에도 백그라운드에서 업데이트
-        // return 하지 않고 계속 진행
-      }
-
-      // Get chat rooms where user is either user1 or user2
-      const { data: roomsData, error: roomsError } = await supabase
-        .from('chat_rooms')
-        .select('*')
-        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
-        .order('updated_at', { ascending: false })
-
-      if (roomsError) {
-        logger.error('Rooms fetch error:', roomsError)
-        setError('채팅방 목록을 불러오는데 실패했습니다')
-        return
-      }
-
-      // 최적화: 배치 쿼리로 N+1 문제 해결
-      const otherUserIds = (roomsData || []).map(room =>
-        room.user1_id === user.id ? room.user2_id : room.user1_id
+      const otherUserIds = roomsData.map((room) =>
+        room.user1_id === userId ? room.user2_id : room.user1_id
       )
-      const roomIds = (roomsData || []).map(room => room.id)
-      const postIds = (roomsData || [])
-        .filter(room => room.post_id)
-        .map(room => room.post_id)
+      const roomIds = roomsData.map((room) => room.id)
+      const postIds = roomsData
+        .filter((room) => room.post_id)
+        .map((room) => room.post_id)
 
-      // 병렬로 모든 데이터 가져오기 (3개 쿼리)
       const [profilesResult, messagesResult, postsResult] = await Promise.all([
-        // 1. 모든 사용자 프로필 한번에 조회
         supabase
           .from('profiles')
           .select('id, full_name, avatar_url, bread_level, user_role')
           .in('id', otherUserIds),
 
-        // 2. 모든 unread 메시지 한번에 조회
         supabase
           .from('chat_messages')
           .select('room_id, is_read, sender_id')
           .in('room_id', roomIds)
           .eq('is_read', false)
-          .neq('sender_id', user.id),
+          .neq('sender_id', userId),
 
-        // 3. 관련 게시글 한번에 조회
         postIds.length > 0
           ? supabase
               .from('posts')
               .select('id, title, price, images, status')
               .in('id', postIds)
-          : Promise.resolve({ data: [] })
+          : Promise.resolve({ data: [] }),
       ])
 
       const profilesData = profilesResult.data || []
       const messagesData = messagesResult.data || []
       const postsData = postsResult.data || []
 
-      // Map으로 빠른 조회
-      const profilesMap = new Map(profilesData.map(p => [p.id, p]))
-      const postsMap = new Map(postsData.map(p => [p.id, p]))
+      const profilesMap = new Map(profilesData.map((profile) => [profile.id, profile]))
+      const postsMap = new Map(postsData.map((post) => [post.id, post]))
 
-      // room별 unread count 계산
       const unreadCountMap = new Map<string, number>()
-      messagesData.forEach(msg => {
-        unreadCountMap.set(msg.room_id, (unreadCountMap.get(msg.room_id) || 0) + 1)
+      messagesData.forEach((message) => {
+        unreadCountMap.set(message.room_id, (unreadCountMap.get(message.room_id) || 0) + 1)
       })
 
-      // 데이터 매핑 (O(n) 복잡도)
-      const roomsWithDetails = (roomsData || []).map(room => {
-        const otherUserId = room.user1_id === user.id ? room.user2_id : room.user1_id
+      return roomsData.map((room) => {
+        const otherUserId = room.user1_id === userId ? room.user2_id : room.user1_id
         const profile = profilesMap.get(otherUserId)
         const post = room.post_id ? postsMap.get(room.post_id) : null
 
@@ -114,33 +91,117 @@ export function useChats() {
             id: otherUserId,
             full_name: null,
             avatar_url: null,
-            bread_level: 0
+            bread_level: 0,
           },
           unread_count: unreadCountMap.get(room.id) || 0,
           post: post || null,
         }
-      })
+      }) as ChatRoomWithProfile[]
+    },
+    [supabase]
+  )
 
-      // 캐시에 저장 (3분 TTL)
-      setCache(chatCacheKey, roomsWithDetails as ChatRoomWithProfile[], 3 * 60 * 1000)
+  const fetchChatRooms = useCallback(
+    async ({ append = false, useCache = false }: FetchOptions = {}) => {
+      try {
+        if (append) {
+          setIsFetchingMore(true)
+        } else {
+          setIsLoading(true)
+          setError(null)
+        }
 
-      setChatRooms(roomsWithDetails as ChatRoomWithProfile[])
-    } catch (err) {
-      logger.error('Fetch error:', err)
-      setError('채팅방 목록을 불러오는데 실패했습니다')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [supabase])
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
 
-  useEffect(() => {
-    // Realtime 구독 제거 - 초기 로드만 수행
-    // 채팅방 목록은 실시간성이 덜 중요하므로 수동 새로고침으로 충분
-    logger.log('Loading chat rooms (no realtime subscription)')
-    fetchChatRooms()
+        if (!user) {
+          setChatRooms([])
+          setHasMore(false)
+          offsetRef.current = 0
+          return
+        }
 
-    // Cleanup 불필요 (구독 없음)
+        const chatCacheKey = `cache_chat_rooms_${user.id}`
+        if (!append && useCache) {
+          const cached = getCache<ChatRoomWithProfile[]>(chatCacheKey, 3 * 60 * 1000)
+          if (cached && cached.length > 0) {
+            logger.log('채팅방 목록 캐시 히트')
+            setChatRooms(cached)
+            offsetRef.current = cached.length
+            setHasMore(cached.length >= CHAT_ROOMS_PAGE_SIZE)
+            setIsLoading(false)
+          }
+        }
+
+        const start = append ? offsetRef.current : 0
+        const end = start + CHAT_ROOMS_PAGE_SIZE - 1
+
+        const { data: roomsData, error: roomsError } = await supabase
+          .from('chat_rooms')
+          .select('*')
+          .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+          .order('updated_at', { ascending: false })
+          .range(start, end)
+
+        if (roomsError) {
+          logger.error('Rooms fetch error:', roomsError)
+          setError('채팅방 목록을 불러오는데 실패했습니다')
+          return
+        }
+
+        const nextRooms = await buildRoomsWithDetails((roomsData || []) as ChatRoomRow[], user.id)
+
+        setChatRooms((prev) => {
+          if (!append) return nextRooms
+
+          const seen = new Set(prev.map((room) => room.id))
+          const uniqueNextRooms = nextRooms.filter((room) => !seen.has(room.id))
+          return [...prev, ...uniqueNextRooms]
+        })
+
+        offsetRef.current = start + (roomsData?.length || 0)
+        setHasMore((roomsData?.length || 0) === CHAT_ROOMS_PAGE_SIZE)
+
+        if (!append) {
+          setCache(chatCacheKey, nextRooms, 3 * 60 * 1000)
+        }
+      } catch (err) {
+        logger.error('Fetch error:', err)
+        setError('채팅방 목록을 불러오는데 실패했습니다')
+      } finally {
+        if (append) {
+          setIsFetchingMore(false)
+        } else {
+          setIsLoading(false)
+        }
+      }
+    },
+    [buildRoomsWithDetails, supabase]
+  )
+
+  const mutate = useCallback(async () => {
+    offsetRef.current = 0
+    await fetchChatRooms({ append: false, useCache: false })
   }, [fetchChatRooms])
 
-  return { chatRooms, isLoading, error, mutate: fetchChatRooms }
+  const loadMore = useCallback(async () => {
+    if (isLoading || isFetchingMore || !hasMore) return
+    await fetchChatRooms({ append: true, useCache: false })
+  }, [fetchChatRooms, hasMore, isFetchingMore, isLoading])
+
+  useEffect(() => {
+    logger.log('Loading chat rooms with pagination')
+    fetchChatRooms({ append: false, useCache: true })
+  }, [fetchChatRooms])
+
+  return {
+    chatRooms,
+    isLoading,
+    isFetchingMore,
+    hasMore,
+    error,
+    mutate,
+    loadMore,
+  }
 }
