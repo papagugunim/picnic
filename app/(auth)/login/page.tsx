@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import LoginForm from '@/components/auth/LoginForm'
 import SocialLogin from '@/components/auth/SocialLogin'
-import { Card, CardContent } from '@/components/ui/card'
 
 export const metadata = {
   title: '로그인 - picnic',
@@ -15,36 +14,18 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-3">
           <Link href="/" className="inline-block">
-            <h1 className="text-5xl font-bold gradient-text">picnic</h1>
+            <h1 className="text-5xl font-bold home-hero-title">picnic</h1>
           </Link>
-          <p className="text-muted-foreground text-lg">
-            피크닉 - 해외 한인 커뮤니티
-          </p>
         </div>
 
         <div className="space-y-6">
-          <Card className="glass-strong">
-            <CardContent className="pt-6 space-y-6">
-              <Suspense fallback={<div className="h-32" />}>
-                <LoginForm />
-              </Suspense>
+          <Suspense fallback={<div className="h-32" />}>
+            <LoginForm />
+          </Suspense>
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-3 text-muted-foreground">
-                    또는
-                  </span>
-                </div>
-              </div>
-
-              <Suspense fallback={<div className="h-32" />}>
-                <SocialLogin mode="login" />
-              </Suspense>
-            </CardContent>
-          </Card>
+          <Suspense fallback={<div className="h-16" />}>
+            <SocialLogin mode="login" providers={['google']} />
+          </Suspense>
 
           <div className="text-center text-sm text-muted-foreground">
             계정이 없으신가요?{' '}
