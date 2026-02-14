@@ -19,6 +19,7 @@ import { getRandomLoadingMessage } from '@/lib/loading-messages'
 
 interface Post {
   id: string
+  author_id: string
   title: string
   price: number | null
   city: string
@@ -35,6 +36,143 @@ interface Post {
   interests_count: number
   user_liked: boolean
   user_interested: boolean
+}
+
+interface FeedPostItemProps {
+  post: Post
+  isDeveloper: boolean
+  onLikeToggle: (postId: string, currentlyLiked: boolean) => void
+  onInterestToggle: (postId: string, currentlyInterested: boolean) => void
+  onView?: (postId: string, authorId: string) => void
+}
+
+function FeedPostItem({
+  post,
+  isDeveloper,
+  onLikeToggle,
+  onInterestToggle,
+  onView,
+}: FeedPostItemProps) {
+  const linkRef = useRef<HTMLAnchorElement>(null)
+  const viewedRef = useRef(false)
+
+  useEffect(() => {
+    const element = linkRef.current
+    if (!element || !onView || viewedRef.current) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !viewedRef.current) {
+          viewedRef.current = true
+          onView(post.id, post.author_id)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.55 }
+    )
+
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [onView, post.id, post.author_id])
+
+  return (
+    <Link
+      ref={linkRef}
+      href={`/post/${post.id}`}
+      className="flex gap-3 p-3 hover:bg-muted/30 transition-colors"
+    >
+      {/* Image */}
+      <div className="flex-shrink-0 w-24 h-24 bg-muted rounded-lg overflow-hidden relative">
+        {post.images && post.images.length > 0 ? (
+          <Image
+            src={post.images[0]}
+            alt={post.title}
+            fill
+            sizes="(max-width: 768px) 96px, 96px"
+            className="object-cover"
+            loading="lazy"
+            quality={75}
+            placeholder="blur"
+            blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+            이미지 없음
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 flex flex-col justify-between min-w-0">
+        <div>
+          <h3 className="text-base font-normal line-clamp-2 mb-0.5">
+            {post.title}
+          </h3>
+          <div className="text-xs text-muted-foreground mb-0.5">
+            <span>{getCityNameInKorean(post.city)}</span>
+            <span> · </span>
+            <span>{formatTimeAgo(post.created_at)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <p className="text-base font-bold">
+              {post.price === 0 || post.price === null
+                ? '무료나눔'
+                : `${post.price.toLocaleString()}₽`}
+            </p>
+            {post.status && post.status !== 'active' && (
+              <span className={`text-xs px-2 py-0.5 rounded-full ${getPostStatusInfo(post.status as PostStatus).bgColor} ${getPostStatusInfo(post.status as PostStatus).textColor} font-medium`}>
+                {getPostStatusInfo(post.status as PostStatus).label}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 items-center justify-end text-xs text-muted-foreground">
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onLikeToggle(post.id, post.user_liked)
+            }}
+            className="flex items-center gap-1 hover:text-foreground transition-colors"
+            aria-label="좋아요"
+          >
+            <Heart
+              className={`w-4 h-4 ${post.user_liked ? 'fill-red-500 text-red-500' : ''}`}
+            />
+            <span className={post.user_liked ? 'text-red-500' : ''}>
+              {post.likes_count || 0}
+            </span>
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onInterestToggle(post.id, post.user_interested)
+            }}
+            className="flex items-center gap-1 hover:text-foreground transition-colors"
+            aria-label="관심 등록"
+          >
+            <Bookmark
+              className={`w-4 h-4 ${post.user_interested ? 'fill-primary text-primary' : ''}`}
+            />
+            <span className={post.user_interested ? 'text-primary' : ''}>
+              {post.interests_count || 0}
+            </span>
+          </button>
+
+          {isDeveloper && (
+            <div className="flex items-center gap-1">
+              <BarChart2 className="w-4 h-4" />
+              <span>{post.view_count || 0}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </Link>
+  )
 }
 
 const categories = [
@@ -58,6 +196,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
   const userCity = profile?.city || null
   const userStations = profile?.preferred_metro_stations || []
   const isInitialized = !userLoading
+  const viewedPostIds = useRef(new Set<string>())
 
   const fetchPosts = useCallback(async (cursor: string | null) => {
     if (!user) {
@@ -70,6 +209,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
       .from('posts')
       .select(`
         id,
+        author_id,
         title,
         price,
         city,
@@ -221,6 +361,16 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
     }
   }, [allPosts, selectedTab, nearbyStationsList])
 
+  const handlePostView = useCallback((postId: string, authorId: string) => {
+    if (!user || viewedPostIds.current.has(postId) || authorId === user.id) return
+    viewedPostIds.current.add(postId)
+
+    updateItem(postId, (post) => ({ ...post, view_count: (post.view_count || 0) + 1 }))
+
+    const supabase = createClient()
+    supabase.rpc('increment_post_view_count', { p_post_id: postId }).then(() => {})
+  }, [updateItem, user])
+
   async function toggleLike(postId: string, currentlyLiked: boolean) {
     if (!user) return
 
@@ -365,102 +515,14 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
         ) : (
           <div>
             {posts.map((post) => (
-              <Link
+              <FeedPostItem
                 key={post.id}
-                href={`/post/${post.id}`}
-                className="flex gap-3 p-3 hover:bg-muted/30 transition-colors"
-              >
-                {/* Image */}
-                <div className="flex-shrink-0 w-24 h-24 bg-muted rounded-lg overflow-hidden relative">
-                  {post.images && post.images.length > 0 ? (
-                    <Image
-                      src={post.images[0]}
-                      alt={post.title}
-                      fill
-                      sizes="(max-width: 768px) 96px, 96px"
-                      className="object-cover"
-                      loading="lazy"
-                      quality={75}
-                      placeholder="blur"
-                      blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-                      이미지 없음
-                    </div>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 flex flex-col justify-between min-w-0">
-                  <div>
-                    <h3 className="text-base font-normal line-clamp-2 mb-0.5">
-                      {post.title}
-                    </h3>
-                    <div className="text-xs text-muted-foreground mb-0.5">
-                      <span>{getCityNameInKorean(post.city)}</span>
-                      <span> · </span>
-                      <span>{formatTimeAgo(post.created_at)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-base font-bold">
-                        {post.price === 0 || post.price === null
-                          ? '무료나눔'
-                          : `${post.price.toLocaleString()}₽`}
-                      </p>
-                      {post.status && post.status !== 'active' && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${getPostStatusInfo(post.status as PostStatus).bgColor} ${getPostStatusInfo(post.status as PostStatus).textColor} font-medium`}>
-                          {getPostStatusInfo(post.status as PostStatus).label}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-3 items-center justify-end text-xs text-muted-foreground">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        toggleLike(post.id, post.user_liked)
-                      }}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors"
-                      aria-label="좋아요"
-                    >
-                      <Heart
-                        className={`w-4 h-4 ${post.user_liked ? 'fill-red-500 text-red-500' : ''}`}
-                      />
-                      <span className={post.user_liked ? 'text-red-500' : ''}>
-                        {post.likes_count || 0}
-                      </span>
-                    </button>
-
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        toggleInterest(post.id, post.user_interested)
-                      }}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors"
-                      aria-label="관심 등록"
-                    >
-                      <Bookmark
-                        className={`w-4 h-4 ${post.user_interested ? 'fill-primary text-primary' : ''}`}
-                      />
-                      <span className={post.user_interested ? 'text-primary' : ''}>
-                        {post.interests_count || 0}
-                      </span>
-                    </button>
-
-                    {profile?.user_role === 'developer' && (
-                      <div className="flex items-center gap-1">
-                        <BarChart2 className="w-4 h-4" />
-                        <span>{post.view_count || 0}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Link>
+                post={post}
+                isDeveloper={profile?.user_role === 'developer'}
+                onLikeToggle={toggleLike}
+                onInterestToggle={toggleInterest}
+                onView={handlePostView}
+              />
             ))}
 
             {/* Sentinel for infinite scroll */}

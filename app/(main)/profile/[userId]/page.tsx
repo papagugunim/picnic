@@ -11,7 +11,7 @@ import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { getBreadInfo, getBreadDescription, getBreadEmoji } from '@/lib/bread'
+import { BREAD_SCORE_FACTORS, getBreadDescription, getBreadEmoji, getBreadInfo, getBreadLevelByScore, getBreadScoreRange } from '@/lib/bread'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { getLoadingMessage } from '@/lib/loading-messages'
 import { BreadLevelModal } from '@/components/bread-level-modal'
@@ -37,6 +37,7 @@ interface Profile {
   preferred_metro_stations: string[] | null
   bread_level: number
   user_role: string | null
+  post_count?: number | null
 }
 
 interface Post {
@@ -55,6 +56,17 @@ interface CommunityPost {
   images: string[] | null
   category: string
   created_at: string
+}
+
+interface BreadScoreBreakdown {
+  totalScore: number
+  soldCount: number
+  salesScore: number
+  receivedReviews: number
+  averageRating: number
+  reviewScore: number
+  communityLikesScore: number
+  suggestedLevel: number
 }
 
 export default function ProfilePage() {
@@ -76,6 +88,7 @@ export default function ProfilePage() {
   const [isBreadModalOpen, setIsBreadModalOpen] = useState(false)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [breadScoreBreakdown, setBreadScoreBreakdown] = useState<BreadScoreBreakdown | null>(null)
   const metroStations = useMetroStations(profile?.city)
 
   useEffect(() => {
@@ -103,7 +116,7 @@ export default function ProfilePage() {
         // 프로필 정보 가져오기
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, city, created_at, email, preferred_metro_stations, bread_level, user_role')
+          .select('id, full_name, avatar_url, city, created_at, email, preferred_metro_stations, bread_level, user_role, post_count')
           .eq('id', userId)
           .single()
 
@@ -146,6 +159,41 @@ export default function ProfilePage() {
         } else {
           setCommunityPosts(communityPostsData || [])
         }
+
+        const soldCount = (postsData || []).filter((post) => post.status === 'sold').length
+        const [reviewResult, communityScoreResult] = await Promise.all([
+          supabase
+            .from('reviews')
+            .select('rating')
+            .eq('reviewee_id', userId),
+          supabase.rpc('calculate_community_score', { p_user_id: userId }),
+        ])
+
+        const reviewRatings = (reviewResult.data || []).map((review) => Number(review.rating) || 0)
+        const receivedReviews = reviewRatings.length
+        const averageRating = receivedReviews > 0
+          ? reviewRatings.reduce((sum, rating) => sum + rating, 0) / receivedReviews
+          : 0
+        const communityLikesScore = Math.max(
+          0,
+          typeof communityScoreResult.data === 'number' ? communityScoreResult.data : 0
+        )
+
+        const salesScore = soldCount * BREAD_SCORE_FACTORS.completedSale
+        const reviewScore = (receivedReviews * BREAD_SCORE_FACTORS.receivedReview)
+          + Math.round(averageRating * BREAD_SCORE_FACTORS.reviewRatingPoint)
+        const totalScore = Math.max(0, Math.round(salesScore + reviewScore + communityLikesScore))
+
+        setBreadScoreBreakdown({
+          totalScore,
+          soldCount,
+          salesScore,
+          receivedReviews,
+          averageRating,
+          reviewScore,
+          communityLikesScore,
+          suggestedLevel: getBreadLevelByScore(totalScore),
+        })
 
         // 본인 프로필일 경우 좋아요/관심 게시글 가져오기
         if (user.id === userId) {
@@ -369,6 +417,11 @@ export default function ProfilePage() {
                     </button>
                   )
                 })()}
+                {breadScoreBreakdown && profile.user_role !== 'admin' && profile.user_role !== 'developer' && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    브레드 점수 {breadScoreBreakdown.totalScore.toLocaleString()}점 · 현재 구간 {getBreadScoreRange(profile.bread_level || 1)}
+                  </p>
+                )}
               </div>
 
               {/* 지하철역 */}
@@ -728,6 +781,10 @@ export default function ProfilePage() {
       <BreadLevelModal
         open={isBreadModalOpen}
         onOpenChange={setIsBreadModalOpen}
+        currentLevel={profile.bread_level || 1}
+        currentRole={profile.user_role}
+        currentScore={breadScoreBreakdown?.totalScore || 0}
+        scoreBreakdown={breadScoreBreakdown}
       />
 
       {/* 신고 다이얼로그 */}

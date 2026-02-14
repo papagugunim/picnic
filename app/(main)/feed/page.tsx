@@ -32,6 +32,7 @@ export default async function FeedPage() {
       .from('posts')
       .select(`
         id,
+        author_id,
         title,
         price,
         city,

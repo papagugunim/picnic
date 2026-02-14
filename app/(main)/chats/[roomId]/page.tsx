@@ -66,6 +66,7 @@ export default function ChatRoomPage() {
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [isAtBottom, setIsAtBottom] = useState(true)
+  const [isChatInfoHidden, setIsChatInfoHidden] = useState(false)
   const [pendingMessageCount, setPendingMessageCount] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -79,6 +80,8 @@ export default function ChatRoomPage() {
   })
   const keyboardRafRef = useRef<number | null>(null)
   const scrollRafRef = useRef<number | null>(null)
+  const scrollIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastMessagesScrollTopRef = useRef(0)
   const isLoadingOlderRef = useRef(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
 
@@ -164,6 +167,8 @@ export default function ChatRoomPage() {
     setIsInitialLoad(true)
     setPendingMessageCount(0)
     setIsAtBottom(true)
+    setIsChatInfoHidden(false)
+    lastMessagesScrollTopRef.current = 0
     previousMessagesMetaRef.current = { firstId: null, lastId: null, count: 0 }
     fetchRoom()
   }, [fetchRoom])
@@ -216,12 +221,31 @@ export default function ChatRoomPage() {
 
       scrollRafRef.current = requestAnimationFrame(() => {
         scrollRafRef.current = null
+        const currentScrollTop = container.scrollTop
+        const scrollDiff = currentScrollTop - lastMessagesScrollTopRef.current
+        const hasMeaningfulDownScroll = scrollDiff > 8
+        const hasMeaningfulUpScroll = scrollDiff < -5
+
+        if (currentScrollTop < 16 || hasMeaningfulUpScroll) {
+          setIsChatInfoHidden(false)
+        } else if (hasMeaningfulDownScroll) {
+          setIsChatInfoHidden(true)
+        }
+
+        lastMessagesScrollTopRef.current = currentScrollTop
         const nearBottom = isNearBottom()
         setIsAtBottom(nearBottom)
 
         if (nearBottom) {
           setPendingMessageCount(0)
         }
+
+        if (scrollIdleTimerRef.current) {
+          clearTimeout(scrollIdleTimerRef.current)
+        }
+        scrollIdleTimerRef.current = setTimeout(() => {
+          setIsChatInfoHidden(false)
+        }, 180)
       })
     }
 
@@ -232,6 +256,9 @@ export default function ChatRoomPage() {
       container.removeEventListener('scroll', handleScroll)
       if (scrollRafRef.current !== null) {
         cancelAnimationFrame(scrollRafRef.current)
+      }
+      if (scrollIdleTimerRef.current) {
+        clearTimeout(scrollIdleTimerRef.current)
       }
     }
   }, [roomId, isNearBottom])
@@ -411,8 +438,14 @@ export default function ChatRoomPage() {
       className="flex flex-col bg-background"
       style={{ height: keyboardHeight > 0 ? `calc(100dvh - ${keyboardHeight}px)` : '100dvh' }}
     >
-      {/* Header - 고정되지 않음 */}
-      <div className="flex-shrink-0 bg-background border-b border-border">
+      {/* Header / Product info - 스크롤 다운 시 숨김 */}
+      <div
+        className={`flex-shrink-0 overflow-hidden bg-background transition-[max-height,opacity,transform,border-color] duration-300 ease-out ${
+          isChatInfoHidden
+            ? 'max-h-0 opacity-0 -translate-y-1 border-b border-transparent pointer-events-none'
+            : 'max-h-[220px] opacity-100 translate-y-0 border-b border-border'
+        }`}
+      >
         <div className="max-w-screen-xl mx-auto">
           <div className="flex items-center gap-3 px-4 py-3">
             <Button

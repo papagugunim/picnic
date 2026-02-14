@@ -179,12 +179,6 @@ export default function PostDetailClient({
       // 초기 데이터가 없는 경우에만 fetch
       if (!initialPost) {
         fetchPost()
-      } else {
-        // 조회수 증가 (본인 게시글이 아닌 경우에만) - RPC로 원자적 증가
-        if (initialPost.author_id !== user.id) {
-          const supabase = createClient()
-          supabase.rpc('increment_post_view_count', { p_post_id: postId }).then(() => {})
-        }
       }
     }
   }, [postId, userLoading, user])
@@ -204,12 +198,6 @@ export default function PostDetailClient({
         setPost(cached)
         setIsLoading(false)
 
-        // 캐시 히트해도 조회수는 증가 (본인 게시글이 아닌 경우) - RPC로 원자적 증가
-        if (cached.author_id !== user.id) {
-          supabase.rpc('increment_post_view_count', { p_post_id: postId }).then(() => {
-            setCache(cacheKey, { ...cached, view_count: (cached.view_count || 0) + 1 }, 5 * 60 * 1000)
-          })
-        }
         return
       }
 
@@ -295,11 +283,6 @@ export default function PostDetailClient({
       setCache(cacheKey, postWithDetails, 5 * 60 * 1000)
 
       setPost(postWithDetails)
-
-      // 조회수 증가 (본인 게시글이 아닌 경우에만) - RPC로 원자적 증가
-      if (postData.author_id !== user.id) {
-        supabase.rpc('increment_post_view_count', { p_post_id: postId }).then(() => {})
-      }
     } catch (err) {
       logger.error('Fetch error:', err)
     } finally {

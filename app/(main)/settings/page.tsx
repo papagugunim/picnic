@@ -3,9 +3,9 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('Page')
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, ChevronLeft, X, Search, Sun, Moon, Monitor } from 'lucide-react'
+import { Camera, Check, ChevronLeft, Loader2, Monitor, Moon, Search, Sun, X } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,12 +33,22 @@ export default function SettingsPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [saveButtonState, setSaveButtonState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+  const saveStateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (saveStateTimerRef.current) {
+        clearTimeout(saveStateTimerRef.current)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -137,6 +147,7 @@ export default function SettingsPage() {
   const handleSave = async () => {
     try {
       setIsSaving(true)
+      setSaveButtonState('saving')
       setError(null)
       setSuccess(null)
 
@@ -145,6 +156,7 @@ export default function SettingsPage() {
 
       if (!user) {
         setError('로그인이 필요합니다')
+        setSaveButtonState('idle')
         return
       }
 
@@ -162,6 +174,7 @@ export default function SettingsPage() {
         if (uploadError) {
           logger.error('Avatar upload error:', uploadError)
           setError('프로필 사진 업로드 중 오류가 발생했습니다')
+          setSaveButtonState('idle')
           return
         }
 
@@ -187,16 +200,22 @@ export default function SettingsPage() {
       if (updateError) {
         logger.error('Profile update error:', updateError)
         setError('프로필 업데이트 중 오류가 발생했습니다')
+        setSaveButtonState('idle')
         return
       }
 
       setSuccess('설정이 저장되었습니다!')
-      setTimeout(() => {
-        router.back()
-      }, 1000)
+      setSaveButtonState('saved')
+      if (saveStateTimerRef.current) {
+        clearTimeout(saveStateTimerRef.current)
+      }
+      saveStateTimerRef.current = setTimeout(() => {
+        setSaveButtonState('idle')
+      }, 1800)
     } catch (err) {
       logger.error('Save error:', err)
       setError('저장 중 오류가 발생했습니다')
+      setSaveButtonState('idle')
     } finally {
       setIsSaving(false)
     }
@@ -240,13 +259,6 @@ export default function SettingsPage() {
           </Button>
           <h1 className="text-lg font-semibold">설정</h1>
         </div>
-        <Button
-          onClick={handleSave}
-          disabled={isSaving}
-          size="sm"
-        >
-          {isSaving ? '저장 중...' : '저장'}
-        </Button>
       </div>
 
       {/* Content - Scrollable */}
@@ -421,6 +433,33 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+
+          {/* 저장 버튼 */}
+          <div className="pt-1">
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              className={`w-full h-11 text-sm font-semibold transition-all ${
+                saveButtonState === 'saved'
+                  ? 'bg-green-600 hover:bg-green-600 text-white animate-pulse'
+                  : ''
+              }`}
+            >
+              {saveButtonState === 'saving' && (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  저장 중...
+                </>
+              )}
+              {saveButtonState === 'saved' && (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  저장되었습니다.
+                </>
+              )}
+              {saveButtonState === 'idle' && '저장'}
+            </Button>
+          </div>
 
           {/* 알림 메시지 */}
           {success && (
