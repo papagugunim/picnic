@@ -11,7 +11,6 @@ import {
 import {
   BREAD_LEVELS,
   BREAD_LEVEL_RULES,
-  BREAD_SCORE_FACTORS,
   BreadLevel,
   getBreadDescription,
   getBreadInfo,
@@ -183,26 +182,10 @@ export function BreadLevelModal({
                 </div>
               </section>
 
-              <section className="rounded-2xl border border-border bg-card p-4">
-                <h3 className="mb-3 text-sm font-semibold">등급 산정 기준</h3>
-                <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-lg border border-border bg-background px-3 py-2">
-                    거래 완료 1건당 +{BREAD_SCORE_FACTORS.completedSale}점
-                  </div>
-                  <div className="rounded-lg border border-border bg-background px-3 py-2">
-                    받은 리뷰 1건당 +{BREAD_SCORE_FACTORS.receivedReview}점
-                  </div>
-                  <div className="rounded-lg border border-border bg-background px-3 py-2">
-                    리뷰 평점 1점당 +{BREAD_SCORE_FACTORS.reviewRatingPoint}점
-                  </div>
-                  <div className="rounded-lg border border-border bg-background px-3 py-2">
-                    커뮤니티 좋아요 1개당 +{BREAD_SCORE_FACTORS.communityLike}점
-                  </div>
-                </div>
-
-                {scoreBreakdown && !isSpecialRole && (
-                  <div className="mt-3 rounded-xl border border-border bg-background p-3 text-xs text-muted-foreground">
-                    <p className="mb-2 font-medium text-foreground">내 점수 구성</p>
+              {scoreBreakdown && !isSpecialRole && (
+                <section className="rounded-2xl border border-border bg-card p-4">
+                  <h3 className="mb-3 text-sm font-semibold">내 점수 구성</h3>
+                  <div className="rounded-xl border border-border bg-background p-3 text-xs text-muted-foreground">
                     <div className="grid gap-1.5 sm:grid-cols-2">
                       <p>거래 완료: {scoreBreakdown.soldCount}건 (+{scoreBreakdown.salesScore}점)</p>
                       <p>받은 리뷰: {scoreBreakdown.receivedReviews}건 (+{scoreBreakdown.reviewScore}점)</p>
@@ -213,8 +196,8 @@ export function BreadLevelModal({
                       총점 {scoreBreakdown.totalScore}점 / 권장 등급 {BREAD_LEVELS[scoreBreakdown.suggestedLevel as BreadLevel].name}
                     </p>
                   </div>
-                )}
-              </section>
+                </section>
+              )}
             </div>
           </div>
         </div>
