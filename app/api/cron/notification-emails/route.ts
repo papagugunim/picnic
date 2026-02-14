@@ -93,12 +93,29 @@ export async function GET(request: NextRequest) {
 
   if (!resendApiKey || !emailFrom) {
     return NextResponse.json(
-      { error: 'Missing RESEND_API_KEY or NOTIFICATION_EMAIL_FROM' },
-      { status: 500 }
+      {
+        success: false,
+        skipped: true,
+        reason: 'Missing RESEND_API_KEY or NOTIFICATION_EMAIL_FROM',
+      },
+      { status: 200 }
     )
   }
 
-  const supabase = createAdminClient()
+  let supabase: ReturnType<typeof createAdminClient>
+  try {
+    supabase = createAdminClient()
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Missing Supabase admin environment variables'
+    return NextResponse.json(
+      {
+        success: false,
+        skipped: true,
+        reason: message,
+      },
+      { status: 200 }
+    )
+  }
   const now = new Date().toISOString()
 
   const { data, error } = await supabase
