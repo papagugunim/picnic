@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
   const [selectedCity, setSelectedCity] = useState<string>('')
   const [selectedStations, setSelectedStations] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -62,6 +63,7 @@ export default function SettingsPage() {
           router.push('/login')
           return
         }
+        setUserEmail(user.email ?? null)
 
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
@@ -294,7 +296,12 @@ export default function SettingsPage() {
               />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold truncate">{profile.full_name || '익명'}</div>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="font-semibold truncate">{profile.full_name || '익명'}</span>
+                {userEmail && (
+                  <span className="text-xs text-muted-foreground truncate">{userEmail}</span>
+                )}
+              </div>
               <div className="text-xs text-muted-foreground">프로필 사진 변경</div>
             </div>
           </div>
