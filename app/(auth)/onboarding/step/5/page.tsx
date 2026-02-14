@@ -1,14 +1,51 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
+import { createClient } from '@/lib/supabase/client'
 import OnboardingLayout from '@/components/onboarding/OnboardingLayout'
 
 export default function OnboardingStep5() {
   const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleNext = () => {
-    router.push('/onboarding/complete')
+  const handleNext = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        router.push('/login')
+        return
+      }
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          onboarding_completed: true,
+          onboarding_completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id)
+
+      if (updateError) {
+        setError('온보딩 완료 처리 중 오류가 발생했습니다')
+        return
+      }
+
+      router.push('/feed')
+    } catch {
+      setError('온보딩 완료 처리 중 오류가 발생했습니다')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const regularLevels = [
@@ -32,6 +69,7 @@ export default function OnboardingStep5() {
       description="활동할수록 성장하는 브레드 등급 시스템을 소개합니다"
       onNext={handleNext}
       nextLabel="피크닉 시작하기"
+      nextLoading={isLoading}
     >
       <div className="mb-6">
         <Card className="glass-strong mb-6">
@@ -114,6 +152,12 @@ export default function OnboardingStep5() {
                 지금 바로 식빵(🍞) 등급으로 시작합니다!
               </p>
             </div>
+
+            {error && (
+              <div className="glass-strong rounded-lg p-3 text-center text-sm text-destructive">
+                {error}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
