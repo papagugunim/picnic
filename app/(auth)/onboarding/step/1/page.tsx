@@ -299,27 +299,29 @@ export default function OnboardingStep1() {
 
           {suggestedNickname && (
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-              <div className="flex items-center justify-between mb-2">
+              <div className="mb-2 text-center">
                 <p className="text-xs font-medium text-primary">추천 닉네임</p>
-                <button
-                  onClick={handleRefreshSuggestion}
-                  disabled={isCheckingDuplicate}
-                  className="text-primary hover:text-primary/80 transition-colors"
-                >
-                  <RefreshCw className={`w-4 h-4 ${isCheckingDuplicate ? 'animate-spin' : ''}`} />
-                </button>
               </div>
-              <div className="flex items-center gap-2">
-                <p className="flex-1 text-lg font-bold text-primary truncate">{suggestedNickname}</p>
+              <div className="space-y-3">
+                <p className="text-center text-lg font-bold text-primary truncate">{suggestedNickname}</p>
                 <Button
                   type="button"
                   size="sm"
-                  className="bg-[#8BA888] hover:bg-[#7a9777] text-white"
+                  className="w-full bg-[#8BA888] hover:bg-[#7a9777] text-white"
                   onClick={handleUseSuggested}
                   disabled={isLoading}
                 >
                   사용
                 </Button>
+                <button
+                  type="button"
+                  onClick={handleRefreshSuggestion}
+                  disabled={isCheckingDuplicate}
+                  className="mx-auto flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-60"
+                >
+                  <RefreshCw className={`w-5 h-5 ${isCheckingDuplicate ? 'animate-spin' : ''}`} />
+                  랜덤 다시 뽑기
+                </button>
               </div>
             </div>
           )}
