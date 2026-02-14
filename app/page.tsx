@@ -26,13 +26,13 @@ export default async function HomePage() {
         <div className="flex gap-4 justify-center">
           <Link
             href="/login"
-            className="glass px-8 py-4 rounded-xl font-semibold hover:glass-strong transition-all"
+            className="glass px-8 py-3 rounded-xl font-semibold hover:glass-strong transition-all"
           >
             로그인
           </Link>
           <Link
             href="/signup"
-            className="bg-primary text-primary-foreground px-8 py-4 rounded-xl font-semibold hover:bg-primary/90 transition-all"
+            className="bg-primary text-primary-foreground px-8 py-3 rounded-xl font-semibold hover:bg-primary/90 transition-all"
           >
             회원가입
           </Link>
