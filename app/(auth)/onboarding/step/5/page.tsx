@@ -49,112 +49,86 @@ export default function OnboardingStep5() {
   }
 
   const regularLevels = [
-    { emoji: '🍞', name: '식빵', description: '피크닉을 처음 시작한 회원입니다', subtitle: '새싹 회원' },
-    { emoji: '🥖', name: '바게트', description: '꾸준히 활동하는 회원입니다', subtitle: '활동 회원' },
-    { emoji: '🥐', name: '크로아상', description: '신뢰할 수 있는 거래 내역을 쌓은 회원입니다', subtitle: '신뢰 회원' },
-    { emoji: '🥨', name: '쁘레첼', description: '커뮤니티에서 활발히 활동하는 우수 회원입니다', subtitle: '우수 회원' },
-    { emoji: '🥯', name: '베이글', description: '많은 경험과 신뢰를 쌓은 전문 회원입니다', subtitle: '전문 회원' },
+    { emoji: '🍞', name: '식빵' },
+    { emoji: '🥖', name: '바게트' },
+    { emoji: '🥐', name: '크로아상' },
+    { emoji: '🥨', name: '쁘레첼' },
+    { emoji: '🥯', name: '베이글' },
   ]
 
   const specialLevels = [
-    { emoji: '🥪', name: '샌드위치', description: '커뮤니티를 관리하고 운영하는 관리자입니다', subtitle: '피크닉 관리자' },
-    { emoji: '🍔', name: '햄버거', description: '피크닉을 개발하고 유지보수하는 개발자입니다', subtitle: '피크닉 개발자' },
+    { emoji: '🥪', name: '샌드위치', role: '관리자' },
+    { emoji: '🍔', name: '햄버거', role: '개발자' },
   ]
 
   return (
     <OnboardingLayout
       currentStep={5}
       totalSteps={5}
-      title="환영합니다!"
-      description="활동할수록 성장하는 브레드 등급 시스템을 소개합니다"
+      title="가입을 축하해요!"
+      description="브레드 등급은 활동할수록 자동으로 성장합니다"
       onNext={handleNext}
       nextLabel="피크닉 시작하기"
       nextLoading={isLoading}
     >
-      <div className="mb-6">
-        <Card className="glass-strong mb-6">
-          <CardContent className="pt-6 space-y-6">
-            <div className="text-center mb-4">
-              <div className="text-6xl mb-4">🎉</div>
-              <h2 className="text-2xl font-bold mb-3">
-                모든 준비가 완료되었어요
+      <div className="mb-3">
+        <Card className="glass-strong">
+          <CardContent className="pt-4 space-y-3">
+            <div className="text-center space-y-1">
+              <div className="text-4xl">🎉</div>
+              <h2 className="text-lg font-bold">
+                모든 준비가 완료됐어요
               </h2>
-              <p className="text-muted-foreground">
-                활동할수록 성장하는 브레드 등급 시스템을 소개합니다
+              <p className="text-xs text-muted-foreground">
+                시작 등급은 <span className="font-semibold text-primary">식빵(🍞)</span> 입니다
               </p>
             </div>
 
-            {/* 일반 회원 등급 */}
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-3">일반 회원 등급</h3>
-              <div className="space-y-2">
+            <div className="rounded-lg bg-primary/5 border border-primary/15 p-3">
+              <p className="text-[11px] text-muted-foreground mb-2">
+                일반 등급 성장 순서
+              </p>
+              <div className="grid grid-cols-5 gap-1.5">
                 {regularLevels.map((level) => (
                   <div
                     key={level.name}
-                    className="flex items-start gap-3 p-3 rounded-lg glass"
+                    className="rounded-md border border-border bg-background/90 px-1 py-1.5 text-center"
                   >
-                    <div className="text-2xl flex-shrink-0">{level.emoji}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-semibold">{level.name}</span>
-                        <span className="text-xs text-muted-foreground">· {level.subtitle}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {level.description}
-                      </div>
-                    </div>
+                    <div className="text-base leading-none">{level.emoji}</div>
+                    <div className="text-[10px] mt-1 truncate">{level.name}</div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* 특별 등급 */}
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-3">특별 등급</h3>
-              <div className="space-y-2">
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-[11px] text-muted-foreground mb-2">
+                특별 등급
+              </p>
+              <div className="grid grid-cols-2 gap-2">
                 {specialLevels.map((level) => (
                   <div
                     key={level.name}
-                    className="flex items-start gap-3 p-3 rounded-lg glass bg-primary/5 border border-primary/20"
+                    className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-2 py-1.5"
                   >
-                    <div className="text-2xl flex-shrink-0">{level.emoji}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-semibold">{level.name}</span>
-                        <span className="text-xs text-primary">· {level.subtitle}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {level.description}
-                      </div>
+                    <div className="text-lg leading-none">{level.emoji}</div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold leading-tight">{level.name}</div>
+                      <div className="text-[10px] text-primary leading-tight">{level.role}</div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* 안내사항 */}
-            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-              <div className="flex items-start gap-2 text-xs">
-                <span>💡</span>
-                <div className="flex-1 text-muted-foreground">
-                  <p className="font-medium mb-1">브레드 등급 안내</p>
-                  <ul className="space-y-1">
-                    <li>• 등급은 활동 내역, 거래 횟수, 커뮤니티 기여도 등을 기반으로 산정됩니다</li>
-                    <li>• 일반 회원은 1-5등급까지 성장할 수 있습니다</li>
-                    <li>• 관리자와 개발자는 특별 등급이 부여됩니다</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 text-center">
-              <p className="text-sm text-primary font-medium">
-                지금 바로 식빵(🍞) 등급으로 시작합니다!
+            <div className="text-center rounded-lg border border-border bg-background/80 p-2.5">
+              <p className="text-[11px] text-muted-foreground">
+                거래/커뮤니티 활동이 쌓일수록 자동 승급됩니다.
               </p>
             </div>
 
             {error && (
-              <div className="glass-strong rounded-lg p-3 text-center text-sm text-destructive">
+              <div className="glass-strong rounded-lg p-2.5 text-center text-sm text-destructive">
                 {error}
               </div>
             )}
