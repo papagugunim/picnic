@@ -12,35 +12,98 @@ import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 import OnboardingLayout from '@/components/onboarding/OnboardingLayout'
 
-// 귀여운 형용사 (2-3글자)
-const ADJECTIVES = [
-  '귀여운', '작은', '빠른', '느린', '포근한',
-  '달콤한', '차가운', '따뜻한', '밝은', '어두운',
-  '신비한', '용감한', '조용한', '활발한', '순수한',
-  '깜찍한', '상냥한', '씩씩한', '영리한', '멋진'
+const MAX_NICKNAME_LENGTH = 20
+const MAX_SUGGESTION_LENGTH = 12
+
+// 러시아 도시/지역 감성 단어
+const RUSSIAN_CITY_WORDS = [
+  '모스크바',
+  '네바',
+  '카잔',
+  '소치',
+  '우랄',
+  '볼가',
+  '바이칼',
+  '알타이',
+  '시베리아',
+  '크렘린',
 ]
 
-// 러시아 관련 명사 (2-3글자)
-const NOUNS = [
-  '곰', '차이', '눈송이', '별', '달',
-  '네바', '볼가', '크렘린', '바이칼', '샤슬릭',
-  '피로시키', '보드카', '마트료시카', '발랄라이카', '트로이카',
-  '자작나무', '눈토끼', '북극곰', '호수', '성'
+// 러시아 음식 감성 단어
+const RUSSIAN_FOOD_WORDS = [
+  '보르시',
+  '블린',
+  '피로시키',
+  '샤슬릭',
+  '펠메니',
+  '바레니키',
+  '시르니키',
+  '메도빅',
+  '프리니키',
+  '크바스',
 ]
 
-// 랜덤 닉네임 생성 (6글자 이내, 띄어쓰기 없음)
-const generateRandomNickname = (): string => {
-  const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
-  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)]
-  const combined = `${adjective}${noun}`
+// 러시아 자연/분위기 감성 단어
+const RUSSIAN_NATURE_WORDS = [
+  '자작',
+  '설원',
+  '백야',
+  '오로라',
+  '눈송이',
+  '별빛',
+  '눈토끼',
+  '북극곰',
+  '소나무',
+  '들꽃',
+]
 
-  // 6글자 이내인지 확인
-  if (combined.length <= 6) {
-    return combined
+const SOFT_MOOD_WORDS = [
+  '포근한',
+  '몽글한',
+  '반짝이는',
+  '해맑은',
+  '고요한',
+  '따스한',
+  '아늑한',
+  '산뜻한',
+  '사뿐한',
+  '달빛',
+]
+
+const CUTE_SUFFIXES = [
+  '요정',
+  '친구',
+  '토끼',
+  '곰',
+  '냥이',
+  '구름',
+  '바람',
+  '별',
+  '달',
+  '방울',
+]
+
+const pickRandom = <T,>(list: T[]) => list[Math.floor(Math.random() * list.length)]
+
+const buildNicknameCandidate = (): string => {
+  const themePools = [RUSSIAN_CITY_WORDS, RUSSIAN_FOOD_WORDS, RUSSIAN_NATURE_WORDS]
+  const theme = pickRandom(pickRandom(themePools))
+  const mood = pickRandom(SOFT_MOOD_WORDS)
+  const suffix = pickRandom(CUTE_SUFFIXES)
+
+  const candidates = [
+    `${mood}${theme}`,
+    `${theme}${suffix}`,
+    `${mood}${theme}${suffix}`,
+  ]
+    .map((value) => value.replace(/\s+/g, ''))
+    .filter((value) => value.length >= 2 && value.length <= MAX_SUGGESTION_LENGTH)
+
+  if (candidates.length > 0) {
+    return pickRandom(candidates)
   }
 
-  // 6글자 초과하면 다시 생성
-  return generateRandomNickname()
+  return `${theme}${suffix}`.slice(0, MAX_SUGGESTION_LENGTH)
 }
 
 export default function OnboardingStep1() {
@@ -70,34 +133,59 @@ export default function OnboardingStep1() {
     loadCurrentProfile()
   }, [router])
 
+  const isNicknameTaken = async (
+    supabase: ReturnType<typeof createClient>,
+    candidate: string
+  ) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('full_name', candidate)
+      .limit(1)
+
+    if (error) {
+      logger.error('Suggested nickname duplicate check error:', error)
+      // 중복 체크 실패 시 안전하게 "이미 사용 중"으로 간주
+      return true
+    }
+
+    return (data?.length ?? 0) > 0
+  }
+
   const generateUniqueNickname = async () => {
     const supabase = createClient()
-    let attempts = 0
-    const maxAttempts = 20
+    const maxAttempts = 40
 
-    while (attempts < maxAttempts) {
-      const candidate = generateRandomNickname()
+    for (let attempts = 0; attempts < maxAttempts; attempts++) {
+      const candidate = buildNicknameCandidate()
+      const taken = await isNicknameTaken(supabase, candidate)
 
-      // 중복 확인
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('full_name', candidate)
-        .single()
-
-      if (!existingProfile) {
+      if (!taken) {
         setSuggestedNickname(candidate)
         setNickname((prev) => (prev.trim().length > 0 ? prev : candidate))
         return
       }
-
-      attempts++
     }
 
-    // 20번 시도해도 유니크한 닉네임을 못 만들면 숫자 추가
-    const fallback = `${generateRandomNickname()}${Math.floor(Math.random() * 100)}`
-    setSuggestedNickname(fallback)
-    setNickname((prev) => (prev.trim().length > 0 ? prev : fallback))
+    // 기본 조합에서 실패하면 숫자를 붙여 최종 재시도
+    for (let attempts = 0; attempts < 40; attempts++) {
+      const fallback = `${buildNicknameCandidate()}${Math.floor(10 + Math.random() * 90)}`.slice(
+        0,
+        MAX_NICKNAME_LENGTH
+      )
+      const taken = await isNicknameTaken(supabase, fallback)
+
+      if (!taken) {
+        setSuggestedNickname(fallback)
+        setNickname((prev) => (prev.trim().length > 0 ? prev : fallback))
+        return
+      }
+    }
+
+    // 최후 예비값 (충돌 가능성 매우 낮음)
+    const emergency = `피크닉${Math.floor(10000 + Math.random() * 90000)}`
+    setSuggestedNickname(emergency)
+    setNickname((prev) => (prev.trim().length > 0 ? prev : emergency))
   }
 
   const handleUseSuggested = () => {
@@ -144,14 +232,20 @@ export default function OnboardingStep1() {
       }
 
       // 닉네임 중복 확인
-      const { data: existingProfile } = await supabase
+      const { data: existingProfiles, error: duplicateCheckError } = await supabase
         .from('profiles')
         .select('id')
         .eq('full_name', nickname.trim())
         .neq('id', user.id)
-        .single()
+        .limit(1)
 
-      if (existingProfile) {
+      if (duplicateCheckError) {
+        logger.error('Nickname duplicate check error:', duplicateCheckError)
+        setError('닉네임 확인 중 오류가 발생했습니다')
+        return
+      }
+
+      if ((existingProfiles?.length ?? 0) > 0) {
         setError('이미 사용 중인 닉네임입니다')
         return
       }
