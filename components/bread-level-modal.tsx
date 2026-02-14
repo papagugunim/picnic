@@ -59,9 +59,9 @@ export function BreadLevelModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         hideCloseButton
-        className="!left-0 !top-0 !translate-x-0 !translate-y-0 !w-screen !max-w-none !h-[100dvh] !rounded-none !border-0 !p-0"
+        className="!left-0 !top-0 !translate-x-0 !translate-y-0 !w-screen !max-w-none !h-[100dvh] !rounded-none !border-0 !p-0 overflow-hidden"
       >
-        <div className="flex h-full flex-col bg-background">
+        <div className="flex h-full min-h-0 flex-col bg-background">
           <DialogHeader className="sticky top-0 z-10 border-b bg-background px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <DialogTitle className="text-base font-semibold sm:text-lg">브레드 등급 시스템</DialogTitle>
@@ -77,7 +77,10 @@ export function BreadLevelModal({
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto px-4 pb-8 pt-4 sm:px-6">
+          <div
+            className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pb-8 pt-4 sm:px-6"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
             <div className="mx-auto w-full max-w-5xl space-y-5">
               <section className="rounded-2xl border border-border bg-card p-4">
                 <div className="grid gap-4 lg:grid-cols-[1.2fr,1fr] lg:items-center">
