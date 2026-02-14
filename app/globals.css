@@ -77,8 +77,10 @@
   html {
     overflow-x: hidden;
     width: 100%;
-    /* 모바일 환경에서 100vh 문제 해결 */
-    height: 100%;
+    /* 모바일 Safari 주소창/툴바 변화 대응 */
+    min-height: 100%;
+    min-height: 100svh;
+    min-height: 100dvh;
   }
 
   body {
@@ -87,7 +89,9 @@
     font-feature-settings: "rlig" 1, "calt" 1;
     overflow-x: hidden;
     width: 100%;
-    height: 100%;
+    min-height: 100%;
+    min-height: 100svh;
+    min-height: 100dvh;
     position: relative;
   }
 
@@ -229,6 +233,19 @@
 
 /* Notion-inspired Card Effects */
 @layer utilities {
+  /* 모바일 Safari에서 툴바 축소/확장 시 높이 동기화 */
+  .min-h-screen {
+    min-height: 100vh;
+    min-height: 100svh;
+    min-height: 100dvh;
+  }
+
+  .h-screen {
+    height: 100vh;
+    height: 100svh;
+    height: 100dvh;
+  }
+
   .glass {
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border));
