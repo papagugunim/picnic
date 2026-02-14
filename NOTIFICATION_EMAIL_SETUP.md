@@ -8,15 +8,20 @@
 - `CRON_SECRET`
 - `NEXT_PUBLIC_SITE_URL` (예: `https://picnic-wheat.vercel.app`)
 
-## 2) Vercel Cron
+## 2) GitHub Actions 스케줄러
 
-`vercel.json`에 `/api/cron/notification-emails` 경로가 2분 주기로 등록되어 있습니다.
+`.github/workflows/process-notification-emails.yml`이 5분마다 `/api/cron/notification-emails`를 호출합니다.
+
+필수 GitHub Repository Secrets:
+
+- `PICNIC_APP_URL` (예: `https://picnic-wheat.vercel.app`)
+- `CRON_SECRET` (서버 환경변수와 동일 값)
 
 ## 3) 동작 흐름
 
 1. 앱/DB 트리거가 `notifications` 레코드를 생성
 2. `trigger_enqueue_notification_email`가 `notification_email_queue`에 적재
-3. Vercel Cron이 `/api/cron/notification-emails` 호출
+3. GitHub Actions가 `/api/cron/notification-emails` 호출
 4. API가 Resend로 이메일 발송 후 큐 상태를 `sent`/`failed`로 갱신
 
 ## 4) 신고 알림
