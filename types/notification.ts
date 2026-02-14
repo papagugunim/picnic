@@ -9,6 +9,7 @@ export type NotificationType =
   | 'post_interest'
   | 'community_comment'
   | 'community_like'
+  | 'content_reported'
 
 export interface Notification {
   id: string

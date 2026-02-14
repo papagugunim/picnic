@@ -42,6 +42,8 @@ export default function NotificationsPage() {
         return '👀'
       case 'community_comment':
         return '💭'
+      case 'content_reported':
+        return '🚨'
       default:
         return '🔔'
     }
