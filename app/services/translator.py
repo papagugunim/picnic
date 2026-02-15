@@ -31,9 +31,9 @@ def translate_text_with_meta(
             _missing_key_logged = True
         return text, False
 
-    payload = [("text", text), ("target_lang", target_lang)]
+    payload = {"text": text, "target_lang": target_lang}
     if source_lang:
-        payload.append(("source_lang", source_lang))
+        payload["source_lang"] = source_lang
 
     headers = {"Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}"}
 
