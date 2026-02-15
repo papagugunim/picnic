@@ -19,7 +19,7 @@ GOOGLE_TRANSLATE_API_URL = os.environ.get(
     "GOOGLE_TRANSLATE_API_URL",
     "https://translate.googleapis.com/translate_a/single",
 )
-GOOGLE_TRANSLATE_TIMEOUT = float(os.environ.get("GOOGLE_TRANSLATE_TIMEOUT", "2"))
+GOOGLE_TRANSLATE_TIMEOUT = float(os.environ.get("GOOGLE_TRANSLATE_TIMEOUT", "4"))
 logger = logging.getLogger(__name__)
 _missing_key_logged = False
 _cyrillic_re = re.compile(r"[А-Яа-яЁё]")

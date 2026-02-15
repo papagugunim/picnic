@@ -123,7 +123,7 @@ def api_feed(
         _run_warmup_once()
         items = get_today_items(cursor=cursor, limit=limit)
     if not items:
-        items = get_items(cursor=cursor, limit=limit, only_batched=False)
+        items = get_items(cursor=cursor, limit=limit, only_batched=False, source_kind="rss")
     if not items:
         items = get_archive_items(cursor=cursor, limit=limit)
     return JSONResponse({"items": items})

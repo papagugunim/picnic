@@ -5,7 +5,7 @@
 ## 핵심 기능
 - FastAPI + Jinja2 기반 Today 페이지
 - **3시간 주기 자동 업데이트 (하루 8회)**
-- 러시아 뉴스 RSS + 텔레그램 채널 병행 수집
+- 러시아 뉴스 RSS 중심 수집 (기본)
 - 사회 / 경제 / 문화 중심 분류
 - 정치성 키워드 제외 필터
 - 모스크바 연관도 기반 우선 노출
@@ -14,7 +14,8 @@
 
 ## 데이터 소스
 - RSS: RIA, Interfax, The Moscow Times RU, TASS
-- Telegram: `@mosguru`, `@moscowach`
+- 날씨 RSS: Гидрометцентр, Google News Weather(Moscow/Russia)
+- Telegram: `ENABLE_TELEGRAM_SOURCE=1` 일 때만 수집
 
 ## 실행
 ```bash
@@ -30,19 +31,22 @@ uvicorn app.main:app --reload
 - `DEEPL_TIMEOUT` (기본: `4`)
 - `DEEPL_RETRIES` (기본: `1`)
 - `GOOGLE_TRANSLATE_FALLBACK` (기본: `1`, DeepL 실패 시 구글 공개 번역 엔드포인트 폴백)
-- `GOOGLE_TRANSLATE_TIMEOUT` (기본: `2`)
+- `GOOGLE_TRANSLATE_TIMEOUT` (기본: `4`)
 - `FETCH_INTERVAL_HOURS` (기본: `3`)
 - `NEWS_BATCH_SIZE` (기본: `24`)
-- `NEWS_FETCH_TIMEOUT` (기본: `4`)
+- `NEWS_FETCH_TIMEOUT` (기본: `2`)
 - `FAST_FETCH_TIMEOUT` (기본: `1.5`, 워밍업 시 빠른 소스 요청 타임아웃)
 - `RSS_ENTRY_LIMIT` (기본: `12`)
 - `TELEGRAM_ENTRY_LIMIT` (기본: `12`)
-- `INLINE_TRANSLATION_LIMIT` (기본: `12`, 수집 시 인라인 번역 최대 호출 수)
-- `MIN_FAST_CANDIDATES` (기본: `16`, 이 수 이상 Telegram 후보가 있으면 RSS 수집 생략)
+- `INLINE_TRANSLATION_LIMIT` (기본: `40`, 수집 시 인라인 번역 최대 호출 수)
+- `ENABLE_TELEGRAM_SOURCE` (기본: `0`, Telegram 소스 포함 여부)
 - `FEED_RIA`
 - `FEED_INTERFAX`
 - `FEED_MOSCOWTIMES`
 - `FEED_TASS`
+- `FEED_HYDROMET_WEATHER`
+- `FEED_GOOGLE_WEATHER_MOSCOW`
+- `FEED_GOOGLE_WEATHER_RUSSIA`
 - `TG_CHANNEL_MOSGURU`
 - `TG_CHANNEL_MOSCOWACH`
 

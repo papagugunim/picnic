@@ -236,48 +236,60 @@ def update_translation(
         )
 
 
-def get_items(cursor: Optional[str], limit: int, only_batched: bool = True) -> List[Dict[str, Any]]:
+def get_items(
+    cursor: Optional[str],
+    limit: int,
+    only_batched: bool = True,
+    source_kind: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     with _connect() as conn:
+        where_source = ""
+        params_head: List[Any] = []
+        if source_kind in ("rss", "telegram"):
+            where_source = " AND source_kind = ?"
+            params_head.append(source_kind)
+
         if cursor:
             if only_batched:
                 cur = conn.execute(
                     """
                     SELECT * FROM items
-                    WHERE batch_id IS NOT NULL AND published_at < ?
+                    WHERE batch_id IS NOT NULL AND published_at < ? {where_source}
                     ORDER BY published_at DESC
                     LIMIT ?
-                    """,
-                    (cursor, limit),
+                    """.format(where_source=where_source),
+                    (cursor, *params_head, limit),
                 )
             else:
                 cur = conn.execute(
                     """
                     SELECT * FROM items
-                    WHERE published_at < ?
+                    WHERE published_at < ? {where_source}
                     ORDER BY published_at DESC
                     LIMIT ?
-                    """,
-                    (cursor, limit),
+                    """.format(where_source=where_source),
+                    (cursor, *params_head, limit),
                 )
         else:
             if only_batched:
                 cur = conn.execute(
                     """
                     SELECT * FROM items
-                    WHERE batch_id IS NOT NULL
+                    WHERE batch_id IS NOT NULL {where_source}
                     ORDER BY published_at DESC
                     LIMIT ?
-                    """,
-                    (limit,),
+                    """.format(where_source=where_source),
+                    (*params_head, limit),
                 )
             else:
                 cur = conn.execute(
                     """
                     SELECT * FROM items
+                    WHERE 1=1 {where_source}
                     ORDER BY published_at DESC
                     LIMIT ?
-                    """,
-                    (limit,),
+                    """.format(where_source=where_source),
+                    (*params_head, limit),
                 )
         rows = cur.fetchall()
         return [_row_to_item(row) for row in rows]
@@ -293,6 +305,7 @@ def get_today_items(cursor: Optional[str], limit: int, topic: Optional[str] = No
             "WHERE is_political = 0 "
             "AND topic IN (?, ?, ?) "
             "AND source_name IS NOT NULL "
+            "AND source_kind = 'rss' "
         )
         params.extend(allowed_topics)
 
@@ -321,7 +334,7 @@ def get_today_items(cursor: Optional[str], limit: int, topic: Optional[str] = No
 def get_archive_items(cursor: Optional[str], limit: int, topic: Optional[str] = None) -> List[Dict[str, Any]]:
     with _connect() as conn:
         params: List[Any] = []
-        sql = "SELECT * FROM items WHERE source_name IS NOT NULL "
+        sql = "SELECT * FROM items WHERE source_name IS NOT NULL AND source_kind = 'rss' "
 
         if topic in ("사회", "경제", "문화"):
             sql += "AND topic = ? "

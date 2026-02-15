@@ -37,6 +37,27 @@ RSS_SOURCES = [
         "url": os.environ.get("FEED_TASS", "https://tass.com/rss/v2.xml"),
         "lang": None,
     },
+    {
+        "name": "Hydrometcenter Weather",
+        "url": os.environ.get("FEED_HYDROMET_WEATHER", "https://meteoinfo.ru/novosti?format=feed&type=rss"),
+        "lang": "RU",
+    },
+    {
+        "name": "Google News Weather (Moscow)",
+        "url": os.environ.get(
+            "FEED_GOOGLE_WEATHER_MOSCOW",
+            "https://news.google.com/rss/search?q=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0%20%D0%BF%D0%BE%D0%B3%D0%BE%D0%B4%D0%B0&hl=ru&gl=RU&ceid=RU:ru",
+        ),
+        "lang": "RU",
+    },
+    {
+        "name": "Google News Weather (Russia)",
+        "url": os.environ.get(
+            "FEED_GOOGLE_WEATHER_RUSSIA",
+            "https://news.google.com/rss/search?q=%D0%A0%D0%BE%D1%81%D1%81%D0%B8%D1%8F%20%D0%BF%D0%BE%D0%B3%D0%BE%D0%B4%D0%B0&hl=ru&gl=RU&ceid=RU:ru",
+        ),
+        "lang": "RU",
+    },
 ]
 
 TELEGRAM_SOURCES = [
@@ -56,8 +77,13 @@ HTTP_TIMEOUT = float(os.environ.get("NEWS_FETCH_TIMEOUT", "2"))
 FAST_FETCH_TIMEOUT = float(os.environ.get("FAST_FETCH_TIMEOUT", "1.5"))
 RSS_ENTRY_LIMIT = int(os.environ.get("RSS_ENTRY_LIMIT", "12"))
 TELEGRAM_ENTRY_LIMIT = int(os.environ.get("TELEGRAM_ENTRY_LIMIT", "12"))
-INLINE_TRANSLATION_LIMIT = int(os.environ.get("INLINE_TRANSLATION_LIMIT", "12"))
-MIN_FAST_CANDIDATES = int(os.environ.get("MIN_FAST_CANDIDATES", "16"))
+INLINE_TRANSLATION_LIMIT = int(os.environ.get("INLINE_TRANSLATION_LIMIT", "40"))
+ENABLE_TELEGRAM_SOURCE = os.environ.get("ENABLE_TELEGRAM_SOURCE", "0").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 logger = logging.getLogger(__name__)
 
 POLITICS_KEYWORDS = [
@@ -153,6 +179,18 @@ TOPIC_KEYWORDS = {
         "education",
         "health",
         "weather",
+        "метел",
+        "снег",
+        "гололед",
+        "мороз",
+        "дожд",
+        "ливн",
+        "шторм",
+        "циклон",
+        "ветер",
+        "прогноз",
+        "температур",
+        "погод",
         "transport",
         "housing",
     ],
@@ -355,6 +393,7 @@ def _extract_rss_items(
     *,
     entry_limit: int = RSS_ENTRY_LIMIT,
     timeout: Optional[float] = None,
+    translate_summary: bool = True,
 ) -> List[Dict[str, Any]]:
     xml = _http_get(feed["url"], timeout=timeout)
     if not xml:
@@ -412,7 +451,9 @@ def _extract_rss_items(
                 "quality_score": score,
                 "views_count": None,
                 "translated_title": _translate_with_stats(title, feed["lang"], translation_stats),
-                "translated_summary": summary,
+                "translated_summary": (
+                    _translate_with_stats(summary, feed["lang"], translation_stats) if translate_summary else summary
+                ),
                 "translated_content": None,
                 "created_at": now_utc_iso(),
             }
@@ -518,23 +559,30 @@ def fetch_and_store(fast_mode: bool = False) -> List[int]:
     stored_ids: List[int] = []
     candidates: List[Dict[str, Any]] = []
     translation_stats: Dict[str, Any] = {"attempted": 0, "success": 0, "failed": 0, "skipped": 0}
-    if fast_mode:
-        translation_stats["disable_inline_translation"] = True
+    rss_entry_limit = min(RSS_ENTRY_LIMIT, 4) if fast_mode else RSS_ENTRY_LIMIT
+    rss_timeout = FAST_FETCH_TIMEOUT if fast_mode else None
 
-    # Fast path: Telegram source first for quick first response.
-    for source in TELEGRAM_SOURCES:
+    for feed in RSS_SOURCES:
         candidates.extend(
-            _extract_telegram_items(
-                source,
+            _extract_rss_items(
+                feed,
                 translation_stats,
-                entry_limit=min(TELEGRAM_ENTRY_LIMIT, 8) if fast_mode else TELEGRAM_ENTRY_LIMIT,
-                timeout=FAST_FETCH_TIMEOUT if fast_mode else None,
+                entry_limit=rss_entry_limit,
+                timeout=rss_timeout,
+                translate_summary=not fast_mode,
             )
         )
 
-    if not fast_mode and len(candidates) < MIN_FAST_CANDIDATES:
-        for feed in RSS_SOURCES:
-            candidates.extend(_extract_rss_items(feed, translation_stats))
+    if ENABLE_TELEGRAM_SOURCE:
+        for source in TELEGRAM_SOURCES:
+            candidates.extend(
+                _extract_telegram_items(
+                    source,
+                    translation_stats,
+                    entry_limit=min(TELEGRAM_ENTRY_LIMIT, 8) if fast_mode else TELEGRAM_ENTRY_LIMIT,
+                    timeout=FAST_FETCH_TIMEOUT if fast_mode else None,
+                )
+            )
 
     for item in candidates:
         inserted = insert_item(item)
