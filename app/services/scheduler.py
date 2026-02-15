@@ -16,6 +16,11 @@ def run_fetch_cycle() -> None:
     select_top_news()
 
 
+def run_fast_bootstrap_cycle() -> None:
+    fetch_and_store(fast_mode=True)
+    select_top_news()
+
+
 def start_scheduler() -> None:
     if scheduler.running:
         return

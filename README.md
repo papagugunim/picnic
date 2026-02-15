@@ -27,13 +27,18 @@ uvicorn app.main:app --reload
 ## 환경 변수
 - `DEEPL_API_KEY` (권장)
 - `DEEPL_API_URL` (기본: `https://api-free.deepl.com/v2/translate`)
+- `DEEPL_TIMEOUT` (기본: `4`)
+- `DEEPL_RETRIES` (기본: `1`)
 - `GOOGLE_TRANSLATE_FALLBACK` (기본: `1`, DeepL 실패 시 구글 공개 번역 엔드포인트 폴백)
-- `GOOGLE_TRANSLATE_TIMEOUT` (기본: `8`)
+- `GOOGLE_TRANSLATE_TIMEOUT` (기본: `2`)
 - `FETCH_INTERVAL_HOURS` (기본: `3`)
 - `NEWS_BATCH_SIZE` (기본: `24`)
-- `NEWS_FETCH_TIMEOUT` (기본: `12`)
-- `RSS_ENTRY_LIMIT` (기본: `80`)
-- `TELEGRAM_ENTRY_LIMIT` (기본: `40`)
+- `NEWS_FETCH_TIMEOUT` (기본: `4`)
+- `FAST_FETCH_TIMEOUT` (기본: `1.5`, 워밍업 시 빠른 소스 요청 타임아웃)
+- `RSS_ENTRY_LIMIT` (기본: `12`)
+- `TELEGRAM_ENTRY_LIMIT` (기본: `12`)
+- `INLINE_TRANSLATION_LIMIT` (기본: `12`, 수집 시 인라인 번역 최대 호출 수)
+- `MIN_FAST_CANDIDATES` (기본: `16`, 이 수 이상 Telegram 후보가 있으면 RSS 수집 생략)
 - `FEED_RIA`
 - `FEED_INTERFAX`
 - `FEED_MOSCOWTIMES`

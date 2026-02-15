@@ -20,7 +20,7 @@ from app.services.db import (
     init_db,
     search_items,
 )
-from app.services.scheduler import start_scheduler, run_fetch_cycle
+from app.services.scheduler import run_fast_bootstrap_cycle, start_scheduler, run_fetch_cycle
 from app.services.retranslate import retranslate_missing, retranslate_until_stable
 
 APP_TITLE = "Picnic Today - RU Live News"
@@ -44,6 +44,19 @@ def _startup() -> None:
     start_scheduler()
     # Run once at startup without blocking app boot
     Thread(target=run_fetch_cycle, daemon=True).start()
+
+
+def _run_warmup_cycle() -> None:
+    try:
+        run_fast_bootstrap_cycle()
+    finally:
+        _warmup_lock.release()
+
+
+def _run_warmup_once() -> None:
+    if not _warmup_lock.acquire(blocking=False):
+        return
+    _run_warmup_cycle()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -107,14 +120,12 @@ def api_feed(
 ) -> JSONResponse:
     items = get_today_items(cursor=cursor, limit=limit)
     if not items and cursor is None and os.environ.get("VERCEL") == "1":
-        if _warmup_lock.acquire(blocking=False):
-            try:
-                run_fetch_cycle()
-            finally:
-                _warmup_lock.release()
+        _run_warmup_once()
         items = get_today_items(cursor=cursor, limit=limit)
     if not items:
         items = get_items(cursor=cursor, limit=limit, only_batched=False)
+    if not items:
+        items = get_archive_items(cursor=cursor, limit=limit)
     return JSONResponse({"items": items})
 
 
@@ -126,12 +137,10 @@ def api_today_news(
 ) -> JSONResponse:
     items = get_today_items(cursor=cursor, limit=limit, topic=topic)
     if not items and cursor is None and os.environ.get("VERCEL") == "1":
-        if _warmup_lock.acquire(blocking=False):
-            try:
-                run_fetch_cycle()
-            finally:
-                _warmup_lock.release()
+        _run_warmup_once()
         items = get_today_items(cursor=cursor, limit=limit, topic=topic)
+    if not items:
+        items = get_archive_items(cursor=cursor, limit=limit, topic=topic)
     return JSONResponse({"items": items})
 
 

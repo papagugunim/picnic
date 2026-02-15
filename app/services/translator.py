@@ -7,8 +7,8 @@ import httpx
 
 DEEPL_API_URL = os.environ.get("DEEPL_API_URL", "https://api-free.deepl.com/v2/translate")
 DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY")
-DEEPL_TIMEOUT = float(os.environ.get("DEEPL_TIMEOUT", "12"))
-DEEPL_RETRIES = max(1, int(os.environ.get("DEEPL_RETRIES", "2")))
+DEEPL_TIMEOUT = float(os.environ.get("DEEPL_TIMEOUT", "4"))
+DEEPL_RETRIES = max(1, int(os.environ.get("DEEPL_RETRIES", "1")))
 GOOGLE_FALLBACK_ENABLED = os.environ.get("GOOGLE_TRANSLATE_FALLBACK", "1").strip().lower() in {
     "1",
     "true",
@@ -19,7 +19,7 @@ GOOGLE_TRANSLATE_API_URL = os.environ.get(
     "GOOGLE_TRANSLATE_API_URL",
     "https://translate.googleapis.com/translate_a/single",
 )
-GOOGLE_TRANSLATE_TIMEOUT = float(os.environ.get("GOOGLE_TRANSLATE_TIMEOUT", "8"))
+GOOGLE_TRANSLATE_TIMEOUT = float(os.environ.get("GOOGLE_TRANSLATE_TIMEOUT", "2"))
 logger = logging.getLogger(__name__)
 _missing_key_logged = False
 _cyrillic_re = re.compile(r"[А-Яа-яЁё]")

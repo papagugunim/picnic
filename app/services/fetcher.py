@@ -52,9 +52,12 @@ TELEGRAM_SOURCES = [
     },
 ]
 
-HTTP_TIMEOUT = float(os.environ.get("NEWS_FETCH_TIMEOUT", "12"))
-RSS_ENTRY_LIMIT = int(os.environ.get("RSS_ENTRY_LIMIT", "80"))
-TELEGRAM_ENTRY_LIMIT = int(os.environ.get("TELEGRAM_ENTRY_LIMIT", "40"))
+HTTP_TIMEOUT = float(os.environ.get("NEWS_FETCH_TIMEOUT", "2"))
+FAST_FETCH_TIMEOUT = float(os.environ.get("FAST_FETCH_TIMEOUT", "1.5"))
+RSS_ENTRY_LIMIT = int(os.environ.get("RSS_ENTRY_LIMIT", "12"))
+TELEGRAM_ENTRY_LIMIT = int(os.environ.get("TELEGRAM_ENTRY_LIMIT", "12"))
+INLINE_TRANSLATION_LIMIT = int(os.environ.get("INLINE_TRANSLATION_LIMIT", "12"))
+MIN_FAST_CANDIDATES = int(os.environ.get("MIN_FAST_CANDIDATES", "16"))
 logger = logging.getLogger(__name__)
 
 POLITICS_KEYWORDS = [
@@ -310,13 +313,13 @@ def _compute_quality_score(
     return round(score, 2)
 
 
-def _http_get(url: str) -> Optional[str]:
+def _http_get(url: str, timeout: Optional[float] = None) -> Optional[str]:
     headers = {
         "User-Agent": "Mozilla/5.0 (compatible; PicnicTodayBot/1.0)",
         "Accept-Language": "ru,en;q=0.8,ko;q=0.6",
     }
     try:
-        with httpx.Client(timeout=HTTP_TIMEOUT, follow_redirects=True) as client:
+        with httpx.Client(timeout=timeout or HTTP_TIMEOUT, follow_redirects=True) as client:
             resp = client.get(url, headers=headers)
             resp.raise_for_status()
             return resp.text
@@ -327,9 +330,15 @@ def _http_get(url: str) -> Optional[str]:
 def _translate_with_stats(
     text: Optional[str],
     source_lang: Optional[str],
-    stats: Dict[str, int],
+    stats: Dict[str, Any],
 ) -> Optional[str]:
     if not text or not text.strip():
+        return text
+    if bool(stats.get("disable_inline_translation")):
+        stats["skipped"] = int(stats.get("skipped") or 0) + 1
+        return text
+    if stats["attempted"] >= INLINE_TRANSLATION_LIMIT:
+        stats["skipped"] += 1
         return text
     translated, ok = translate_text_with_meta(text, source_lang=source_lang)
     stats["attempted"] += 1
@@ -340,8 +349,14 @@ def _translate_with_stats(
     return translated
 
 
-def _extract_rss_items(feed: Dict[str, Any], translation_stats: Dict[str, int]) -> List[Dict[str, Any]]:
-    xml = _http_get(feed["url"])
+def _extract_rss_items(
+    feed: Dict[str, Any],
+    translation_stats: Dict[str, Any],
+    *,
+    entry_limit: int = RSS_ENTRY_LIMIT,
+    timeout: Optional[float] = None,
+) -> List[Dict[str, Any]]:
+    xml = _http_get(feed["url"], timeout=timeout)
     if not xml:
         return []
 
@@ -349,7 +364,7 @@ def _extract_rss_items(feed: Dict[str, Any], translation_stats: Dict[str, int]) 
     source_id = get_or_create_source(feed["name"], feed["url"])
     items: List[Dict[str, Any]] = []
 
-    for entry in parsed.entries[:RSS_ENTRY_LIMIT]:
+    for entry in parsed.entries[:entry_limit]:
         title = _strip_html(entry.get("title") or "")
         link = entry.get("link") or ""
         if not title or not link:
@@ -397,7 +412,7 @@ def _extract_rss_items(feed: Dict[str, Any], translation_stats: Dict[str, int]) 
                 "quality_score": score,
                 "views_count": None,
                 "translated_title": _translate_with_stats(title, feed["lang"], translation_stats),
-                "translated_summary": _translate_with_stats(summary, feed["lang"], translation_stats),
+                "translated_summary": summary,
                 "translated_content": None,
                 "created_at": now_utc_iso(),
             }
@@ -406,13 +421,19 @@ def _extract_rss_items(feed: Dict[str, Any], translation_stats: Dict[str, int]) 
     return items
 
 
-def _extract_telegram_items(source: Dict[str, Any], translation_stats: Dict[str, int]) -> List[Dict[str, Any]]:
+def _extract_telegram_items(
+    source: Dict[str, Any],
+    translation_stats: Dict[str, Any],
+    *,
+    entry_limit: int = TELEGRAM_ENTRY_LIMIT,
+    timeout: Optional[float] = None,
+) -> List[Dict[str, Any]]:
     channel = source["channel"].strip().lstrip("@")
     if not channel:
         return []
 
     url = f"https://t.me/s/{channel}"
-    html = _http_get(url)
+    html = _http_get(url, timeout=timeout)
     if not html:
         return []
 
@@ -421,7 +442,7 @@ def _extract_telegram_items(source: Dict[str, Any], translation_stats: Dict[str,
 
     items: List[Dict[str, Any]] = []
     blocks = soup.select("div.tgme_widget_message")
-    for block in blocks[:TELEGRAM_ENTRY_LIMIT]:
+    for block in blocks[:entry_limit]:
         post_ref = block.get("data-post")
         if not post_ref or "/" not in post_ref:
             continue
@@ -484,7 +505,7 @@ def _extract_telegram_items(source: Dict[str, Any], translation_stats: Dict[str,
                 "quality_score": score,
                 "views_count": views_count,
                 "translated_title": _translate_with_stats(title, source["lang"], translation_stats),
-                "translated_summary": _translate_with_stats(summary, source["lang"], translation_stats),
+                "translated_summary": summary,
                 "translated_content": None,
                 "created_at": now_utc_iso(),
             }
@@ -493,16 +514,27 @@ def _extract_telegram_items(source: Dict[str, Any], translation_stats: Dict[str,
     return items
 
 
-def fetch_and_store() -> List[int]:
+def fetch_and_store(fast_mode: bool = False) -> List[int]:
     stored_ids: List[int] = []
     candidates: List[Dict[str, Any]] = []
-    translation_stats: Dict[str, int] = {"attempted": 0, "success": 0, "failed": 0}
+    translation_stats: Dict[str, Any] = {"attempted": 0, "success": 0, "failed": 0, "skipped": 0}
+    if fast_mode:
+        translation_stats["disable_inline_translation"] = True
 
-    for feed in RSS_SOURCES:
-        candidates.extend(_extract_rss_items(feed, translation_stats))
-
+    # Fast path: Telegram source first for quick first response.
     for source in TELEGRAM_SOURCES:
-        candidates.extend(_extract_telegram_items(source, translation_stats))
+        candidates.extend(
+            _extract_telegram_items(
+                source,
+                translation_stats,
+                entry_limit=min(TELEGRAM_ENTRY_LIMIT, 8) if fast_mode else TELEGRAM_ENTRY_LIMIT,
+                timeout=FAST_FETCH_TIMEOUT if fast_mode else None,
+            )
+        )
+
+    if not fast_mode and len(candidates) < MIN_FAST_CANDIDATES:
+        for feed in RSS_SOURCES:
+            candidates.extend(_extract_rss_items(feed, translation_stats))
 
     for item in candidates:
         inserted = insert_item(item)
@@ -510,12 +542,14 @@ def fetch_and_store() -> List[int]:
             stored_ids.append(inserted)
 
     logger.info(
-        "fetch_and_store done: candidates=%d inserted=%d translate_attempted=%d success=%d failed=%d",
+        "fetch_and_store done: mode=%s candidates=%d inserted=%d translate_attempted=%d success=%d failed=%d skipped=%d",
+        "fast" if fast_mode else "normal",
         len(candidates),
         len(stored_ids),
         translation_stats["attempted"],
         translation_stats["success"],
         translation_stats["failed"],
+        translation_stats["skipped"],
     )
 
     return stored_ids
