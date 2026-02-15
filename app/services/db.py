@@ -4,7 +4,16 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.environ.get("NEWS_DB_PATH", os.path.join(BASE_DIR, "..", "..", "data", "news.db"))
+
+
+def _default_db_path() -> str:
+    # Vercel serverless filesystem is read-only except /tmp.
+    if os.environ.get("VERCEL") == "1":
+        return "/tmp/news.db"
+    return os.path.join(BASE_DIR, "..", "..", "data", "news.db")
+
+
+DB_PATH = os.environ.get("NEWS_DB_PATH", _default_db_path())
 
 
 def _connect() -> sqlite3.Connection:
