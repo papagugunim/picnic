@@ -1,4 +1,5 @@
 import { getRussiaNewsBaseUrl, normalizeTopic, type RussiaNewsApiPayload, type RussiaNewsItem } from '@/lib/russia-news'
+import { DEFAULT_RUSSIA_NEWS_BASE_URL } from '@/lib/russia-news'
 
 interface FetchRussiaNewsOptions {
   endpoint: '/api/today-news' | '/api/archive'
@@ -9,6 +10,7 @@ interface FetchRussiaNewsOptions {
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 50
+const UPSTREAM_TIMEOUT_MS = 8000
 
 function toSafeLimit(input?: number): number {
   if (!input || Number.isNaN(input)) return DEFAULT_LIMIT
@@ -43,34 +45,51 @@ function normalizeItem(raw: any, index: number): RussiaNewsItem {
 }
 
 export async function fetchRussiaNewsFromUpstream(options: FetchRussiaNewsOptions): Promise<RussiaNewsApiPayload> {
-  const baseUrl = getRussiaNewsBaseUrl()
-  const url = new URL(`${baseUrl}${options.endpoint}`)
-
+  const primaryBaseUrl = getRussiaNewsBaseUrl()
+  const fallbackBaseUrl = DEFAULT_RUSSIA_NEWS_BASE_URL.replace(/\/$/, '')
   const limit = toSafeLimit(options.limit)
-  url.searchParams.set('limit', String(limit))
-
-  if (options.cursor) url.searchParams.set('cursor', options.cursor)
   const topic = normalizeTopic(options.topic || null)
-  if (topic) url.searchParams.set('topic', topic)
 
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      Accept: 'application/json',
-    },
-    cache: 'no-store',
-    next: { revalidate: 0 },
-  })
+  async function requestFrom(baseUrl: string): Promise<RussiaNewsApiPayload> {
+    const url = new URL(`${baseUrl}${options.endpoint}`)
+    url.searchParams.set('limit', String(limit))
+    if (options.cursor) url.searchParams.set('cursor', options.cursor)
+    if (topic) url.searchParams.set('topic', topic)
 
-  if (!response.ok) {
-    const body = await response.text()
-    throw new Error(`Upstream request failed (${response.status}): ${body.slice(0, 200)}`)
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
+
+    try {
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+        },
+        cache: 'no-store',
+        next: { revalidate: 0 },
+        signal: controller.signal,
+      })
+
+      if (!response.ok) {
+        const body = await response.text()
+        throw new Error(`Upstream request failed (${response.status}): ${body.slice(0, 200)}`)
+      }
+
+      const payload = (await response.json()) as { items?: any[] }
+      const items = Array.isArray(payload?.items) ? payload.items : []
+
+      return {
+        items: items.map((item, index) => normalizeItem(item, index)),
+      }
+    } finally {
+      clearTimeout(timer)
+    }
   }
 
-  const payload = (await response.json()) as { items?: any[] }
-  const items = Array.isArray(payload?.items) ? payload.items : []
-
-  return {
-    items: items.map((item, index) => normalizeItem(item, index)),
+  const primaryPayload = await requestFrom(primaryBaseUrl)
+  if (primaryPayload.items.length > 0 || primaryBaseUrl === fallbackBaseUrl) {
+    return primaryPayload
   }
+
+  return requestFrom(fallbackBaseUrl)
 }
