@@ -9,6 +9,7 @@ import { getCache, setCache, clearCache, CACHE_KEYS } from '@/lib/cache'
 import { WeatherSection } from '@/components/today/WeatherSection'
 import { ExchangeSection } from '@/components/today/ExchangeSection'
 import { NewsSection } from '@/components/today/NewsSection'
+import { RussiaNewsSection } from '@/components/today/RussiaNewsSection'
 import { WEATHER_ICONS, CITY_COORDS, USEFUL_LINKS } from '@/components/today/constants'
 import type { WeatherData, WeatherCondition, ExchangeRates, OHLCData, NewsItem } from '@/components/today/types'
 
@@ -343,6 +344,9 @@ export default function TodayPage() {
             isAdmin={isAdmin}
             onRefreshNews={fetchNews}
           />
+
+          {/* 모스크바 실시간 뉴스 임베드 */}
+          <RussiaNewsSection />
 
           {/* 유용한 링크 */}
           <div className="glass-strong rounded-xl p-4">
