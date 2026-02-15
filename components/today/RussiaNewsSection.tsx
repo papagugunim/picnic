@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowRight, RefreshCw } from 'lucide-react'
 
 import { RussiaNewsCard } from '@/components/today/RussiaNewsCard'
-import { DEFAULT_RUSSIA_NEWS_BASE_URL, normalizeTopic, type RussiaNewsItem, type RussiaNewsTopic } from '@/lib/russia-news'
+import { normalizeTopic, type RussiaNewsItem, type RussiaNewsTopic } from '@/lib/russia-news'
 
 const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '전체', value: '' },
@@ -13,8 +13,6 @@ const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '경제', value: '경제' },
   { label: '문화', value: '문화' },
 ]
-
-const EXTERNAL_NEWS_URL = process.env.NEXT_PUBLIC_RUSSIA_NEWS_EXTERNAL_URL || DEFAULT_RUSSIA_NEWS_BASE_URL
 
 function formatDateTime(value: string): string {
   if (!value) return '-'
@@ -57,7 +55,7 @@ export function RussiaNewsSection() {
         }
 
         const nextItems = Array.isArray(data?.items) ? (data.items as RussiaNewsItem[]) : []
-        setItems(nextItems)
+        setItems(nextItems.slice(0, 8))
       } catch (error) {
         setItems([])
         setErrorMessage(error instanceof Error ? error.message : '뉴스를 불러오지 못했습니다.')
@@ -144,23 +142,14 @@ export function RussiaNewsSection() {
         </div>
       )}
 
-      <div className="flex items-center justify-between pt-1">
+      <div className="flex items-center pt-1">
         <Link
           href="/today/russia-news"
           className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
         >
-          피크닉에서 전체 보기
+          전체보기
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
-
-        <a
-          href={EXTERNAL_NEWS_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-muted-foreground hover:text-foreground"
-        >
-          뉴스 전용 페이지
-        </a>
       </div>
     </section>
   )

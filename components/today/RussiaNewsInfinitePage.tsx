@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 
 import { RussiaNewsCard } from '@/components/today/RussiaNewsCard'
-import { DEFAULT_RUSSIA_NEWS_BASE_URL, normalizeTopic, type RussiaNewsItem, type RussiaNewsTopic } from '@/lib/russia-news'
+import { normalizeTopic, type RussiaNewsItem, type RussiaNewsTopic } from '@/lib/russia-news'
 
 const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '전체', value: '' },
@@ -13,8 +13,6 @@ const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '경제', value: '경제' },
   { label: '문화', value: '문화' },
 ]
-
-const EXTERNAL_NEWS_URL = process.env.NEXT_PUBLIC_RUSSIA_NEWS_EXTERNAL_URL || DEFAULT_RUSSIA_NEWS_BASE_URL
 
 function mergeUnique(prev: RussiaNewsItem[], next: RussiaNewsItem[]): RussiaNewsItem[] {
   const map = new Map<string, RussiaNewsItem>()
@@ -155,19 +153,11 @@ export function RussiaNewsInfinitePage() {
       </div>
 
       <section className="glass-strong rounded-xl p-4 space-y-3">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2">
           <div>
             <h1 className="text-base font-bold">{sectionTitle}</h1>
             <p className="mt-1 text-xs text-muted-foreground">정치 제외 · 사회/경제/문화 중심 · 무한 스크롤</p>
           </div>
-          <a
-            href={EXTERNAL_NEWS_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            뉴스 전용 페이지
-          </a>
         </div>
 
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
