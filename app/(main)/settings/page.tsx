@@ -36,7 +36,6 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [saveButtonState, setSaveButtonState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   const saveStateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -151,7 +150,6 @@ export default function SettingsPage() {
       setIsSaving(true)
       setSaveButtonState('saving')
       setError(null)
-      setSuccess(null)
 
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
@@ -206,7 +204,6 @@ export default function SettingsPage() {
         return
       }
 
-      setSuccess('설정이 저장되었습니다!')
       setSaveButtonState('saved')
       if (saveStateTimerRef.current) {
         clearTimeout(saveStateTimerRef.current)
@@ -446,34 +443,23 @@ export default function SettingsPage() {
             <Button
               onClick={handleSave}
               disabled={isSaving}
-              className={`w-full h-11 text-sm font-semibold transition-all ${
-                saveButtonState === 'saved'
-                  ? 'bg-green-600 hover:bg-green-600 text-white animate-pulse'
-                  : ''
-              }`}
+              className="w-full h-11 text-sm font-semibold transition-all"
             >
               {saveButtonState === 'saving' && (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  저장 중...
+                  설정 저장중
                 </>
               )}
               {saveButtonState === 'saved' && (
                 <>
                   <Check className="w-4 h-4 mr-2" />
-                  저장되었습니다.
+                  설정 저장 완료
                 </>
               )}
-              {saveButtonState === 'idle' && '저장'}
+              {saveButtonState === 'idle' && '설정 저장'}
             </Button>
           </div>
-
-          {/* 알림 메시지 */}
-          {success && (
-            <div className="p-3 bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400 rounded-lg text-sm text-center">
-              {success}
-            </div>
-          )}
 
           {error && (
             <div className="p-3 bg-destructive/10 text-destructive dark:bg-destructive/20 rounded-lg text-sm text-center">

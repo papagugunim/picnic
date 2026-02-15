@@ -775,7 +775,7 @@ export default function PostDetailClient({
           {/* Author Info */}
           <Link
             href={`/profile/${post.author_id}`}
-            className="flex items-center gap-3 mb-4"
+            className="flex items-center gap-3 mb-3"
           >
             <UserAvatar
               src={post.profiles.avatar_url}
@@ -800,8 +800,8 @@ export default function PostDetailClient({
           </Link>
 
           {/* Title & Price */}
-          <div className="mb-4">
-            <h1 className="text-xl font-bold mb-2">{post.title}</h1>
+          <div className="mb-2.5">
+            <h1 className="text-xl font-bold mb-1">{post.title}</h1>
             <div className="text-2xl font-bold text-primary">
               {post.price === 0 || post.price === null
                 ? '무료나눔'
@@ -810,7 +810,7 @@ export default function PostDetailClient({
           </div>
 
           {/* Status Badge */}
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-2.5">
             {post.status === 'reserved' && (
               <div className="inline-block px-3 py-1 bg-orange-500/10 text-orange-700 rounded-full text-sm font-medium">
                 예약중
@@ -830,7 +830,7 @@ export default function PostDetailClient({
           </div>
 
           {/* Description */}
-          <div className="prose prose-sm max-w-none mb-6 whitespace-pre-wrap break-words leading-relaxed">
+          <div className="prose prose-sm max-w-none mb-4 whitespace-pre-wrap break-words leading-relaxed">
             {renderTextWithLinks(post.description)}
           </div>
 

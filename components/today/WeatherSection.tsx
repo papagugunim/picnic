@@ -40,7 +40,7 @@ export function WeatherSection({
   if (loading) {
     return (
       <div className="bg-background">
-        <div className="px-4 py-4">
+        <div className="px-4 py-2.5">
           <h1 className="text-lg font-bold mb-2">오늘의 피크닉</h1>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <CalendarIcon className="w-4 h-4 animate-pulse" />
@@ -53,8 +53,8 @@ export function WeatherSection({
 
   return (
     <div className="bg-background">
-      <div className="px-4 py-4">
-        <div className="space-y-2">
+      <div className="px-4 py-2.5">
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <h1 className="text-lg font-bold">오늘의 피크닉</h1>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">

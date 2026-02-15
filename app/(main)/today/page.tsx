@@ -4,6 +4,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useCallback } from 'react'
+import { Link2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCache, setCache, clearCache, CACHE_KEYS } from '@/lib/cache'
 import { WeatherSection } from '@/components/today/WeatherSection'
@@ -327,7 +328,7 @@ export default function TodayPage() {
         />
 
         {/* Content */}
-        <div className="p-4 space-y-3">
+        <div className="px-4 pt-1 pb-4 space-y-2">
           {/* 환율 정보 */}
           <ExchangeSection
             exchangeRates={exchangeRates}
@@ -349,20 +350,26 @@ export default function TodayPage() {
           <RussiaNewsSection />
 
           {/* 유용한 링크 */}
-          <div className="glass-strong rounded-xl p-4">
-            <h2 className="font-bold mb-3">유용한 링크</h2>
+          <div className="rounded-lg p-2.5">
+            <div className="flex items-center gap-2 mb-2">
+              <Link2 className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+              <h2 className="font-bold text-sm">유용한 링크</h2>
+            </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
               {USEFUL_LINKS.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-3 bg-background rounded-lg border border-border hover:border-primary transition-colors text-center"
+                  className="flex items-center justify-between rounded-lg px-3 py-2 hover:opacity-80 transition-opacity"
                 >
-                  <div className="text-xl mb-1">{link.icon}</div>
-                  <div className="text-xs font-medium">{link.label}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{link.icon}</span>
+                    <span className="text-sm font-medium">{link.label}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">↗</span>
                 </a>
               ))}
             </div>

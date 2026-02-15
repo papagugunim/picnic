@@ -137,8 +137,8 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
 
   return (
     <>
-      <div className="glass-strong rounded-xl p-3">
-        <div className="flex items-center justify-between mb-2">
+      <div className="rounded-lg p-2.5">
+        <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center gap-2">
             <Newspaper className="w-4 h-4 text-orange-600 dark:text-orange-400" />
             <h2 className="font-bold text-sm">공지 사항</h2>
@@ -146,7 +146,7 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
           {canManageNotices && (
             <button
               onClick={handleOpenNewForm}
-              className="p-1.5 hover:bg-background rounded-lg transition-colors"
+              className="p-1.5 hover:bg-muted/50 rounded-lg transition-colors"
               aria-label="공지 사항 추가"
             >
               <Plus className="w-4 h-4 text-muted-foreground" />

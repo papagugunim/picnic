@@ -36,7 +36,7 @@ function NewsAutoSlideComponent({ newsList, onNewsClick, canManageNotices }: New
 
   if (newsList.length === 0) {
     return (
-      <div className="h-[120px] flex items-center justify-center bg-background rounded-lg border border-border">
+      <div className="h-[112px] flex items-center justify-center rounded-lg bg-muted/20">
         <p className="text-sm text-muted-foreground">
           {canManageNotices ? '새 공지 사항을 추가해주세요' : '등록된 공지 사항이 없습니다'}
         </p>
@@ -47,12 +47,12 @@ function NewsAutoSlideComponent({ newsList, onNewsClick, canManageNotices }: New
   return (
     <div>
       {/* 뉴스 카드 - 페이드 애니메이션, 높이 고정 */}
-      <div className="relative h-[120px]">
+      <div className="relative h-[112px]">
         {newsList.map((news, index) => (
           <button
             key={news.id}
             onClick={() => handleNewsClick(news)}
-            className={`absolute inset-0 w-full h-full text-left p-4 bg-background rounded-lg border border-border hover:border-primary cursor-pointer
+            className={`absolute inset-0 w-full h-full text-left p-3 rounded-lg hover:bg-muted/50 cursor-pointer
               transition-opacity duration-500 ease-in-out
               ${index === currentNewsIndex
                 ? 'opacity-100 z-10'

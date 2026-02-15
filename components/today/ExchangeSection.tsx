@@ -41,8 +41,8 @@ export function ExchangeSection({
 
   return (
     <>
-      <div className="glass-strong rounded-xl p-3">
-        <div className="flex items-center justify-between mb-2">
+      <div className="rounded-lg p-2.5">
+        <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
             <h2 className="font-bold text-sm">환율</h2>
@@ -51,7 +51,7 @@ export function ExchangeSection({
             <button
               onClick={onRefreshExchangeRates}
               disabled={isRefreshingExchangeRates}
-              className="p-1.5 hover:bg-background rounded-lg transition-colors disabled:opacity-50"
+              className="p-1.5 hover:bg-muted/50 rounded-lg transition-colors disabled:opacity-50"
               aria-label="환율 새로고침"
             >
               <RefreshCw
@@ -62,7 +62,7 @@ export function ExchangeSection({
             </button>
             <button
               onClick={() => setShowCalculator(true)}
-              className="p-1.5 hover:bg-background rounded-lg transition-colors"
+              className="p-1.5 hover:bg-muted/50 rounded-lg transition-colors"
               aria-label="환율 계산기"
             >
               <Calculator className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -74,7 +74,7 @@ export function ExchangeSection({
           <div className="flex gap-2">
             <button
               onClick={() => handleOpenChart('rub')}
-              className="flex-1 flex items-center justify-between py-2 px-3 bg-background rounded-lg border border-border hover:border-primary transition-colors cursor-pointer"
+              className="flex-1 flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-1.5">
                 <span className="text-base">₽</span>
@@ -85,7 +85,7 @@ export function ExchangeSection({
 
             <button
               onClick={() => handleOpenChart('usd')}
-              className="flex-1 flex items-center justify-between py-2 px-3 bg-background rounded-lg border border-border hover:border-primary transition-colors cursor-pointer"
+              className="flex-1 flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-1.5">
                 <span className="text-base">$</span>

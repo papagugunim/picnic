@@ -61,6 +61,26 @@ export const USEFUL_LINKS = [
     href: 'https://yandex.ru/maps',
     icon: '🗺️',
     label: '지도 (Yandex)'
+  },
+  {
+    href: 'https://transport.mos.ru',
+    icon: '🚇',
+    label: '모스크바 교통'
+  },
+  {
+    href: 'https://www.pochta.ru',
+    icon: '📮',
+    label: '러시아 우편'
+  },
+  {
+    href: 'https://papago.naver.com',
+    icon: '🈶',
+    label: '번역 (Papago)'
+  },
+  {
+    href: 'https://www.0404.go.kr',
+    icon: '🛡️',
+    label: '해외안전여행'
   }
 ] as const
 

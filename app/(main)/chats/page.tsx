@@ -12,6 +12,7 @@ import { getBreadEmoji } from '@/lib/bread'
 import { SwipeableChatItem } from '@/components/chat/SwipeableChatItem'
 import { toast } from 'sonner'
 import { formatTimeAgo } from '@/lib/utils/date'
+import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
 
 type PostWithImages = { images?: string[] | string | null } | null | undefined
 
@@ -111,7 +112,7 @@ export default function ChatsPage() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="bg-background">
-          <div className="px-4 py-4">
+          <div className="px-4 py-2.5">
             <h1 className="text-lg font-bold">채팅</h1>
           </div>
         </div>
@@ -130,6 +131,8 @@ export default function ChatsPage() {
             <div>
               {chatRooms.map((room) => {
                 const thumbnailUrl = getPostThumbnailUrl(room.post)
+                const postStatus: PostStatus = (room.post?.status as PostStatus | undefined) || 'active'
+                const postStatusInfo = getPostStatusInfo(postStatus)
                 return (
                   <SwipeableChatItem
                     key={room.id}
@@ -160,9 +163,16 @@ export default function ChatsPage() {
                           {/* Post Title */}
                           {room.post && (
                             <div className="flex items-center justify-between mb-1">
-                              <h3 className="font-semibold text-base truncate pr-2">
-                                {room.post.title}
-                              </h3>
+                              <div className="flex items-center gap-1.5 min-w-0 pr-2">
+                                <h3 className="font-semibold text-base truncate">
+                                  {room.post.title}
+                                </h3>
+                                <span
+                                  className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${postStatusInfo.bgColor} ${postStatusInfo.textColor}`}
+                                >
+                                  {postStatusInfo.label}
+                                </span>
+                              </div>
                               <span className="text-xs text-muted-foreground flex-shrink-0">
                                 {room.last_message_at ? formatTimeAgo(room.last_message_at) : ''}
                               </span>
