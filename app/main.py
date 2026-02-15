@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from threading import Thread
+from threading import Lock, Thread
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -21,6 +21,7 @@ from app.services.scheduler import start_scheduler, run_fetch_cycle
 from app.services.retranslate import retranslate_missing
 
 APP_TITLE = "Picnic Today - RU Live News"
+_warmup_lock = Lock()
 
 app = FastAPI(title=APP_TITLE)
 
@@ -74,6 +75,13 @@ def api_feed(
     limit: int = Query(default=20, ge=1, le=50),
 ) -> JSONResponse:
     items = get_today_items(cursor=cursor, limit=limit)
+    if not items and cursor is None and os.environ.get("VERCEL") == "1":
+        if _warmup_lock.acquire(blocking=False):
+            try:
+                run_fetch_cycle()
+            finally:
+                _warmup_lock.release()
+        items = get_today_items(cursor=cursor, limit=limit)
     if not items:
         items = get_items(cursor=cursor, limit=limit, only_batched=False)
     return JSONResponse({"items": items})
@@ -86,6 +94,13 @@ def api_today_news(
     limit: int = Query(default=20, ge=1, le=50),
 ) -> JSONResponse:
     items = get_today_items(cursor=cursor, limit=limit, topic=topic)
+    if not items and cursor is None and os.environ.get("VERCEL") == "1":
+        if _warmup_lock.acquire(blocking=False):
+            try:
+                run_fetch_cycle()
+            finally:
+                _warmup_lock.release()
+        items = get_today_items(cursor=cursor, limit=limit, topic=topic)
     return JSONResponse({"items": items})
 
 
