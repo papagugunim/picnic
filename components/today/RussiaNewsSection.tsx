@@ -12,6 +12,7 @@ const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '사회', value: '사회' },
   { label: '경제', value: '경제' },
   { label: '문화', value: '문화' },
+  { label: '날씨', value: '날씨' },
 ]
 
 function formatDateTime(value: string): string {
@@ -82,7 +83,7 @@ export function RussiaNewsSection() {
         <div>
           <h2 className="text-sm font-bold">가장 빠른 실시간 뉴스</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            사회·경제·문화 중심, 3시간 단위 업데이트
+            사회·경제·문화·날씨 중심, 3시간 단위 업데이트
           </p>
           {latestPublishedAt && (
             <p className="mt-1 text-[11px] text-muted-foreground">

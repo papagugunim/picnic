@@ -1,4 +1,4 @@
-export type RussiaNewsTopic = '' | '사회' | '경제' | '문화'
+export type RussiaNewsTopic = '' | '사회' | '경제' | '문화' | '날씨'
 
 export interface RussiaNewsItem {
   id: string
@@ -27,6 +27,6 @@ export function getRussiaNewsBaseUrl(): string {
 
 export function normalizeTopic(value: string | null): RussiaNewsTopic {
   if (!value) return ''
-  if (value === '사회' || value === '경제' || value === '문화') return value
+  if (value === '사회' || value === '경제' || value === '문화' || value === '날씨') return value
   return ''
 }
