@@ -41,6 +41,12 @@ uvicorn app.main:app --reload
 
 ## API
 - `GET /api/today-news` : 투데이 뉴스 피드
+- `GET /api/archive` : 지난 뉴스 아카이브(무한 스크롤용)
 - `POST /api/refresh` : 즉시 수집 트리거
 - `GET /api/search?q=...` : 누적 검색
 - `GET /api/health` : 상태 확인
+
+## 데이터 보관
+- 모든 수집 뉴스는 `items` 테이블에 누적 저장되며 `/search`와 `/api/archive`에서 조회됩니다.
+- Vercel Serverless 기본 경로는 휘발성(`/tmp`)이므로 배포 간 장기 보관이 필요하면 외부 영구 DB를 연결해야 합니다.
+- `NEWS_DB_PATH` 환경변수로 영구 저장 경로를 지정할 수 있습니다.

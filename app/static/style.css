@@ -174,6 +174,11 @@ html[data-theme="light"] {
   padding-top: 20px;
 }
 
+.archive-panel {
+  margin-top: -4px;
+  padding-bottom: 18px;
+}
+
 .topic-filters {
   margin-top: 14px;
   display: flex;

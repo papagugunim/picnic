@@ -11,6 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.services.db import (
+    get_archive_items,
+    count_pending_translations,
     get_items,
     get_latest_batch_time,
     get_today_items,
@@ -19,7 +21,7 @@ from app.services.db import (
     search_items,
 )
 from app.services.scheduler import start_scheduler, run_fetch_cycle
-from app.services.retranslate import retranslate_missing
+from app.services.retranslate import retranslate_missing, retranslate_until_stable
 
 APP_TITLE = "Picnic Today - RU Live News"
 ADMIN_PANEL_KEY = os.environ.get("ADMIN_PANEL_KEY", "").strip()
@@ -133,6 +135,16 @@ def api_today_news(
     return JSONResponse({"items": items})
 
 
+@app.get("/api/archive")
+def api_archive(
+    cursor: Optional[str] = Query(default=None),
+    topic: Optional[str] = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=50),
+) -> JSONResponse:
+    items = get_archive_items(cursor=cursor, limit=limit, topic=topic)
+    return JSONResponse({"items": items})
+
+
 @app.get("/api/search")
 def api_search(
     q: str = Query(min_length=1),
@@ -160,12 +172,17 @@ def refresh(request: Request) -> JSONResponse:
     if not _is_admin_authorized(request):
         return JSONResponse({"ok": False, "error": "forbidden"}, status_code=403)
     run_fetch_cycle()
-    return JSONResponse({"ok": True, "mode": "sync"})
+    retranslate_result = retranslate_until_stable(batch_limit=120, max_rounds=6)
+    pending = count_pending_translations()
+    return JSONResponse({"ok": True, "mode": "sync", "pending_translation_items": pending, **retranslate_result})
 
 
 @app.post("/api/retranslate")
 def retranslate(request: Request, limit: int = 50) -> JSONResponse:
     if not _is_admin_authorized(request):
         return JSONResponse({"ok": False, "error": "forbidden"}, status_code=403)
-    result = retranslate_missing(limit)
+    if limit <= 0:
+        result = retranslate_until_stable(batch_limit=120, max_rounds=8)
+    else:
+        result = retranslate_missing(limit)
     return JSONResponse({"ok": True, "limit": limit, **result, "mode": "sync"})

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Dict
 
-from app.services.db import get_raw_items_missing_translation, update_translation
+from app.services.db import count_pending_translations, get_raw_items_missing_translation, update_translation
 from app.services.translator import translate_text_with_meta
 
 logger = logging.getLogger(__name__)
@@ -51,5 +51,40 @@ def retranslate_missing(limit: int = 50) -> Dict[str, int]:
         result["translate_attempted"],
         result["translate_success"],
         result["translate_failed"],
+    )
+    return result
+
+
+def retranslate_until_stable(batch_limit: int = 120, max_rounds: int = 8) -> Dict[str, int]:
+    total_processed = 0
+    total_attempted = 0
+    total_success = 0
+    total_failed = 0
+
+    for _ in range(max_rounds):
+        chunk = retranslate_missing(limit=batch_limit)
+        processed = chunk["processed_items"]
+        total_processed += processed
+        total_attempted += chunk["translate_attempted"]
+        total_success += chunk["translate_success"]
+        total_failed += chunk["translate_failed"]
+        if processed < batch_limit:
+            break
+
+    pending = count_pending_translations()
+    result = {
+        "processed_items": total_processed,
+        "translate_attempted": total_attempted,
+        "translate_success": total_success,
+        "translate_failed": total_failed,
+        "remaining_pending": pending,
+    }
+    logger.info(
+        "retranslate_until_stable done: processed=%d attempted=%d success=%d failed=%d pending=%d",
+        result["processed_items"],
+        result["translate_attempted"],
+        result["translate_success"],
+        result["translate_failed"],
+        result["remaining_pending"],
     )
     return result

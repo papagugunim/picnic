@@ -318,6 +318,39 @@ def get_today_items(cursor: Optional[str], limit: int, topic: Optional[str] = No
         return [_row_to_item(row) for row in rows]
 
 
+def get_archive_items(cursor: Optional[str], limit: int, topic: Optional[str] = None) -> List[Dict[str, Any]]:
+    with _connect() as conn:
+        params: List[Any] = []
+        sql = "SELECT * FROM items WHERE source_name IS NOT NULL "
+
+        if topic in ("사회", "경제", "문화"):
+            sql += "AND topic = ? "
+            params.append(topic)
+
+        if cursor:
+            sql += "AND published_at < ? "
+            params.append(cursor)
+
+        sql += "ORDER BY published_at DESC LIMIT ?"
+        params.append(limit)
+
+        rows = conn.execute(sql, tuple(params)).fetchall()
+        return [_row_to_item(row) for row in rows]
+
+
+def count_pending_translations() -> int:
+    with _connect() as conn:
+        row = conn.execute(
+            """
+            SELECT COUNT(*) FROM items
+            WHERE translated_title IS NULL OR translated_summary IS NULL
+               OR translated_title = '' OR translated_summary = ''
+               OR translated_title = title OR translated_summary = summary
+            """
+        ).fetchone()
+        return int(row[0]) if row else 0
+
+
 def get_unbatched_items(limit: int) -> List[Dict[str, Any]]:
     with _connect() as conn:
         cur = conn.execute(

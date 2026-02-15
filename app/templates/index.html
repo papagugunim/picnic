@@ -53,7 +53,7 @@
 
       <section class="today-panel news-panel">
         <div class="section-title-row">
-          <h2>모스크바 실시간 뉴스</h2>
+          <h2>실시간 주요 뉴스</h2>
           <span class="section-hint">정치 제외 · 사회/경제/문화 · 3시간 자동 업데이트</span>
         </div>
         <div class="topic-filters" id="topicFilters">
@@ -63,8 +63,17 @@
           <button class="topic-chip" data-topic="문화">문화</button>
         </div>
 
-        <section id="feed" class="feed"></section>
-        <div id="loader" class="loader">불러오는 중...</div>
+        <section id="todayFeed" class="feed"></section>
+        <div id="todayLoader" class="loader">불러오는 중...</div>
+      </section>
+
+      <section class="today-panel news-panel archive-panel">
+        <div class="section-title-row">
+          <h2>지난 뉴스 아카이브</h2>
+          <span class="section-hint">아래로 스크롤하면 과거 뉴스가 계속 로드됩니다.</span>
+        </div>
+        <section id="archiveFeed" class="feed"></section>
+        <div id="archiveLoader" class="loader">지난 뉴스 불러오는 중...</div>
       </section>
     </main>
 
@@ -96,15 +105,17 @@
       themeToggle.textContent = next === 'dark' ? '라이트 모드' : '다크 모드';
     });
 
-    const feedEl = document.getElementById('feed');
-    const loader = document.getElementById('loader');
+    const todayFeedEl = document.getElementById('todayFeed');
+    const todayLoader = document.getElementById('todayLoader');
+    const archiveFeedEl = document.getElementById('archiveFeed');
+    const archiveLoader = document.getElementById('archiveLoader');
     const refreshBtn = document.getElementById('refreshBtn');
     const filterRoot = document.getElementById('topicFilters');
 
-    let cursor = null;
-    let loading = false;
-    let hasMore = true;
     let activeTopic = '';
+    let archiveCursor = null;
+    let archiveLoading = false;
+    let archiveHasMore = true;
 
     function escapeHtml(raw = '') {
       return String(raw)
@@ -141,80 +152,97 @@
       return card;
     }
 
-    async function loadMore() {
-      if (loading || !hasMore) return;
-      loading = true;
-      loader.style.display = 'block';
-      loader.textContent = '불러오는 중...';
+    async function loadToday() {
+      todayLoader.style.display = 'block';
+      todayLoader.textContent = '불러오는 중...';
 
       const url = new URL('/api/today-news', window.location.origin);
-      if (cursor) url.searchParams.set('cursor', cursor);
+      url.searchParams.set('limit', '20');
       if (activeTopic) url.searchParams.set('topic', activeTopic);
 
       const res = await fetch(url.toString());
       const data = await res.json();
+      const items = data.items || [];
 
-      if (data.items.length === 0) {
-        hasMore = false;
-        if (!cursor) {
-          loader.textContent = '표시할 뉴스가 없습니다.';
-        } else {
-          loader.textContent = '더 이상 뉴스가 없습니다.';
-        }
-        loading = false;
+      todayFeedEl.innerHTML = '';
+      if (items.length === 0) {
+        todayLoader.textContent = '표시할 뉴스가 없습니다.';
+        archiveCursor = null;
         return;
       }
 
-      data.items.forEach(item => {
-        feedEl.appendChild(renderCard(item));
-      });
-
-      cursor = data.items[data.items.length - 1].published_at;
-      loader.style.display = 'none';
-      loading = false;
+      items.forEach(item => todayFeedEl.appendChild(renderCard(item)));
+      todayLoader.style.display = 'none';
+      archiveCursor = items[items.length - 1].published_at;
     }
 
-    function resetFeed() {
-      cursor = null;
-      loading = false;
-      hasMore = true;
-      feedEl.innerHTML = '';
-      loader.textContent = '불러오는 중...';
-      loader.style.display = 'block';
+    async function loadArchive() {
+      if (archiveLoading || !archiveHasMore) return;
+      archiveLoading = true;
+      archiveLoader.style.display = 'block';
+      archiveLoader.textContent = '지난 뉴스 불러오는 중...';
+
+      const url = new URL('/api/archive', window.location.origin);
+      url.searchParams.set('limit', '20');
+      if (archiveCursor) url.searchParams.set('cursor', archiveCursor);
+      if (activeTopic) url.searchParams.set('topic', activeTopic);
+
+      const res = await fetch(url.toString());
+      const data = await res.json();
+      const items = data.items || [];
+
+      if (items.length === 0) {
+        archiveHasMore = false;
+        if (archiveFeedEl.children.length === 0) {
+          archiveLoader.textContent = '지난 뉴스가 없습니다.';
+        } else {
+          archiveLoader.textContent = '더 이상 지난 뉴스가 없습니다.';
+        }
+        archiveLoading = false;
+        return;
+      }
+
+      items.forEach(item => archiveFeedEl.appendChild(renderCard(item)));
+      archiveCursor = items[items.length - 1].published_at;
+      archiveLoader.style.display = 'none';
+      archiveLoading = false;
+    }
+
+    async function resetAndLoadAll() {
+      archiveFeedEl.innerHTML = '';
+      archiveHasMore = true;
+      archiveLoading = false;
+      archiveCursor = null;
+      await loadToday();
+      await loadArchive();
     }
 
     const io = new IntersectionObserver(entries => {
       entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          loadMore();
-        }
+        if (entry.isIntersecting) loadArchive();
       });
-    }, { rootMargin: '300px' });
+    }, { rootMargin: '320px' });
+    io.observe(archiveLoader);
 
-    io.observe(loader);
-    loadMore();
-
-    filterRoot.addEventListener('click', event => {
+    filterRoot.addEventListener('click', async event => {
       const target = event.target.closest('.topic-chip');
       if (!target) return;
       activeTopic = target.dataset.topic || '';
-
       [...filterRoot.querySelectorAll('.topic-chip')].forEach(node => node.classList.remove('active'));
       target.classList.add('active');
-
-      resetFeed();
-      loadMore();
+      await resetAndLoadAll();
     });
 
     refreshBtn.addEventListener('click', async () => {
       refreshBtn.disabled = true;
       refreshBtn.textContent = '업데이트 중...';
       await fetch('/api/refresh', { method: 'POST' });
-      resetFeed();
-      await loadMore();
+      await resetAndLoadAll();
       refreshBtn.textContent = '지금 업데이트';
       refreshBtn.disabled = false;
     });
+
+    resetAndLoadAll();
   </script>
 </body>
 </html>
