@@ -2,6 +2,7 @@
   --bg: #090b0d;
   --panel: #111418;
   --panel-2: #161b20;
+  --page-bg: radial-gradient(circle at 20% 0%, #11161d 0%, #090b0d 48%);
   --accent: #8ea6b8;
   --text: #e6edf3;
   --muted: #7f8b97;
@@ -16,15 +17,17 @@
 
 body {
   margin: 0;
-  background: radial-gradient(circle at 20% 0%, #11161d 0%, var(--bg) 48%);
+  background: var(--page-bg);
+  background-color: var(--bg);
   color: var(--text);
   font-family: var(--font);
 }
 
 html[data-theme="light"] {
-  --bg: #f6f8fa;
+  --bg: #ffffff;
   --panel: #ffffff;
-  --panel-2: #f2f5f8;
+  --panel-2: #ffffff;
+  --page-bg: #ffffff;
   --accent: #5f7180;
   --text: #0f1720;
   --muted: #5f6b76;
@@ -96,7 +99,8 @@ html[data-theme="light"] {
 .timeline-header {
   position: sticky;
   top: 0;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(8px);
   padding: 20px 24px;
   border-bottom: 1px solid var(--border);
