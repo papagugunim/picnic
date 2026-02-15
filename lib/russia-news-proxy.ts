@@ -17,6 +17,14 @@ function toSafeLimit(input?: number): number {
   return Math.max(1, Math.min(MAX_LIMIT, input))
 }
 
+function clipPayload(payload: RussiaNewsApiPayload, limit: number): RussiaNewsApiPayload {
+  if (payload.items.length <= limit) return payload
+  return {
+    ...payload,
+    items: payload.items.slice(0, limit),
+  }
+}
+
 function normalizeItem(raw: any, index: number): RussiaNewsItem {
   const title = typeof raw?.title === 'string' ? raw.title : ''
   const summary = typeof raw?.summary === 'string' ? raw.summary : ''
@@ -47,12 +55,14 @@ function normalizeItem(raw: any, index: number): RussiaNewsItem {
 export async function fetchRussiaNewsFromUpstream(options: FetchRussiaNewsOptions): Promise<RussiaNewsApiPayload> {
   const primaryBaseUrl = getRussiaNewsBaseUrl()
   const fallbackBaseUrl = DEFAULT_RUSSIA_NEWS_BASE_URL.replace(/\/$/, '')
-  const limit = toSafeLimit(options.limit)
+  const requestedLimit = toSafeLimit(options.limit)
   const topic = normalizeTopic(options.topic || null)
 
-  async function requestFrom(baseUrl: string): Promise<RussiaNewsApiPayload> {
+  async function requestFrom(baseUrl: string, limitForRequest?: number): Promise<RussiaNewsApiPayload> {
     const url = new URL(`${baseUrl}${options.endpoint}`)
-    url.searchParams.set('limit', String(limit))
+    if (typeof limitForRequest === 'number') {
+      url.searchParams.set('limit', String(limitForRequest))
+    }
     if (options.cursor) url.searchParams.set('cursor', options.cursor)
     if (topic) url.searchParams.set('topic', topic)
 
@@ -86,10 +96,37 @@ export async function fetchRussiaNewsFromUpstream(options: FetchRussiaNewsOption
     }
   }
 
-  const primaryPayload = await requestFrom(primaryBaseUrl)
-  if (primaryPayload.items.length > 0 || primaryBaseUrl === fallbackBaseUrl) {
-    return primaryPayload
+  // NOTE: some upstream deployments intermittently return an empty list
+  // when a small `limit` is explicitly provided. Retry once without `limit`.
+  const initialLimit = !topic && requestedLimit === DEFAULT_LIMIT ? undefined : requestedLimit
+
+  const primaryPayload = await requestFrom(primaryBaseUrl, initialLimit)
+  if (primaryPayload.items.length > 0) {
+    return clipPayload(primaryPayload, requestedLimit)
   }
 
-  return requestFrom(fallbackBaseUrl)
+  if (!topic && typeof initialLimit === 'number') {
+    const primaryRelaxed = await requestFrom(primaryBaseUrl)
+    if (primaryRelaxed.items.length > 0) {
+      return clipPayload(primaryRelaxed, requestedLimit)
+    }
+  }
+
+  if (primaryBaseUrl === fallbackBaseUrl) {
+    return clipPayload(primaryPayload, requestedLimit)
+  }
+
+  const fallbackPayload = await requestFrom(fallbackBaseUrl, initialLimit)
+  if (fallbackPayload.items.length > 0) {
+    return clipPayload(fallbackPayload, requestedLimit)
+  }
+
+  if (!topic && typeof initialLimit === 'number') {
+    const fallbackRelaxed = await requestFrom(fallbackBaseUrl)
+    if (fallbackRelaxed.items.length > 0) {
+      return clipPayload(fallbackRelaxed, requestedLimit)
+    }
+  }
+
+  return clipPayload(fallbackPayload, requestedLimit)
 }
