@@ -8,7 +8,7 @@ from dateutil import parser as date_parser
 
 from app.services.db import assign_batch_to_items, create_batch, get_unbatched_items
 
-ALLOWED_TOPICS = {"사회", "경제", "문화"}
+ALLOWED_TOPICS = {"사회", "경제", "문화", "날씨"}
 BATCH_SIZE = int(os.environ.get("NEWS_BATCH_SIZE", "24"))
 
 
@@ -31,6 +31,8 @@ def _ranking_score(item: Dict[str, object]) -> float:
         score += 3
     if item.get("topic") == "경제":
         score += 1.5
+    if item.get("topic") == "날씨":
+        score += 1.2
     score -= _age_penalty(str(item.get("published_at") or ""))
     return score
 

@@ -92,6 +92,16 @@ def init_db() -> None:
             """
         )
 
+        # 날씨 전용 RSS 소스는 기존 데이터도 일괄적으로 날씨 토픽으로 정규화.
+        conn.execute(
+            """
+            UPDATE items
+            SET topic = '날씨', category = '날씨'
+            WHERE source_name = 'Hydrometcenter Weather'
+               OR source_name LIKE 'Google News Weather%'
+            """
+        )
+
         conn.executescript(
             """
             CREATE INDEX IF NOT EXISTS idx_items_published_at ON items(published_at DESC);
@@ -297,13 +307,13 @@ def get_items(
 
 def get_today_items(cursor: Optional[str], limit: int, topic: Optional[str] = None) -> List[Dict[str, Any]]:
     def _query(conn: sqlite3.Connection, only_batched: bool) -> List[sqlite3.Row]:
-        allowed_topics = ("사회", "경제", "문화")
+        allowed_topics = ("사회", "경제", "문화", "날씨")
         params: List[Any] = []
 
         base_sql = (
             "SELECT * FROM items "
             "WHERE is_political = 0 "
-            "AND topic IN (?, ?, ?) "
+            "AND topic IN (?, ?, ?, ?) "
             "AND source_name IS NOT NULL "
             "AND source_kind = 'rss' "
         )
@@ -336,7 +346,7 @@ def get_archive_items(cursor: Optional[str], limit: int, topic: Optional[str] = 
         params: List[Any] = []
         sql = "SELECT * FROM items WHERE source_name IS NOT NULL AND source_kind = 'rss' "
 
-        if topic in ("사회", "경제", "문화"):
+        if topic in ("사회", "경제", "문화", "날씨"):
             sql += "AND topic = ? "
             params.append(topic)
 
