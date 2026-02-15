@@ -14,6 +14,7 @@ from app.services.db import (
     get_items,
     get_latest_batch_time,
     get_today_items,
+    get_admin_metrics,
     init_db,
     search_items,
 )
@@ -21,6 +22,7 @@ from app.services.scheduler import start_scheduler, run_fetch_cycle
 from app.services.retranslate import retranslate_missing
 
 APP_TITLE = "Picnic Today - RU Live News"
+ADMIN_PANEL_KEY = os.environ.get("ADMIN_PANEL_KEY", "").strip()
 _warmup_lock = Lock()
 
 app = FastAPI(title=APP_TITLE)
@@ -65,6 +67,33 @@ def search_page(request: Request, q: str = "") -> HTMLResponse:
             "latest_run": latest_run,
             "app_title": APP_TITLE,
             "query": q,
+        },
+    )
+
+
+def _is_admin_authorized(request: Request) -> bool:
+    if not ADMIN_PANEL_KEY:
+        return True
+    query_key = request.query_params.get("key", "")
+    header_key = request.headers.get("x-admin-key", "")
+    return query_key == ADMIN_PANEL_KEY or header_key == ADMIN_PANEL_KEY
+
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin_page(request: Request) -> HTMLResponse:
+    if not _is_admin_authorized(request):
+        return HTMLResponse("Forbidden", status_code=403)
+
+    latest_run = get_latest_batch_time()
+    metrics = get_admin_metrics()
+    return templates.TemplateResponse(
+        "admin.html",
+        {
+            "request": request,
+            "latest_run": latest_run,
+            "app_title": APP_TITLE,
+            "metrics": metrics,
+            "admin_key_required": bool(ADMIN_PANEL_KEY),
         },
     )
 
@@ -119,13 +148,24 @@ def health() -> JSONResponse:
     return JSONResponse({"ok": True, "time": datetime.now(timezone.utc).isoformat()})
 
 
+@app.get("/api/admin/metrics")
+def api_admin_metrics(request: Request) -> JSONResponse:
+    if not _is_admin_authorized(request):
+        return JSONResponse({"ok": False, "error": "forbidden"}, status_code=403)
+    return JSONResponse({"ok": True, "metrics": get_admin_metrics()})
+
+
 @app.post("/api/refresh")
-def refresh() -> JSONResponse:
+def refresh(request: Request) -> JSONResponse:
+    if not _is_admin_authorized(request):
+        return JSONResponse({"ok": False, "error": "forbidden"}, status_code=403)
     run_fetch_cycle()
     return JSONResponse({"ok": True, "mode": "sync"})
 
 
 @app.post("/api/retranslate")
-def retranslate(limit: int = 50) -> JSONResponse:
+def retranslate(request: Request, limit: int = 50) -> JSONResponse:
+    if not _is_admin_authorized(request):
+        return JSONResponse({"ok": False, "error": "forbidden"}, status_code=403)
     result = retranslate_missing(limit)
     return JSONResponse({"ok": True, "limit": limit, **result, "mode": "sync"})

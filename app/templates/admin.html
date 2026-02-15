@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ app_title }} - 관리자</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar-left">
+      <div class="logo">RU</div>
+      <nav class="menu">
+        <a class="menu-item" href="/">Today</a>
+        <a class="menu-item" href="/search">검색</a>
+        <a class="menu-item active" href="/admin{% if request.query_params.get('key') %}?key={{ request.query_params.get('key') }}{% endif %}">관리자</a>
+        <div class="menu-item small">업데이트: {{ latest_run or '대기 중' }}</div>
+      </nav>
+    </aside>
+
+    <main class="timeline">
+      <header class="timeline-header">
+        <div>
+          <h1>번역 운영 관리자 패널</h1>
+          <div class="sub">수집/번역/배치 상태를 실시간으로 점검하고 수동 실행할 수 있습니다.</div>
+        </div>
+        <div class="header-actions">
+          <button id="refreshMetricsBtn" class="refresh-btn" type="button">지표 새로고침</button>
+          <button id="themeToggle" class="theme-toggle" type="button">라이트 모드</button>
+        </div>
+      </header>
+
+      <section class="admin-wrap">
+        <div id="adminStatus" class="admin-status">상태 로딩 중...</div>
+
+        <section class="stat-grid" id="summaryGrid"></section>
+
+        <section class="admin-actions panel">
+          <h2>운영 실행</h2>
+          <div class="action-row">
+            <button id="runRefreshBtn" class="refresh-btn" type="button">수집 + 배치 실행</button>
+            <button id="runRetranslateBtn" class="refresh-btn" type="button">미번역 재번역 실행</button>
+            <label class="admin-input-wrap" for="retranslateLimit">limit</label>
+            <input id="retranslateLimit" class="admin-input" type="number" min="1" max="1000" value="80" />
+          </div>
+          <pre id="actionResult" class="action-result">아직 실행 기록이 없습니다.</pre>
+        </section>
+
+        <section class="admin-two-col">
+          <div class="panel">
+            <h2>소스 분포</h2>
+            <div id="sourceList" class="kv-list"></div>
+          </div>
+          <div class="panel">
+            <h2>주제 분포</h2>
+            <div id="topicList" class="kv-list"></div>
+          </div>
+        </section>
+
+        <section class="admin-two-col">
+          <div class="panel">
+            <h2>최근 배치</h2>
+            <div id="batchList" class="admin-list"></div>
+          </div>
+          <div class="panel">
+            <h2>최근 기사 번역 상태</h2>
+            <div id="recentList" class="admin-list"></div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <aside class="sidebar-right">
+      <div class="panel">
+        <h2>운영 메모</h2>
+        <p class="muted">1. 번역 커버리지가 떨어지면 재번역 실행</p>
+        <p class="muted">2. 수집 중 오류 시 API 응답/로그 확인</p>
+        <p class="muted">3. ADMIN_PANEL_KEY를 설정하면 접근이 제한됩니다.</p>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const themeToggle = document.getElementById('themeToggle');
+    const storedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', storedTheme);
+    themeToggle.textContent = storedTheme === 'dark' ? '라이트 모드' : '다크 모드';
+    themeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      themeToggle.textContent = next === 'dark' ? '라이트 모드' : '다크 모드';
+    });
+
+    const state = {
+      metrics: {{ metrics | tojson }},
+      adminKey: new URLSearchParams(window.location.search).get('key') || '',
+    };
+
+    const summaryGrid = document.getElementById('summaryGrid');
+    const sourceList = document.getElementById('sourceList');
+    const topicList = document.getElementById('topicList');
+    const batchList = document.getElementById('batchList');
+    const recentList = document.getElementById('recentList');
+    const adminStatus = document.getElementById('adminStatus');
+    const actionResult = document.getElementById('actionResult');
+
+    function number(v) {
+      return Number(v || 0).toLocaleString();
+    }
+
+    function date(v) {
+      if (!v) return '-';
+      return new Date(v).toLocaleString();
+    }
+
+    function status(text, ok = true) {
+      adminStatus.textContent = text;
+      adminStatus.className = ok ? 'admin-status ok' : 'admin-status err';
+    }
+
+    function authHeaders() {
+      if (!state.adminKey) return {};
+      return { 'x-admin-key': state.adminKey };
+    }
+
+    function render() {
+      const m = state.metrics || {};
+      const t = m.totals || {};
+
+      summaryGrid.innerHTML = [
+        ['총 기사', number(t.total_items)],
+        ['배치 기사', number(t.batched_items)],
+        ['Today 필터 기사', number(t.today_filtered_items)],
+        ['번역 완료(제목)', number(t.translated_title_items)],
+        ['번역 완료(요약)', number(t.translated_summary_items)],
+        ['번역 대기', number(t.pending_translation_items)],
+        ['번역 커버리지', `${Number(t.translation_coverage_ratio || 0).toFixed(2)}%`],
+        ['최근 기사 시각', date(t.latest_published_at)],
+      ].map(([k, v]) => `
+        <article class="stat-card">
+          <div class="stat-label">${k}</div>
+          <div class="stat-value">${v}</div>
+        </article>
+      `).join('');
+
+      sourceList.innerHTML = Object.entries(m.source_counts || {})
+        .map(([k, v]) => `<div class="kv-item"><span>${k}</span><strong>${number(v)}</strong></div>`)
+        .join('') || '<div class="muted">데이터 없음</div>';
+
+      topicList.innerHTML = Object.entries(m.topic_counts || {})
+        .map(([k, v]) => `<div class="kv-item"><span>${k}</span><strong>${number(v)}</strong></div>`)
+        .join('') || '<div class="muted">데이터 없음</div>';
+
+      batchList.innerHTML = (m.recent_batches || []).map(item => `
+        <div class="admin-list-item">
+          <strong>#${item.id}</strong>
+          <span>${date(item.run_at)}</span>
+          <span>${number(item.item_count)}건</span>
+        </div>
+      `).join('') || '<div class="muted">배치 이력이 없습니다.</div>';
+
+      recentList.innerHTML = (m.recent_items || []).map(item => `
+        <div class="admin-list-item">
+          <span class="mini-badge ${item.translation_applied ? 'ok' : 'warn'}">${item.translation_applied ? '번역완료' : '원문'}</span>
+          <strong>${item.topic || '미분류'} · ${item.source_name || 'unknown'}</strong>
+          <span>${item.title || ''}</span>
+          <span>${date(item.published_at)}</span>
+        </div>
+      `).join('') || '<div class="muted">기사 이력이 없습니다.</div>';
+
+      status(`지표 업데이트: ${date(m.generated_at)}`);
+    }
+
+    async function refreshMetrics() {
+      try {
+        const res = await fetch('/api/admin/metrics', { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          status(`지표 조회 실패: ${data.error || res.status}`, false);
+          return;
+        }
+        state.metrics = data.metrics;
+        render();
+      } catch (err) {
+        status(`지표 조회 오류: ${err.message}`, false);
+      }
+    }
+
+    async function postJson(url) {
+      const res = await fetch(url, { method: 'POST', headers: authHeaders() });
+      const data = await res.json();
+      return { ok: res.ok, data };
+    }
+
+    document.getElementById('refreshMetricsBtn').addEventListener('click', refreshMetrics);
+
+    document.getElementById('runRefreshBtn').addEventListener('click', async () => {
+      actionResult.textContent = '수집 실행 중...';
+      const { ok, data } = await postJson('/api/refresh');
+      actionResult.textContent = JSON.stringify({ ok, ...data }, null, 2);
+      await refreshMetrics();
+    });
+
+    document.getElementById('runRetranslateBtn').addEventListener('click', async () => {
+      const limit = Math.max(1, Math.min(1000, Number(document.getElementById('retranslateLimit').value || 80)));
+      actionResult.textContent = '재번역 실행 중...';
+      const { ok, data } = await postJson(`/api/retranslate?limit=${limit}`);
+      actionResult.textContent = JSON.stringify({ ok, ...data }, null, 2);
+      await refreshMetrics();
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -364,5 +364,141 @@ def search_items(query: str, cursor: Optional[str], limit: int) -> List[Dict[str
         return [_row_to_item(row) for row in rows]
 
 
+def get_admin_metrics(recent_item_limit: int = 8, recent_batch_limit: int = 8) -> Dict[str, Any]:
+    with _connect() as conn:
+        total_items = int(conn.execute("SELECT COUNT(*) FROM items").fetchone()[0])
+        batched_items = int(conn.execute("SELECT COUNT(*) FROM items WHERE batch_id IS NOT NULL").fetchone()[0])
+        today_filtered_items = int(
+            conn.execute(
+                """
+                SELECT COUNT(*) FROM items
+                WHERE is_political = 0
+                  AND topic IN ('사회', '경제', '문화')
+                  AND source_name IS NOT NULL
+                """
+            ).fetchone()[0]
+        )
+        translated_title_items = int(
+            conn.execute(
+                """
+                SELECT COUNT(*) FROM items
+                WHERE translated_title IS NOT NULL
+                  AND translated_title != ''
+                  AND translated_title != title
+                """
+            ).fetchone()[0]
+        )
+        translated_summary_items = int(
+            conn.execute(
+                """
+                SELECT COUNT(*) FROM items
+                WHERE translated_summary IS NOT NULL
+                  AND translated_summary != ''
+                  AND translated_summary != summary
+                """
+            ).fetchone()[0]
+        )
+        pending_translation_items = int(
+            conn.execute(
+                """
+                SELECT COUNT(*) FROM items
+                WHERE translated_title IS NULL OR translated_summary IS NULL
+                   OR translated_title = '' OR translated_summary = ''
+                   OR translated_title = title OR translated_summary = summary
+                """
+            ).fetchone()[0]
+        )
+        latest_published_at_row = conn.execute(
+            "SELECT MAX(published_at) FROM items"
+        ).fetchone()
+        latest_published_at = latest_published_at_row[0] if latest_published_at_row else None
+
+        source_rows = conn.execute(
+            """
+            SELECT COALESCE(source_kind, 'unknown') AS key, COUNT(*) AS count
+            FROM items
+            GROUP BY COALESCE(source_kind, 'unknown')
+            ORDER BY count DESC
+            """
+        ).fetchall()
+        source_counts = {str(row["key"]): int(row["count"]) for row in source_rows}
+
+        topic_rows = conn.execute(
+            """
+            SELECT COALESCE(topic, '미분류') AS key, COUNT(*) AS count
+            FROM items
+            GROUP BY COALESCE(topic, '미분류')
+            ORDER BY count DESC
+            """
+        ).fetchall()
+        topic_counts = {str(row["key"]): int(row["count"]) for row in topic_rows}
+
+        recent_item_rows = conn.execute(
+            """
+            SELECT id, published_at, source_name, source_kind, topic, title, translated_title
+            FROM items
+            ORDER BY published_at DESC
+            LIMIT ?
+            """,
+            (recent_item_limit,),
+        ).fetchall()
+        recent_items: List[Dict[str, Any]] = []
+        for row in recent_item_rows:
+            title = row["title"] or ""
+            translated_title = row["translated_title"] or ""
+            recent_items.append(
+                {
+                    "id": int(row["id"]),
+                    "published_at": row["published_at"],
+                    "source_name": row["source_name"] or "unknown",
+                    "source_kind": row["source_kind"] or "unknown",
+                    "topic": row["topic"] or "미분류",
+                    "title": translated_title or title,
+                    "translation_applied": bool(
+                        translated_title and translated_title.strip() and translated_title != title
+                    ),
+                }
+            )
+
+        recent_batch_rows = conn.execute(
+            """
+            SELECT b.id, b.run_at, COUNT(i.id) AS item_count
+            FROM batches b
+            LEFT JOIN items i ON i.batch_id = b.id
+            GROUP BY b.id, b.run_at
+            ORDER BY b.id DESC
+            LIMIT ?
+            """,
+            (recent_batch_limit,),
+        ).fetchall()
+        recent_batches = [
+            {"id": int(row["id"]), "run_at": row["run_at"], "item_count": int(row["item_count"])}
+            for row in recent_batch_rows
+        ]
+
+    translation_coverage_ratio = 0.0
+    if total_items > 0:
+        translation_coverage_ratio = round((translated_title_items / total_items) * 100, 2)
+
+    return {
+        "generated_at": now_utc_iso(),
+        "db_path": DB_PATH,
+        "totals": {
+            "total_items": total_items,
+            "batched_items": batched_items,
+            "today_filtered_items": today_filtered_items,
+            "translated_title_items": translated_title_items,
+            "translated_summary_items": translated_summary_items,
+            "pending_translation_items": pending_translation_items,
+            "translation_coverage_ratio": translation_coverage_ratio,
+            "latest_published_at": latest_published_at,
+        },
+        "source_counts": source_counts,
+        "topic_counts": topic_counts,
+        "recent_items": recent_items,
+        "recent_batches": recent_batches,
+    }
+
+
 def now_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
