@@ -146,10 +146,11 @@ export function RussiaNewsInfinitePage() {
             setIsRefreshing(false)
           }}
           disabled={isRefreshing}
-          className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+          aria-label="새로고침"
+          title="새로고침"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-          새로고침
         </button>
       </div>
 
