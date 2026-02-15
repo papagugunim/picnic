@@ -6,11 +6,11 @@ import { NewsItem } from './types'
 interface NewsAutoSlideProps {
   newsList: NewsItem[]
   onNewsClick: (news: NewsItem) => void
-  isAdmin: boolean
+  canManageNotices: boolean
 }
 
 // 뉴스 자동 슬라이드 컴포넌트 - 3초마다 리렌더링되므로 별도 분리
-function NewsAutoSlideComponent({ newsList, onNewsClick, isAdmin }: NewsAutoSlideProps) {
+function NewsAutoSlideComponent({ newsList, onNewsClick, canManageNotices }: NewsAutoSlideProps) {
   const [currentNewsIndex, setCurrentNewsIndex] = useState(0)
 
   // 3초마다 뉴스 자동 슬라이드
@@ -38,7 +38,7 @@ function NewsAutoSlideComponent({ newsList, onNewsClick, isAdmin }: NewsAutoSlid
     return (
       <div className="h-[120px] flex items-center justify-center bg-background rounded-lg border border-border">
         <p className="text-sm text-muted-foreground">
-          {isAdmin ? '새 소식을 추가해주세요' : '등록된 소식이 없습니다'}
+          {canManageNotices ? '새 공지 사항을 추가해주세요' : '등록된 공지 사항이 없습니다'}
         </p>
       </div>
     )
@@ -81,7 +81,7 @@ function NewsAutoSlideComponent({ newsList, onNewsClick, isAdmin }: NewsAutoSlid
                   ? 'bg-primary scale-110'
                   : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
               }`}
-              aria-label={`소식 ${index + 1}`}
+              aria-label={`공지 사항 ${index + 1}`}
             />
           ))}
         </div>

@@ -20,7 +20,7 @@ export default function TodayPage() {
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null)
   const [isRefreshingWeather, setIsRefreshingWeather] = useState(false)
   const [isRefreshingExchangeRates, setIsRefreshingExchangeRates] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [canManageNotices, setCanManageNotices] = useState(false)
 
   // 뉴스 상태
   const [newsList, setNewsList] = useState<NewsItem[]>([])
@@ -198,7 +198,7 @@ export default function TodayPage() {
         }
 
         if (profile?.user_role === 'admin' || profile?.user_role === 'developer') {
-          setIsAdmin(true)
+          setCanManageNotices(true)
         }
       }
       setLoading(false)
@@ -341,7 +341,7 @@ export default function TodayPage() {
           {/* 뉴스 */}
           <NewsSection
             newsList={newsList}
-            isAdmin={isAdmin}
+            canManageNotices={canManageNotices}
             onRefreshNews={fetchNews}
           />
 

@@ -23,12 +23,12 @@ const logger = createNamespacedLogger('NewsSection')
 
 interface NewsSectionProps {
   newsList: NewsItem[]
-  isAdmin: boolean
+  canManageNotices: boolean
   onRefreshNews: () => void
 }
 
-export function NewsSection({ newsList, isAdmin, onRefreshNews }: NewsSectionProps) {
-  const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null)
+export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsSectionProps) {
+  const [selectedNewsId, setSelectedNewsId] = useState<string | null>(null)
   const [showNewsModal, setShowNewsModal] = useState(false)
   const [showNewsForm, setShowNewsForm] = useState(false)
   const [editingNews, setEditingNews] = useState<NewsItem | null>(null)
@@ -37,7 +37,7 @@ export function NewsSection({ newsList, isAdmin, onRefreshNews }: NewsSectionPro
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   const handleNewsClick = useCallback((news: NewsItem) => {
-    setSelectedNews(news)
+    setSelectedNewsId(news.id)
     setShowNewsModal(true)
   }, [])
 
@@ -69,7 +69,7 @@ export function NewsSection({ newsList, isAdmin, onRefreshNews }: NewsSectionPro
       if (error) throw error
 
       setShowNewsModal(false)
-      setSelectedNews(null)
+      setSelectedNewsId(null)
       onRefreshNews()
     } catch (error) {
       logger.error('뉴스 삭제 실패:', error)
@@ -78,6 +78,10 @@ export function NewsSection({ newsList, isAdmin, onRefreshNews }: NewsSectionPro
       setDeleteTargetId(null)
     }
   }, [deleteTargetId, onRefreshNews])
+
+  const selectedNews = selectedNewsId
+    ? newsList.find((news) => news.id === selectedNewsId) ?? null
+    : null
 
   const handleSaveNews = async () => {
     if (!newsFormData.title.trim() || !newsFormData.content.trim()) return
@@ -137,13 +141,13 @@ export function NewsSection({ newsList, isAdmin, onRefreshNews }: NewsSectionPro
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Newspaper className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-            <h2 className="font-bold text-sm">유용한 소식</h2>
+            <h2 className="font-bold text-sm">공지 사항</h2>
           </div>
-          {isAdmin && (
+          {canManageNotices && (
             <button
               onClick={handleOpenNewForm}
               className="p-1.5 hover:bg-background rounded-lg transition-colors"
-              aria-label="소식 추가"
+              aria-label="공지 사항 추가"
             >
               <Plus className="w-4 h-4 text-muted-foreground" />
             </button>
@@ -153,15 +157,16 @@ export function NewsSection({ newsList, isAdmin, onRefreshNews }: NewsSectionPro
         <NewsAutoSlide
           newsList={newsList}
           onNewsClick={handleNewsClick}
-          isAdmin={isAdmin}
+          canManageNotices={canManageNotices}
         />
       </div>
 
       {/* 뉴스 상세 모달 */}
       {showNewsModal && selectedNews && (
         <NewsModal
-          news={selectedNews}
-          isAdmin={isAdmin}
+          newsList={newsList}
+          initialNewsId={selectedNews.id}
+          canManageNotices={canManageNotices}
           onClose={() => setShowNewsModal(false)}
           onEdit={handleEditNews}
           onDelete={handleDeleteNews}
@@ -180,7 +185,7 @@ export function NewsSection({ newsList, isAdmin, onRefreshNews }: NewsSectionPro
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold">
-                {editingNews ? '소식 수정' : '새 소식 작성'}
+                {editingNews ? '공지 사항 수정' : '새 공지 사항 작성'}
               </h2>
               <button
                 onClick={() => setShowNewsForm(false)}
@@ -198,7 +203,7 @@ export function NewsSection({ newsList, isAdmin, onRefreshNews }: NewsSectionPro
                   type="text"
                   value={newsFormData.title}
                   onChange={(e) => setNewsFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="소식 제목"
+                  placeholder="공지 사항 제목"
                   className="w-full p-3 bg-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
@@ -208,7 +213,7 @@ export function NewsSection({ newsList, isAdmin, onRefreshNews }: NewsSectionPro
                 <textarea
                   value={newsFormData.content}
                   onChange={(e) => setNewsFormData(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder="소식 내용을 입력하세요"
+                  placeholder="공지 사항 내용을 입력하세요"
                   rows={6}
                   className="w-full p-3 bg-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
@@ -241,7 +246,7 @@ export function NewsSection({ newsList, isAdmin, onRefreshNews }: NewsSectionPro
       <AlertDialog open={!!deleteTargetId} onOpenChange={(open) => !open && setDeleteTargetId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>소식 삭제</AlertDialogTitle>
+            <AlertDialogTitle>공지 사항 삭제</AlertDialogTitle>
             <AlertDialogDescription>
               정말 삭제하시겠습니까?
             </AlertDialogDescription>

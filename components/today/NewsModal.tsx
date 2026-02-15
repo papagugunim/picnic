@@ -1,89 +1,202 @@
 'use client'
 
-import { memo, useCallback } from 'react'
-import { X, Edit2, Trash2 } from 'lucide-react'
+import { memo, useCallback, useEffect, useMemo, useState, type TouchEvent } from 'react'
+import { X, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { NewsItem } from './types'
 
 interface NewsModalProps {
-  news: NewsItem
-  isAdmin: boolean
+  newsList: NewsItem[]
+  initialNewsId: string
+  canManageNotices: boolean
   onClose: () => void
   onEdit: (news: NewsItem) => void
   onDelete: (newsId: string) => void
 }
 
-function NewsModalComponent({ news, isAdmin, onClose, onEdit, onDelete }: NewsModalProps) {
-  // 배경 클릭 시 닫기
-  const handleBackdropClick = useCallback(() => {
-    onClose()
-  }, [onClose])
+function NewsModalComponent({
+  newsList,
+  initialNewsId,
+  canManageNotices,
+  onClose,
+  onEdit,
+  onDelete,
+}: NewsModalProps) {
+  const initialIndex = useMemo(() => {
+    const foundIndex = newsList.findIndex((item) => item.id === initialNewsId)
+    return foundIndex >= 0 ? foundIndex : 0
+  }, [newsList, initialNewsId])
 
-  // 모달 내용 클릭 시 이벤트 전파 중단
-  const handleContentClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
+  const [currentIndex, setCurrentIndex] = useState(initialIndex)
+  const [touchStartX, setTouchStartX] = useState<number | null>(null)
+
+  useEffect(() => {
+    setCurrentIndex(initialIndex)
+  }, [initialIndex])
+
+  useEffect(() => {
+    if (newsList.length === 0) return
+    if (currentIndex < newsList.length) return
+    setCurrentIndex(newsList.length - 1)
+  }, [currentIndex, newsList.length])
+
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = originalOverflow
+    }
   }, [])
 
-  // 수정 클릭
-  const handleEditClick = useCallback(() => {
-    onEdit(news)
-  }, [onEdit, news])
+  const hasMultiple = newsList.length > 1
+  const currentNews = newsList[currentIndex]
 
-  // 삭제 클릭
-  const handleDeleteClick = useCallback(() => {
-    onDelete(news.id)
-  }, [onDelete, news.id])
+  const handlePrev = useCallback(() => {
+    if (!hasMultiple) return
+    setCurrentIndex((prev) => (prev - 1 + newsList.length) % newsList.length)
+  }, [hasMultiple, newsList.length])
 
-  // 날짜 포맷팅
-  const formattedDate = new Date(news.created_at).toLocaleDateString('ko-KR', {
+  const handleNext = useCallback(() => {
+    if (!hasMultiple) return
+    setCurrentIndex((prev) => (prev + 1) % newsList.length)
+  }, [hasMultiple, newsList.length])
+
+  const handleTouchStart = useCallback((e: TouchEvent<HTMLDivElement>) => {
+    setTouchStartX(e.touches[0]?.clientX ?? null)
+  }, [])
+
+  const handleTouchEnd = useCallback((e: TouchEvent<HTMLDivElement>) => {
+    if (touchStartX === null || !hasMultiple) return
+
+    const touchEndX = e.changedTouches[0]?.clientX ?? touchStartX
+    const deltaX = touchStartX - touchEndX
+
+    if (Math.abs(deltaX) > 40) {
+      if (deltaX > 0) {
+        handleNext()
+      } else {
+        handlePrev()
+      }
+    }
+
+    setTouchStartX(null)
+  }, [handleNext, handlePrev, hasMultiple, touchStartX])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+
+      if (e.key === 'ArrowLeft') {
+        handlePrev()
+      } else if (e.key === 'ArrowRight') {
+        handleNext()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleNext, handlePrev, onClose])
+
+  if (!currentNews) return null
+
+  const formattedDate = new Date(currentNews.created_at).toLocaleDateString('ko-KR', {
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
   })
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={handleBackdropClick}
-    >
+    <div className="fixed inset-0 z-50 bg-background text-foreground flex flex-col">
+      <div className="sticky top-0 z-20 border-b border-border/60 bg-background/95 backdrop-blur">
+        <div className="mx-auto max-w-3xl px-4 py-3 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground">공지 사항 {currentIndex + 1} / {newsList.length}</p>
+            <h2 className="text-sm font-semibold truncate">전체 공지 보기</h2>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {canManageNotices && (
+              <>
+                <button
+                  onClick={() => onEdit(currentNews)}
+                  className="p-2 hover:bg-muted rounded-lg transition-colors"
+                  aria-label="공지 사항 수정"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onDelete(currentNews.id)}
+                  className="p-2 hover:bg-muted rounded-lg transition-colors text-destructive"
+                  aria-label="공지 사항 삭제"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-muted rounded-lg transition-colors"
+              aria-label="닫기"
+            >
+              <X className="w-5 h-5 text-muted-foreground" />
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div
-        className="glass-strong rounded-xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto"
-        onClick={handleContentClick}
+        className="flex-1 overflow-y-auto"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
-        <div className="flex items-start justify-between mb-4">
-          <h2 className="text-lg font-bold pr-8">{news.title}</h2>
+        <div className="mx-auto max-w-3xl px-4 pt-6 pb-24">
+          <h3 className="text-2xl font-bold leading-tight mb-2">{currentNews.title}</h3>
+          <p className="text-xs text-muted-foreground mb-6">{formattedDate}</p>
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <p className="whitespace-pre-wrap text-base leading-7">{currentNews.content}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="sticky bottom-0 border-t border-border/60 bg-background/95 backdrop-blur">
+        <div className="mx-auto max-w-3xl px-4 py-3 flex items-center gap-3">
           <button
-            onClick={onClose}
-            className="p-2 hover:bg-background rounded-lg transition-colors flex-shrink-0"
-            aria-label="닫기"
+            type="button"
+            onClick={handlePrev}
+            disabled={!hasMultiple}
+            className="h-10 w-10 flex items-center justify-center rounded-full border border-border bg-muted/40 disabled:opacity-40"
+            aria-label="이전 공지"
           >
-            <X className="w-5 h-5 text-muted-foreground" />
+            <ChevronLeft className="w-5 h-5" />
           </button>
-        </div>
 
-        <div className="prose prose-sm dark:prose-invert max-w-none mb-4">
-          <p className="whitespace-pre-wrap text-sm">{news.content}</p>
-        </div>
+          <div className="flex-1 flex justify-center gap-1.5">
+            {newsList.map((item, index) => (
+              <button
+                key={item.id}
+                onClick={() => setCurrentIndex(index)}
+                className={`h-2.5 rounded-full transition-all ${
+                  index === currentIndex
+                    ? 'w-5 bg-primary'
+                    : 'w-2.5 bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                }`}
+                aria-label={`공지 사항 ${index + 1} 보기`}
+              >
+              </button>
+            ))}
+          </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground pt-3">
-          <span>{formattedDate}</span>
-          {isAdmin && (
-            <div className="flex gap-2">
-              <button
-                onClick={handleEditClick}
-                className="p-1.5 hover:bg-background rounded-lg transition-colors"
-                aria-label="수정"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleDeleteClick}
-                className="p-1.5 hover:bg-background rounded-lg transition-colors text-destructive"
-                aria-label="삭제"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={!hasMultiple}
+            className="h-10 w-10 flex items-center justify-center rounded-full border border-border bg-muted/40 disabled:opacity-40"
+            aria-label="다음 공지"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
       </div>
     </div>
