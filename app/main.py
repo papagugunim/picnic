@@ -121,11 +121,11 @@ def health() -> JSONResponse:
 
 @app.post("/api/refresh")
 def refresh() -> JSONResponse:
-    Thread(target=run_fetch_cycle, daemon=True).start()
-    return JSONResponse({"ok": True})
+    run_fetch_cycle()
+    return JSONResponse({"ok": True, "mode": "sync"})
 
 
 @app.post("/api/retranslate")
 def retranslate(limit: int = 50) -> JSONResponse:
-    Thread(target=retranslate_missing, args=(limit,), daemon=True).start()
-    return JSONResponse({"ok": True, "limit": limit})
+    result = retranslate_missing(limit)
+    return JSONResponse({"ok": True, "limit": limit, **result, "mode": "sync"})

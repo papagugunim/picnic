@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import math
 import os
 import re
@@ -13,7 +14,7 @@ from bs4 import BeautifulSoup
 from dateutil import parser as date_parser
 
 from app.services.db import get_or_create_source, insert_item, now_utc_iso
-from app.services.translator import translate_text
+from app.services.translator import translate_text_with_meta
 
 RSS_SOURCES = [
     {
@@ -54,6 +55,7 @@ TELEGRAM_SOURCES = [
 HTTP_TIMEOUT = float(os.environ.get("NEWS_FETCH_TIMEOUT", "12"))
 RSS_ENTRY_LIMIT = int(os.environ.get("RSS_ENTRY_LIMIT", "80"))
 TELEGRAM_ENTRY_LIMIT = int(os.environ.get("TELEGRAM_ENTRY_LIMIT", "40"))
+logger = logging.getLogger(__name__)
 
 POLITICS_KEYWORDS = [
     "кремл",
@@ -322,7 +324,23 @@ def _http_get(url: str) -> Optional[str]:
         return None
 
 
-def _extract_rss_items(feed: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _translate_with_stats(
+    text: Optional[str],
+    source_lang: Optional[str],
+    stats: Dict[str, int],
+) -> Optional[str]:
+    if not text or not text.strip():
+        return text
+    translated, ok = translate_text_with_meta(text, source_lang=source_lang)
+    stats["attempted"] += 1
+    if ok:
+        stats["success"] += 1
+    else:
+        stats["failed"] += 1
+    return translated
+
+
+def _extract_rss_items(feed: Dict[str, Any], translation_stats: Dict[str, int]) -> List[Dict[str, Any]]:
     xml = _http_get(feed["url"])
     if not xml:
         return []
@@ -378,8 +396,8 @@ def _extract_rss_items(feed: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "is_moscow": int(is_moscow),
                 "quality_score": score,
                 "views_count": None,
-                "translated_title": translate_text(title, source_lang=feed["lang"]),
-                "translated_summary": translate_text(summary, source_lang=feed["lang"]),
+                "translated_title": _translate_with_stats(title, feed["lang"], translation_stats),
+                "translated_summary": _translate_with_stats(summary, feed["lang"], translation_stats),
                 "translated_content": None,
                 "created_at": now_utc_iso(),
             }
@@ -388,7 +406,7 @@ def _extract_rss_items(feed: Dict[str, Any]) -> List[Dict[str, Any]]:
     return items
 
 
-def _extract_telegram_items(source: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _extract_telegram_items(source: Dict[str, Any], translation_stats: Dict[str, int]) -> List[Dict[str, Any]]:
     channel = source["channel"].strip().lstrip("@")
     if not channel:
         return []
@@ -465,8 +483,8 @@ def _extract_telegram_items(source: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "is_moscow": int(is_moscow),
                 "quality_score": score,
                 "views_count": views_count,
-                "translated_title": translate_text(title, source_lang=source["lang"]),
-                "translated_summary": translate_text(summary, source_lang=source["lang"]),
+                "translated_title": _translate_with_stats(title, source["lang"], translation_stats),
+                "translated_summary": _translate_with_stats(summary, source["lang"], translation_stats),
                 "translated_content": None,
                 "created_at": now_utc_iso(),
             }
@@ -478,16 +496,26 @@ def _extract_telegram_items(source: Dict[str, Any]) -> List[Dict[str, Any]]:
 def fetch_and_store() -> List[int]:
     stored_ids: List[int] = []
     candidates: List[Dict[str, Any]] = []
+    translation_stats: Dict[str, int] = {"attempted": 0, "success": 0, "failed": 0}
 
     for feed in RSS_SOURCES:
-        candidates.extend(_extract_rss_items(feed))
+        candidates.extend(_extract_rss_items(feed, translation_stats))
 
     for source in TELEGRAM_SOURCES:
-        candidates.extend(_extract_telegram_items(source))
+        candidates.extend(_extract_telegram_items(source, translation_stats))
 
     for item in candidates:
         inserted = insert_item(item)
         if inserted:
             stored_ids.append(inserted)
+
+    logger.info(
+        "fetch_and_store done: candidates=%d inserted=%d translate_attempted=%d success=%d failed=%d",
+        len(candidates),
+        len(stored_ids),
+        translation_stats["attempted"],
+        translation_stats["success"],
+        translation_stats["failed"],
+    )
 
     return stored_ids

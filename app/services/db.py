@@ -208,6 +208,8 @@ def get_raw_items_missing_translation(limit: int) -> List[Dict[str, Any]]:
             SELECT id, title, summary, content, translated_title, translated_summary, translated_content
             FROM items
             WHERE translated_title IS NULL OR translated_summary IS NULL
+               OR translated_title = '' OR translated_summary = ''
+               OR translated_title = title OR translated_summary = summary
             ORDER BY published_at DESC
             LIMIT ?
             """,
