@@ -27,6 +27,8 @@ uvicorn app.main:app --reload
 ## 환경 변수
 - `DEEPL_API_KEY` (권장)
 - `DEEPL_API_URL` (기본: `https://api-free.deepl.com/v2/translate`)
+- `GOOGLE_TRANSLATE_FALLBACK` (기본: `1`, DeepL 실패 시 구글 공개 번역 엔드포인트 폴백)
+- `GOOGLE_TRANSLATE_TIMEOUT` (기본: `8`)
 - `FETCH_INTERVAL_HOURS` (기본: `3`)
 - `NEWS_BATCH_SIZE` (기본: `24`)
 - `NEWS_FETCH_TIMEOUT` (기본: `12`)

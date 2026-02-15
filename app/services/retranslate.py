@@ -1,12 +1,23 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Dict
 
 from app.services.db import count_pending_translations, get_raw_items_missing_translation, update_translation
 from app.services.translator import translate_text_with_meta
 
 logger = logging.getLogger(__name__)
+_cyrillic_re = re.compile(r"[А-Яа-яЁё]")
+_latin_re = re.compile(r"[A-Za-z]")
+
+
+def _guess_source_lang(text: str) -> str | None:
+    if _cyrillic_re.search(text):
+        return "RU"
+    if _latin_re.search(text):
+        return "EN"
+    return None
 
 
 def retranslate_missing(limit: int = 50) -> Dict[str, int]:
@@ -19,8 +30,9 @@ def retranslate_missing(limit: int = 50) -> Dict[str, int]:
     for item in items:
         title = item.get("title") or ""
         summary = item.get("summary") or ""
+        source_lang = _guess_source_lang(f"{title} {summary}")
 
-        t_title, ok_title = translate_text_with_meta(title)
+        t_title, ok_title = translate_text_with_meta(title, source_lang=source_lang)
         if title.strip():
             translation_attempted += 1
             if ok_title:
@@ -28,7 +40,7 @@ def retranslate_missing(limit: int = 50) -> Dict[str, int]:
             else:
                 translation_failed += 1
 
-        t_summary, ok_summary = translate_text_with_meta(summary)
+        t_summary, ok_summary = translate_text_with_meta(summary, source_lang=source_lang)
         if summary.strip():
             translation_attempted += 1
             if ok_summary:
