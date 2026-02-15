@@ -13,12 +13,12 @@ function formatDateTime(value: string): string {
   if (!value) return '-'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleString('ko-KR', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  const hour = date.getHours()
+  const meridiem = hour >= 12 ? '오후' : '오전'
+  const hour12 = hour % 12 || 12
+  return `${month}/${day}/${meridiem}${hour12}시`
 }
 
 function topicBadgeClass(topic: string): string {
@@ -73,7 +73,7 @@ export function RussiaNewsCard({ item, compact = false }: RussiaNewsCardProps) {
               {item.views_count.toLocaleString()}
             </span>
           )}
-          <span>{formatDateTime(item.published_at)}</span>
+          <span className="whitespace-nowrap">{formatDateTime(item.published_at)}</span>
           <a
             href={item.link}
             target="_blank"

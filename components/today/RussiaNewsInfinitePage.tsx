@@ -126,7 +126,7 @@ export function RussiaNewsInfinitePage() {
   }, [fetchMore])
 
   const sectionTitle = useMemo(
-    () => (topic ? `모스크바 ${topic} 뉴스` : '모스크바 실시간 뉴스 아카이브'),
+    () => (topic ? `가장 빠른 ${topic} 뉴스` : '가장 빠른 실시간 뉴스 아카이브'),
     [topic]
   )
 

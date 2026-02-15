@@ -20,12 +20,12 @@ function formatDateTime(value: string): string {
   if (!value) return '-'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleString('ko-KR', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  const hour = date.getHours()
+  const meridiem = hour >= 12 ? '오후' : '오전'
+  const hour12 = hour % 12 || 12
+  return `${month}/${day}/${meridiem}${hour12}시`
 }
 
 export function RussiaNewsSection() {
@@ -82,7 +82,7 @@ export function RussiaNewsSection() {
     <section className="glass-strong rounded-xl p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-bold">모스크바 실시간 뉴스</h2>
+          <h2 className="text-sm font-bold">가장 빠른 실시간 뉴스</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             사회·경제·문화 중심, 3시간 단위 업데이트
           </p>
