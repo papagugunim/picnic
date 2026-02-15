@@ -74,15 +74,17 @@ export function RussiaNewsCard({ item, compact = false }: RussiaNewsCardProps) {
             </span>
           )}
           <span className="whitespace-nowrap">{formatDateTime(item.published_at)}</span>
-          <a
-            href={item.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 hover:text-primary"
-          >
-            원문
-            <ExternalLink className="h-3 w-3" />
-          </a>
+          {item.source_kind === 'rss' && (
+            <a
+              href={item.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 hover:text-primary"
+            >
+              원문
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
         </div>
       </div>
     </article>
