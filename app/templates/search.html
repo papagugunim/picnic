@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ app_title }} - 검색</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar-left">
+      <div class="logo">RU</div>
+      <nav class="menu">
+        <a class="menu-item" href="/">홈</a>
+        <a class="menu-item active" href="/search">검색</a>
+        <div class="menu-item small">업데이트: {{ latest_run or '대기 중' }}</div>
+      </nav>
+    </aside>
+
+    <main class="timeline">
+      <header class="timeline-header">
+        <div>
+          <h1>지난 뉴스 검색</h1>
+          <form class="search-form" action="/search" method="get">
+            <input class="search" type="search" name="q" value="{{ query }}" placeholder="키워드로 검색" />
+          </form>
+        </div>
+        <button id="themeToggle" class="theme-toggle" type="button">라이트 모드</button>
+      </header>
+
+      <section id="feed" class="feed"></section>
+      <div id="loader" class="loader">불러오는 중...</div>
+    </main>
+
+    <aside class="sidebar-right">
+      <div class="panel">
+        <h2>검색 힌트</h2>
+        <p class="muted">인물명, 도시, 사건, 날짜 키워드를 사용해 보세요.</p>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const themeToggle = document.getElementById('themeToggle');
+    const storedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', storedTheme);
+    themeToggle.textContent = storedTheme === 'dark' ? '라이트 모드' : '다크 모드';
+    themeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      themeToggle.textContent = next === 'dark' ? '라이트 모드' : '다크 모드';
+    });
+
+    const feedEl = document.getElementById('feed');
+    const loader = document.getElementById('loader');
+    let cursor = null;
+    let loading = false;
+    const query = "{{ query }}";
+
+    async function loadMore() {
+      if (loading || !query) return;
+      loading = true;
+      loader.style.display = 'block';
+      const url = new URL('/api/search', window.location.origin);
+      url.searchParams.set('q', query);
+      if (cursor) url.searchParams.set('cursor', cursor);
+      const res = await fetch(url.toString());
+      const data = await res.json();
+
+      if (data.items.length === 0) {
+        loader.textContent = '더 이상 결과가 없습니다.';
+        return;
+      }
+
+      data.items.forEach(item => {
+        const card = document.createElement('article');
+        card.className = 'card';
+        const badge = item.category ? `<span class="badge">${item.category}</span>` : '';
+        card.innerHTML = `
+          <div class="meta">${badge}${new Date(item.published_at).toLocaleString()}</div>
+          <h3 class="title">${item.title}</h3>
+          ${item.summary ? `<p class="summary">${item.summary}</p>` : ''}
+          <a class="link" href="${item.link}" target="_blank" rel="noopener">원문 보기</a>
+        `;
+        feedEl.appendChild(card);
+      });
+      cursor = data.items[data.items.length - 1].published_at;
+      loader.style.display = 'none';
+      loading = false;
+    }
+
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          loadMore();
+        }
+      });
+    }, { rootMargin: '300px' });
+
+    io.observe(loader);
+    if (query) loadMore();
+  </script>
+</body>
+</html>

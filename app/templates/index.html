@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ app_title }}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar-left">
+      <div class="logo">RU</div>
+      <nav class="menu">
+        <a class="menu-item active" href="/">Today</a>
+        <a class="menu-item" href="/search">검색</a>
+        <div class="menu-item small">업데이트: {{ latest_run or '대기 중' }}</div>
+      </nav>
+    </aside>
+
+    <main class="timeline">
+      <header class="timeline-header">
+        <div>
+          <h1>오늘의 피크닉 투데이</h1>
+          <div class="sub">러시아 사회·경제·문화 뉴스를 3시간마다 자동 수집하고 한글로 번역합니다.</div>
+        </div>
+        <div class="header-actions">
+          <button id="refreshBtn" class="refresh-btn" type="button">지금 업데이트</button>
+          <button id="themeToggle" class="theme-toggle" type="button">라이트 모드</button>
+        </div>
+      </header>
+
+      <section class="today-panel useful-panel">
+        <div class="section-title-row">
+          <h2>유용한 소식</h2>
+          <span class="section-hint">교민 생활에 바로 도움되는 정보</span>
+        </div>
+        <div class="useful-grid">
+          <article class="useful-card">
+            <h3>환율 체크</h3>
+            <p>루블/원 흐름을 매일 확인해 거래 타이밍을 놓치지 마세요.</p>
+          </article>
+          <article class="useful-card">
+            <h3>모스크바 생활 이슈</h3>
+            <p>교통, 날씨, 생활 안전, 지역 행사 소식을 빠르게 확인하세요.</p>
+          </article>
+          <article class="useful-card">
+            <h3>경제 트렌드</h3>
+            <p>물가, 유통, 소비 변화 등 실생활과 연결되는 경제 뉴스를 제공합니다.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="today-panel news-panel">
+        <div class="section-title-row">
+          <h2>모스크바 실시간 뉴스</h2>
+          <span class="section-hint">정치 제외 · 사회/경제/문화 · 3시간 자동 업데이트</span>
+        </div>
+        <div class="topic-filters" id="topicFilters">
+          <button class="topic-chip active" data-topic="">전체</button>
+          <button class="topic-chip" data-topic="사회">사회</button>
+          <button class="topic-chip" data-topic="경제">경제</button>
+          <button class="topic-chip" data-topic="문화">문화</button>
+        </div>
+
+        <section id="feed" class="feed"></section>
+        <div id="loader" class="loader">불러오는 중...</div>
+      </section>
+    </main>
+
+    <aside class="sidebar-right">
+      <div class="panel">
+        <h2>빠른 검색</h2>
+        <form action="/search" method="get">
+          <input class="search" type="search" name="q" placeholder="키워드로 지난 뉴스 검색" />
+        </form>
+        <p class="muted">뉴스 소스: RIA, Interfax, The Moscow Times, TASS</p>
+      </div>
+      <div class="panel accent">
+        <h2>텔레그램 속보</h2>
+        <p class="muted">mosguru / moscowach 채널을 병행 수집해 속도를 높였습니다.</p>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const themeToggle = document.getElementById('themeToggle');
+    const storedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', storedTheme);
+    themeToggle.textContent = storedTheme === 'dark' ? '라이트 모드' : '다크 모드';
+    themeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      themeToggle.textContent = next === 'dark' ? '라이트 모드' : '다크 모드';
+    });
+
+    const feedEl = document.getElementById('feed');
+    const loader = document.getElementById('loader');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const filterRoot = document.getElementById('topicFilters');
+
+    let cursor = null;
+    let loading = false;
+    let hasMore = true;
+    let activeTopic = '';
+
+    function escapeHtml(raw = '') {
+      return String(raw)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function toLocaleDate(iso) {
+      if (!iso) return '';
+      return new Date(iso).toLocaleString();
+    }
+
+    function renderCard(item) {
+      const card = document.createElement('article');
+      card.className = 'card';
+
+      const topicBadge = item.topic ? `<span class="badge">${escapeHtml(item.topic)}</span>` : '';
+      const sourceBadge = item.source_kind === 'telegram'
+        ? '<span class="badge source">텔레그램</span>'
+        : '<span class="badge source">RSS</span>';
+      const moscowBadge = item.is_moscow ? '<span class="badge moscow">모스크바</span>' : '';
+      const views = item.views_count ? `<span class="meta-dot">조회 ${Number(item.views_count).toLocaleString()}</span>` : '';
+      const sourceName = escapeHtml(item.source_name || '원문 소스');
+
+      card.innerHTML = `
+        <div class="meta">${topicBadge}${sourceBadge}${moscowBadge}<span class="meta-dot">${sourceName}</span><span class="meta-dot">${toLocaleDate(item.published_at)}</span>${views}</div>
+        <h3 class="title">${escapeHtml(item.title || '')}</h3>
+        ${item.summary ? `<p class="summary">${escapeHtml(item.summary)}</p>` : ''}
+        <a class="link" href="${escapeHtml(item.link || '#')}" target="_blank" rel="noopener">원문 보기</a>
+      `;
+      return card;
+    }
+
+    async function loadMore() {
+      if (loading || !hasMore) return;
+      loading = true;
+      loader.style.display = 'block';
+      loader.textContent = '불러오는 중...';
+
+      const url = new URL('/api/today-news', window.location.origin);
+      if (cursor) url.searchParams.set('cursor', cursor);
+      if (activeTopic) url.searchParams.set('topic', activeTopic);
+
+      const res = await fetch(url.toString());
+      const data = await res.json();
+
+      if (data.items.length === 0) {
+        hasMore = false;
+        if (!cursor) {
+          loader.textContent = '표시할 뉴스가 없습니다.';
+        } else {
+          loader.textContent = '더 이상 뉴스가 없습니다.';
+        }
+        loading = false;
+        return;
+      }
+
+      data.items.forEach(item => {
+        feedEl.appendChild(renderCard(item));
+      });
+
+      cursor = data.items[data.items.length - 1].published_at;
+      loader.style.display = 'none';
+      loading = false;
+    }
+
+    function resetFeed() {
+      cursor = null;
+      loading = false;
+      hasMore = true;
+      feedEl.innerHTML = '';
+      loader.textContent = '불러오는 중...';
+      loader.style.display = 'block';
+    }
+
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          loadMore();
+        }
+      });
+    }, { rootMargin: '300px' });
+
+    io.observe(loader);
+    loadMore();
+
+    filterRoot.addEventListener('click', event => {
+      const target = event.target.closest('.topic-chip');
+      if (!target) return;
+      activeTopic = target.dataset.topic || '';
+
+      [...filterRoot.querySelectorAll('.topic-chip')].forEach(node => node.classList.remove('active'));
+      target.classList.add('active');
+
+      resetFeed();
+      loadMore();
+    });
+
+    refreshBtn.addEventListener('click', async () => {
+      refreshBtn.disabled = true;
+      refreshBtn.textContent = '업데이트 중...';
+      await fetch('/api/refresh', { method: 'POST' });
+      resetFeed();
+      await loadMore();
+      refreshBtn.textContent = '지금 업데이트';
+      refreshBtn.disabled = false;
+    });
+  </script>
+</body>
+</html>

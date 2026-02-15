@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Local env/runtime
+.env
+.uvicorn.pid
+server.log
+
+# Local data/backups
+data/*.db
+data/*.db-shm
+data/*.db-wal
+backup-*.tar.gz
+transcript_*.txt
+
+# Vercel
+.vercel/
