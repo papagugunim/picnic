@@ -209,7 +209,7 @@ export default function SettingsPage() {
         clearTimeout(saveStateTimerRef.current)
       }
       saveStateTimerRef.current = setTimeout(() => {
-        router.replace('/profile')
+        router.replace(`/profile/${user.id}`)
       }, 450)
     } catch (err) {
       logger.error('Save error:', err)
