@@ -43,6 +43,11 @@ export const CITY_COORDS: Record<string, { lat: number; lon: number }> = {
 // 유용한 링크 목록
 export const USEFUL_LINKS = [
   {
+    href: 'https://overseas.mofa.go.kr/ru-ko/brd/m_7329/index.do?27778',
+    icon: '🇰🇷',
+    label: '주러 한국대사관'
+  },
+  {
     href: 'https://www.cbr.ru',
     icon: '🏦',
     label: '러시아 중앙은행'
@@ -53,24 +58,9 @@ export const USEFUL_LINKS = [
     label: '날씨 (Yandex)'
   },
   {
-    href: 'https://overseas.mofa.go.kr/ru-ko/brd/m_7329/index.do?27778',
-    icon: '🇰🇷',
-    label: '주러 한국대사관'
-  },
-  {
     href: 'https://yandex.ru/maps',
     icon: '🗺️',
     label: '지도 (Yandex)'
-  },
-  {
-    href: 'https://transport.mos.ru',
-    icon: '🚇',
-    label: '모스크바 교통'
-  },
-  {
-    href: 'https://www.pochta.ru',
-    icon: '📮',
-    label: '러시아 우편'
   },
   {
     href: 'https://papago.naver.com',
