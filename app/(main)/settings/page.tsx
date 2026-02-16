@@ -209,8 +209,8 @@ export default function SettingsPage() {
         clearTimeout(saveStateTimerRef.current)
       }
       saveStateTimerRef.current = setTimeout(() => {
-        setSaveButtonState('idle')
-      }, 1800)
+        router.replace('/profile')
+      }, 450)
     } catch (err) {
       logger.error('Save error:', err)
       setError('저장 중 오류가 발생했습니다')
