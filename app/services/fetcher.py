@@ -5,6 +5,7 @@ import math
 import os
 import re
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 from html import unescape
 from typing import Any, Dict, List, Optional
 
@@ -60,6 +61,14 @@ RSS_SOURCES = [
     },
 ]
 
+VC_RSS_SOURCE = {
+    "name": "VC.RU",
+    "url": os.environ.get("FEED_VC_RU", "https://vc.ru/rss"),
+    "lang": "RU",
+    # vc.ru는 보조 소스이므로 기본 점수를 낮춰 메인 러시아 RSS를 우선 노출.
+    "score_adjust": -6.0,
+}
+
 TELEGRAM_SOURCES = [
     {
         "name": "Первый Московский",
@@ -84,6 +93,13 @@ ENABLE_TELEGRAM_SOURCE = os.environ.get("ENABLE_TELEGRAM_SOURCE", "0").strip().l
     "yes",
     "on",
 }
+ENABLE_VC_SOURCE = os.environ.get("ENABLE_VC_SOURCE", "0").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+VC_ENTRY_LIMIT = int(os.environ.get("VC_ENTRY_LIMIT", "8"))
 logger = logging.getLogger(__name__)
 
 POLITICS_KEYWORDS = [
@@ -227,6 +243,29 @@ PROMOTION_KEYWORDS = [
     "advertisement",
 ]
 
+VC_BLOCKED_PATH_PREFIXES = {
+    "politics",
+    "crypto",
+    "invest",
+    "apple",
+    "ai",
+    "opinion",
+}
+
+VC_PATH_TOPIC_HINTS = {
+    "money": "경제",
+    "marketplace": "경제",
+    "business": "경제",
+    "transport": "사회",
+    "social": "사회",
+    "services": "사회",
+    "life": "문화",
+    "travel": "문화",
+    "food": "문화",
+    "culture": "문화",
+    "weather": "날씨",
+}
+
 
 def _strip_html(text: Optional[str]) -> str:
     if not text:
@@ -276,6 +315,40 @@ def _is_political(text: str) -> bool:
 
 def _is_promotional(text: str) -> bool:
     return any(keyword in text for keyword in PROMOTION_KEYWORDS)
+
+
+def _vc_path_segment(link: str) -> str:
+    try:
+        parsed = urlparse(link)
+        parts = [part for part in parsed.path.split("/") if part]
+        if not parts:
+            return ""
+        return parts[0].strip().lower()
+    except Exception:
+        return ""
+
+
+def _is_vc_personal_blog(link: str) -> bool:
+    segment = _vc_path_segment(link)
+    return segment.startswith("id")
+
+
+def _should_skip_vc_item(link: str) -> bool:
+    segment = _vc_path_segment(link)
+    if not segment:
+        return False
+    if segment in VC_BLOCKED_PATH_PREFIXES:
+        return True
+    if _is_vc_personal_blog(link):
+        return True
+    return False
+
+
+def _vc_topic_hint(link: str) -> Optional[str]:
+    segment = _vc_path_segment(link)
+    if not segment:
+        return None
+    return VC_PATH_TOPIC_HINTS.get(segment)
 
 
 def _detect_topic(text: str, source_kind: str) -> Optional[str]:
@@ -415,10 +488,18 @@ def _extract_rss_items(
     source_id = get_or_create_source(feed["name"], feed["url"])
     items: List[Dict[str, Any]] = []
 
-    for entry in parsed.entries[:entry_limit]:
+    is_vc_source = feed.get("name") == "VC.RU"
+    effective_entry_limit = entry_limit
+    if is_vc_source:
+        effective_entry_limit = min(entry_limit, VC_ENTRY_LIMIT)
+
+    for entry in parsed.entries[:effective_entry_limit]:
         title = _strip_html(entry.get("title") or "")
         link = entry.get("link") or ""
         if not title or not link:
+            continue
+
+        if is_vc_source and _should_skip_vc_item(link):
             continue
 
         raw_summary = entry.get("summary") or entry.get("description")
@@ -433,11 +514,19 @@ def _extract_rss_items(
 
         haystack = _normalize_for_match(title, summary, link)
         is_political = _is_political(haystack)
+        is_promotional = _is_promotional(haystack)
         topic = _detect_topic(haystack, source_kind="rss")
+        if is_vc_source and topic is None:
+            topic = _vc_topic_hint(link)
         if is_political or topic is None:
+            continue
+        if is_promotional:
             continue
 
         is_moscow = _is_moscow_related(haystack, feed["name"], "rss")
+        if is_vc_source and (not is_moscow) and topic not in {"경제", "날씨"}:
+            # vc.ru는 보조 소스: 모스크바 연관성이 없으면 생활 체감도가 높은 주제만 통과.
+            continue
         score = _compute_quality_score(
             published_at=published_at,
             topic=topic,
@@ -445,6 +534,7 @@ def _extract_rss_items(
             is_moscow=is_moscow,
             views_count=0,
         )
+        score = round(max(0.0, score + float(feed.get("score_adjust") or 0.0)), 2)
 
         items.append(
             {
@@ -574,12 +664,19 @@ def fetch_and_store(fast_mode: bool = False) -> List[int]:
     rss_entry_limit = min(RSS_ENTRY_LIMIT, 4) if fast_mode else RSS_ENTRY_LIMIT
     rss_timeout = FAST_FETCH_TIMEOUT if fast_mode else None
 
-    for feed in RSS_SOURCES:
+    rss_sources = list(RSS_SOURCES)
+    if ENABLE_VC_SOURCE:
+        rss_sources.append(VC_RSS_SOURCE)
+
+    for feed in rss_sources:
+        per_feed_limit = rss_entry_limit
+        if feed.get("name") == "VC.RU":
+            per_feed_limit = min(per_feed_limit, VC_ENTRY_LIMIT)
         candidates.extend(
             _extract_rss_items(
                 feed,
                 translation_stats,
-                entry_limit=rss_entry_limit,
+                entry_limit=per_feed_limit,
                 timeout=rss_timeout,
                 translate_summary=not fast_mode,
             )
@@ -601,8 +698,13 @@ def fetch_and_store(fast_mode: bool = False) -> List[int]:
         if inserted:
             stored_ids.append(inserted)
 
+    source_counts: Dict[str, int] = {}
+    for item in candidates:
+        source_name = str(item.get("source_name") or "unknown")
+        source_counts[source_name] = source_counts.get(source_name, 0) + 1
+
     logger.info(
-        "fetch_and_store done: mode=%s candidates=%d inserted=%d translate_attempted=%d success=%d failed=%d skipped=%d",
+        "fetch_and_store done: mode=%s candidates=%d inserted=%d translate_attempted=%d success=%d failed=%d skipped=%d sources=%s",
         "fast" if fast_mode else "normal",
         len(candidates),
         len(stored_ids),
@@ -610,6 +712,7 @@ def fetch_and_store(fast_mode: bool = False) -> List[int]:
         translation_stats["success"],
         translation_stats["failed"],
         translation_stats["skipped"],
+        source_counts,
     )
 
     return stored_ids

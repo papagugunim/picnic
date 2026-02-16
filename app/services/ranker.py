@@ -29,6 +29,10 @@ def _ranking_score(item: Dict[str, object]) -> float:
         score += 6
     if item.get("source_kind") == "telegram":
         score += 3
+    source_name = str(item.get("source_name") or "")
+    if source_name == "VC.RU":
+        # vc.ru는 보조 소스: 기본 랭킹에서 메인 RSS보다 뒤로 배치.
+        score -= 6
     if item.get("topic") == "경제":
         score += 1.5
     if item.get("topic") == "날씨":

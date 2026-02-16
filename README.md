@@ -16,6 +16,7 @@
 - RSS: RIA, Interfax, The Moscow Times RU, TASS
 - 날씨 RSS: Гидрометцентр, Google News Weather(Moscow/Russia)
 - Telegram: `ENABLE_TELEGRAM_SOURCE=1` 일 때만 수집
+- VC.RU RSS: `ENABLE_VC_SOURCE=1` 일 때만 보조 소스로 수집
 
 ## 실행
 ```bash
@@ -40,6 +41,9 @@ uvicorn app.main:app --reload
 - `TELEGRAM_ENTRY_LIMIT` (기본: `12`)
 - `INLINE_TRANSLATION_LIMIT` (기본: `40`, 수집 시 인라인 번역 최대 호출 수)
 - `ENABLE_TELEGRAM_SOURCE` (기본: `0`, Telegram 소스 포함 여부)
+- `ENABLE_VC_SOURCE` (기본: `0`, VC.RU 보조 소스 포함 여부)
+- `VC_ENTRY_LIMIT` (기본: `8`, vc.ru 소스에서 회차당 최대 수집 건수)
+- `FEED_VC_RU` (기본: `https://vc.ru/rss`)
 - `FEED_RIA`
 - `FEED_INTERFAX`
 - `FEED_MOSCOWTIMES`
@@ -49,6 +53,11 @@ uvicorn app.main:app --reload
 - `FEED_GOOGLE_WEATHER_RUSSIA`
 - `TG_CHANNEL_MOSGURU`
 - `TG_CHANNEL_MOSCOWACH`
+
+## VC.RU 수집 정책
+- 기본 비활성(`ENABLE_VC_SOURCE=0`)이며, 켜도 **보조 소스**로만 동작합니다.
+- 개인 블로그 경로(`/id...`)와 일부 노이즈 경로(예: crypto/invest/politics 계열)는 제외합니다.
+- 모스크바 연관도가 낮은 항목은 경제/날씨 주제일 때만 제한적으로 통과시킵니다.
 
 ## API
 - `GET /api/today-news` : 투데이 뉴스 피드
