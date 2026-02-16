@@ -14,6 +14,7 @@ const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '문화', value: '문화' },
   { label: '날씨', value: '날씨' },
 ]
+const NEWS_CACHE_VERSION = '2'
 
 function mergeUnique(prev: RussiaNewsItem[], next: RussiaNewsItem[]): RussiaNewsItem[] {
   const map = new Map<string, RussiaNewsItem>()
@@ -43,6 +44,7 @@ export function RussiaNewsInfinitePage() {
     try {
       const url = new URL('/api/russia-news', window.location.origin)
       url.searchParams.set('limit', '20')
+      url.searchParams.set('v', NEWS_CACHE_VERSION)
       if (topic) url.searchParams.set('topic', topic)
 
       const response = await fetch(url.toString())
@@ -77,6 +79,7 @@ export function RussiaNewsInfinitePage() {
     try {
       const url = new URL('/api/russia-news/archive', window.location.origin)
       url.searchParams.set('limit', '20')
+      url.searchParams.set('v', NEWS_CACHE_VERSION)
       url.searchParams.set('cursor', cursor)
       if (topic) url.searchParams.set('topic', topic)
 

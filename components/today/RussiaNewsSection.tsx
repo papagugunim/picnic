@@ -14,6 +14,7 @@ const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '문화', value: '문화' },
   { label: '날씨', value: '날씨' },
 ]
+const NEWS_CACHE_VERSION = '2'
 
 export function RussiaNewsSection() {
   const [topic, setTopic] = useState<RussiaNewsTopic>('')
@@ -34,6 +35,7 @@ export function RussiaNewsSection() {
       try {
         const url = new URL('/api/russia-news', window.location.origin)
         url.searchParams.set('limit', '8')
+        url.searchParams.set('v', NEWS_CACHE_VERSION)
         if (topic) url.searchParams.set('topic', topic)
 
         const response = await fetch(url.toString(), { method: 'GET' })
