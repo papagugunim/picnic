@@ -10,7 +10,7 @@ interface FetchRussiaNewsOptions {
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 50
-const UPSTREAM_TIMEOUT_MS = 8000
+const UPSTREAM_TIMEOUT_MS = 12000
 
 function toSafeLimit(input?: number): number {
   if (!input || Number.isNaN(input)) return DEFAULT_LIMIT
@@ -66,34 +66,48 @@ export async function fetchRussiaNewsFromUpstream(options: FetchRussiaNewsOption
     if (options.cursor) url.searchParams.set('cursor', options.cursor)
     if (topic) url.searchParams.set('topic', topic)
 
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
+    let lastError: unknown = null
 
-    try {
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-        },
-        cache: 'no-store',
-        next: { revalidate: 0 },
-        signal: controller.signal,
-      })
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
 
-      if (!response.ok) {
-        const body = await response.text()
-        throw new Error(`Upstream request failed (${response.status}): ${body.slice(0, 200)}`)
+      try {
+        const response = await fetch(url.toString(), {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+          },
+          cache: 'no-store',
+          next: { revalidate: 0 },
+          signal: controller.signal,
+        })
+
+        if (!response.ok) {
+          const body = await response.text()
+          throw new Error(`Upstream request failed (${response.status}): ${body.slice(0, 200)}`)
+        }
+
+        const payload = (await response.json()) as { items?: any[] }
+        const items = Array.isArray(payload?.items) ? payload.items : []
+
+        return {
+          items: items.map((item, index) => normalizeItem(item, index)),
+        }
+      } catch (error) {
+        lastError = error
+        const isAbort =
+          error instanceof Error &&
+          (error.name === 'AbortError' || error.message.toLowerCase().includes('aborted'))
+        if (!isAbort || attempt === 1) {
+          throw error
+        }
+      } finally {
+        clearTimeout(timer)
       }
-
-      const payload = (await response.json()) as { items?: any[] }
-      const items = Array.isArray(payload?.items) ? payload.items : []
-
-      return {
-        items: items.map((item, index) => normalizeItem(item, index)),
-      }
-    } finally {
-      clearTimeout(timer)
     }
+
+    throw lastError instanceof Error ? lastError : new Error('Upstream request failed')
   }
 
   // NOTE: some upstream deployments intermittently return an empty list

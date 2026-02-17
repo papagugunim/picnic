@@ -80,6 +80,7 @@ export interface PollMessagesResponse {
   messages: ChatMessageWithProfile[]
   hasMore: boolean
   lastMessageId: string | null
+  lastMessageAt?: string | null
 }
 
 // 메시지 전송 요청

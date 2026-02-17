@@ -31,6 +31,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const roomId = searchParams.get('roomId')
     const lastMessageId = searchParams.get('lastMessageId')
+    const lastMessageAtParam = searchParams.get('lastMessageAt')
     const timeoutParam = searchParams.get('timeout')
 
     if (!roomId) {
@@ -68,9 +69,11 @@ export async function GET(request: Request) {
     const pollInterval = 2000 // 2초마다 체크 (DB 부하 감소)
     const maxIterations = Math.floor(timeout / pollInterval)
 
-    // lastMessageId 이후의 created_at 찾기
+    // 클라이언트가 마지막 메시지 시각을 같이 보내면 추가 조회를 건너뛴다.
     let lastMessageTime: string | null = null
-    if (lastMessageId) {
+    if (lastMessageAtParam && !Number.isNaN(Date.parse(lastMessageAtParam))) {
+      lastMessageTime = lastMessageAtParam
+    } else if (lastMessageId) {
       const { data: lastMsg } = await supabase
         .from('chat_messages')
         .select('created_at')
@@ -127,6 +130,7 @@ export async function GET(request: Request) {
           messages: formattedMessages,
           hasMore: false,
           lastMessageId: messages[messages.length - 1].id,
+          lastMessageAt: messages[messages.length - 1].created_at,
         }
 
         logger.log(`[Poll] Found ${messages.length} new messages, responding immediately`)
@@ -149,6 +153,7 @@ export async function GET(request: Request) {
       messages: [],
       hasMore: false,
       lastMessageId: lastMessageId,
+      lastMessageAt: lastMessageTime,
     }
 
     logger.log('[Poll] Timeout reached, no new messages')

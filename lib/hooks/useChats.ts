@@ -39,13 +39,19 @@ export function useChats() {
     async (roomsData: ChatRoomRow[], userId: string): Promise<ChatRoomWithProfile[]> => {
       if (roomsData.length === 0) return []
 
-      const otherUserIds = roomsData.map((room) =>
-        room.user1_id === userId ? room.user2_id : room.user1_id
+      const otherUserIds = Array.from(
+        new Set(
+          roomsData.map((room) => (room.user1_id === userId ? room.user2_id : room.user1_id))
+        )
       )
       const roomIds = roomsData.map((room) => room.id)
-      const postIds = roomsData
-        .filter((room) => room.post_id)
-        .map((room) => room.post_id)
+      const postIds = Array.from(
+        new Set(
+          roomsData
+            .filter((room) => room.post_id)
+            .map((room) => room.post_id as string)
+        )
+      )
 
       const [profilesResult, messagesResult, postsResult] = await Promise.all([
         supabase
@@ -55,7 +61,7 @@ export function useChats() {
 
         supabase
           .from('chat_messages')
-          .select('room_id, is_read, sender_id')
+          .select('room_id')
           .in('room_id', roomIds)
           .eq('is_read', false)
           .neq('sender_id', userId),

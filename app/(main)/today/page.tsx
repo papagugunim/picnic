@@ -205,27 +205,34 @@ export default function TodayPage() {
       setLoading(false)
     }
 
-    fetchUserCity()
-    fetchExchangeRates()
-    fetchNews()
+    void fetchUserCity()
+    void fetchExchangeRates()
+    void fetchNews()
+  }, [fetchWeatherData, fetchExchangeRates, fetchNews])
+
+  useEffect(() => {
+    if (!userCity) return
 
     const weatherInterval = setInterval(() => {
-      if (userCity) {
-        logger.log('자동 날씨 업데이트 실행')
-        fetchWeatherData(userCity, true)
-      }
+      logger.log('자동 날씨 업데이트 실행')
+      fetchWeatherData(userCity, true)
     }, 10 * 60 * 1000)
 
+    return () => {
+      clearInterval(weatherInterval)
+    }
+  }, [userCity, fetchWeatherData])
+
+  useEffect(() => {
     const exchangeRatesInterval = setInterval(() => {
       logger.log('자동 환율 업데이트 실행')
       fetchExchangeRates(true)
     }, 15 * 60 * 1000)
 
     return () => {
-      clearInterval(weatherInterval)
       clearInterval(exchangeRatesInterval)
     }
-  }, [userCity, fetchWeatherData, fetchExchangeRates, fetchNews])
+  }, [fetchExchangeRates])
 
   // 수동 날씨 새로고침
   const handleRefreshWeather = async () => {

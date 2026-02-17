@@ -15,6 +15,39 @@ const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '날씨', value: '날씨' },
 ]
 const NEWS_CACHE_VERSION = '2'
+const LOCAL_CACHE_TTL_MS = 60 * 60 * 1000
+
+function buildLocalCacheKey(topic: RussiaNewsTopic): string {
+  return `russia-news:archive:${topic || 'all'}:v${NEWS_CACHE_VERSION}`
+}
+
+function readLocalCachedNews(topic: RussiaNewsTopic): RussiaNewsItem[] {
+  if (typeof window === 'undefined') return []
+  const key = buildLocalCacheKey(topic)
+  const raw = window.localStorage.getItem(key)
+  if (!raw) return []
+
+  try {
+    const parsed = JSON.parse(raw) as { savedAt?: number; items?: RussiaNewsItem[] }
+    if (!parsed?.savedAt || !Array.isArray(parsed?.items)) return []
+    if (Date.now() - parsed.savedAt > LOCAL_CACHE_TTL_MS) {
+      window.localStorage.removeItem(key)
+      return []
+    }
+    return parsed.items
+  } catch {
+    window.localStorage.removeItem(key)
+    return []
+  }
+}
+
+function writeLocalCachedNews(topic: RussiaNewsTopic, items: RussiaNewsItem[]): void {
+  if (typeof window === 'undefined' || items.length === 0) return
+  window.localStorage.setItem(
+    buildLocalCacheKey(topic),
+    JSON.stringify({ savedAt: Date.now(), items })
+  )
+}
 
 function mergeUnique(prev: RussiaNewsItem[], next: RussiaNewsItem[]): RussiaNewsItem[] {
   const map = new Map<string, RussiaNewsItem>()
@@ -49,18 +82,34 @@ export function RussiaNewsInfinitePage() {
 
       const response = await fetch(url.toString())
       const data = await response.json()
-      if (!response.ok) throw new Error(data?.error || '뉴스를 불러오지 못했습니다.')
+      if (!response.ok || data?.error) throw new Error(data?.error || '뉴스를 불러오지 못했습니다.')
 
       const firstItems = Array.isArray(data?.items) ? (data.items as RussiaNewsItem[]) : []
-      setItems(firstItems)
-      const nextCursor = firstItems.length > 0 ? firstItems[firstItems.length - 1].published_at : null
-      setCursor(nextCursor)
-      setHasMore(firstItems.length > 0)
+      if (firstItems.length > 0) {
+        setItems(firstItems)
+        writeLocalCachedNews(topic, firstItems)
+        const nextCursor = firstItems[firstItems.length - 1].published_at
+        setCursor(nextCursor)
+        setHasMore(true)
+      } else {
+        const cached = readLocalCachedNews(topic)
+        setItems(cached)
+        setCursor(cached.length > 0 ? cached[cached.length - 1].published_at : null)
+        setHasMore(cached.length > 0)
+      }
     } catch (error) {
-      setItems([])
-      setCursor(null)
-      setHasMore(false)
-      setErrorMessage(error instanceof Error ? error.message : '뉴스를 불러오지 못했습니다.')
+      const cached = readLocalCachedNews(topic)
+      if (cached.length > 0) {
+        setItems(cached)
+        setCursor(cached[cached.length - 1].published_at)
+        setHasMore(true)
+        setErrorMessage(null)
+      } else {
+        setItems([])
+        setCursor(null)
+        setHasMore(false)
+        setErrorMessage(error instanceof Error ? error.message : '뉴스를 불러오지 못했습니다.')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -85,7 +134,7 @@ export function RussiaNewsInfinitePage() {
 
       const response = await fetch(url.toString())
       const data = await response.json()
-      if (!response.ok) throw new Error(data?.error || '지난 뉴스를 불러오지 못했습니다.')
+      if (!response.ok || data?.error) throw new Error(data?.error || '지난 뉴스를 불러오지 못했습니다.')
 
       const nextItems = Array.isArray(data?.items) ? (data.items as RussiaNewsItem[]) : []
       if (nextItems.length === 0) {

@@ -15,6 +15,64 @@ const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '날씨', value: '날씨' },
 ]
 const NEWS_CACHE_VERSION = '2'
+const LOCAL_CACHE_TTL_MS = 60 * 60 * 1000
+
+function buildLocalCacheKey(topic: RussiaNewsTopic): string {
+  return `russia-news:today:${topic || 'all'}:v${NEWS_CACHE_VERSION}`
+}
+
+function filterItemsByTopic(items: RussiaNewsItem[], topic: RussiaNewsTopic): RussiaNewsItem[] {
+  if (!topic) return items
+  return items.filter((item) => normalizeTopic(item.topic || null) === topic)
+}
+
+function readLocalCachedNews(topic: RussiaNewsTopic): RussiaNewsItem[] {
+  if (typeof window === 'undefined') return []
+
+  const key = buildLocalCacheKey(topic)
+  const raw = window.localStorage.getItem(key)
+  if (!raw) {
+    if (!topic) return []
+    return filterItemsByTopic(readLocalCachedNews(''), topic)
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as { savedAt?: number; items?: RussiaNewsItem[] }
+    if (!parsed?.savedAt || !Array.isArray(parsed?.items)) return []
+    if (Date.now() - parsed.savedAt > LOCAL_CACHE_TTL_MS) {
+      window.localStorage.removeItem(key)
+      if (!topic) return []
+      const broad = readLocalCachedNews('')
+      return broad.length > 0 ? broad : []
+    }
+    const filtered = filterItemsByTopic(parsed.items, topic)
+    if (filtered.length > 0 || !topic) {
+      return filtered
+    }
+
+    const broad = readLocalCachedNews('')
+    return broad.length > 0 ? broad : []
+  } catch {
+    window.localStorage.removeItem(key)
+    if (!topic) return []
+    const broad = readLocalCachedNews('')
+    return broad.length > 0 ? broad : []
+  }
+}
+
+function writeLocalCachedNews(topic: RussiaNewsTopic, items: RussiaNewsItem[]): void {
+  if (typeof window === 'undefined' || items.length === 0) return
+
+  const payload = JSON.stringify({
+    savedAt: Date.now(),
+    items,
+  })
+
+  window.localStorage.setItem(buildLocalCacheKey(topic), payload)
+  if (!topic) {
+    window.localStorage.setItem(buildLocalCacheKey(''), payload)
+  }
+}
 
 export function RussiaNewsSection() {
   const [topic, setTopic] = useState<RussiaNewsTopic>('')
@@ -41,15 +99,37 @@ export function RussiaNewsSection() {
         const response = await fetch(url.toString(), { method: 'GET' })
         const data = await response.json()
 
-        if (!response.ok) {
+        if (!response.ok || data?.error) {
           throw new Error(data?.error || '뉴스를 불러오지 못했습니다.')
         }
 
         const nextItems = Array.isArray(data?.items) ? (data.items as RussiaNewsItem[]) : []
-        setItems(nextItems.slice(0, 8))
-      } catch (error) {
+        const clipped = nextItems.slice(0, 8)
+
+        if (clipped.length > 0) {
+          setItems(clipped)
+          writeLocalCachedNews(topic, clipped)
+          setErrorMessage(null)
+          return
+        }
+
+        const cachedItems = readLocalCachedNews(topic).slice(0, 8)
+        if (cachedItems.length > 0) {
+          setItems(cachedItems)
+          setErrorMessage(null)
+          return
+        }
+
         setItems([])
-        setErrorMessage(error instanceof Error ? error.message : '뉴스를 불러오지 못했습니다.')
+      } catch (error) {
+        const cachedItems = readLocalCachedNews(topic).slice(0, 8)
+        if (cachedItems.length > 0) {
+          setItems(cachedItems)
+          setErrorMessage(null)
+        } else {
+          setItems([])
+          setErrorMessage(error instanceof Error ? error.message : '뉴스를 불러오지 못했습니다.')
+        }
       } finally {
         setIsLoading(false)
         setIsRefreshing(false)

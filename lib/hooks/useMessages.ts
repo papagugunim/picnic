@@ -49,9 +49,9 @@ export function useMessages(roomId: string) {
   const isSendingRef = useRef(false)
   const loadedCountRef = useRef(0)
   const latestMessageIdRef = useRef<string | null>(null)
+  const latestMessageAtRef = useRef<string | null>(null)
 
   // Long Polling 상태 관리
-  const [lastMessageId, setLastMessageId] = useState<string | null>(null)
   const pollingRef = useRef<{
     isPolling: boolean
     abortController: AbortController | null
@@ -121,8 +121,9 @@ export function useMessages(roomId: string) {
       setHasOlderMessages(loadedMessages.length === MESSAGES_PAGE_SIZE)
 
       const newestMessageId = formattedMessages[formattedMessages.length - 1]?.id ?? null
+      const newestMessageAt = formattedMessages[formattedMessages.length - 1]?.created_at ?? null
       latestMessageIdRef.current = newestMessageId
-      setLastMessageId(newestMessageId)
+      latestMessageAtRef.current = newestMessageAt
     } catch (err) {
       logger.error('Fetch error:', err)
       setError('메시지를 불러오는데 실패했습니다')
@@ -218,10 +219,12 @@ export function useMessages(roomId: string) {
 
       try {
         const currentLastMessageId = latestMessageIdRef.current
+        const currentLastMessageAt = latestMessageAtRef.current
         const params = new URLSearchParams({
           roomId,
           timeout: '30000',
           ...(currentLastMessageId && { lastMessageId: currentLastMessageId }),
+          ...(currentLastMessageAt && { lastMessageAt: currentLastMessageAt }),
         })
 
         logger.log(`[Long Polling] Polling with lastMessageId: ${currentLastMessageId}`)
@@ -256,8 +259,10 @@ export function useMessages(roomId: string) {
 
           const latestMessageId =
             data.lastMessageId ?? data.messages[data.messages.length - 1]?.id ?? null
+          const latestMessageAt =
+            data.lastMessageAt ?? data.messages[data.messages.length - 1]?.created_at ?? null
           latestMessageIdRef.current = latestMessageId
-          setLastMessageId(latestMessageId)
+          latestMessageAtRef.current = latestMessageAt
           pollingRef.current.retryCount = 0
 
           // 읽음 처리
@@ -309,7 +314,7 @@ export function useMessages(roomId: string) {
     setIsLoading(true)
     loadedCountRef.current = 0
     latestMessageIdRef.current = null
-    setLastMessageId(null)
+    latestMessageAtRef.current = null
 
     const supabase = createClient()
     const currentPollingRef = pollingRef.current
@@ -376,7 +381,7 @@ export function useMessages(roomId: string) {
                   )
                 )
                 latestMessageIdRef.current = newMessage.id
-                setLastMessageId(newMessage.id)
+                latestMessageAtRef.current = newMessage.created_at
                 return
               }
 
@@ -407,7 +412,7 @@ export function useMessages(roomId: string) {
                 logger.log('[Realtime] 📥 Adding new message from other user')
                 loadedCountRef.current += 1
                 latestMessageIdRef.current = newMessage.id
-                setLastMessageId(newMessage.id)
+                latestMessageAtRef.current = newMessage.created_at
                 return [...prev, messageWithProfile as ChatMessageWithProfile]
               })
 
@@ -632,7 +637,7 @@ export function useMessages(roomId: string) {
           // Long Polling 모드: lastMessageId 업데이트
           if (USE_LONG_POLLING) {
             latestMessageIdRef.current = data.id
-            setLastMessageId(data.id)
+            latestMessageAtRef.current = data.created_at
           }
         }
 
@@ -660,7 +665,6 @@ export function useMessages(roomId: string) {
     hasOlderMessages,
     isLoadingOlder,
     loadOlderMessages,
-    lastMessageId,
     sendMessage,
     refetch: fetchMessages,
   }
