@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readCachedRussiaNews, writeCachedRussiaNews } from '@/lib/russia-news-cache'
 import { getEmergencyFallbackNews } from '@/lib/russia-news-fallback'
 import { fetchRussiaNewsFromUpstream } from '@/lib/russia-news-proxy'
-import type { RussiaNewsApiPayload, RussiaNewsTopic } from '@/lib/russia-news'
+import { normalizeTopic, type RussiaNewsApiPayload, type RussiaNewsTopic } from '@/lib/russia-news'
 
 const TOPIC_BUCKETS: RussiaNewsTopic[] = ['사회', '경제', '문화', '날씨']
 
@@ -18,6 +18,14 @@ function mergeUniqueItems(payloads: RussiaNewsApiPayload[], limit: number): Russ
   }
   return {
     items: Array.from(map.values()).slice(0, Math.max(1, Math.min(limit, 20))),
+  }
+}
+
+function filterPayloadByTopic(payload: RussiaNewsApiPayload, topicInput: string | null): RussiaNewsApiPayload {
+  const requestedTopic = normalizeTopic(topicInput)
+  if (!requestedTopic) return payload
+  return {
+    items: payload.items.filter((item) => normalizeTopic(item.topic || null) === requestedTopic),
   }
 }
 
@@ -46,30 +54,39 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    let payload = await fetchRussiaNewsFromUpstream({
-      endpoint: '/api/today-news',
-      cursor,
-      topic,
-      limit,
-    })
-
-    if (!cursor && payload.items.length === 0) {
-      payload = await fetchRussiaNewsFromUpstream({
+    let payload = filterPayloadByTopic(
+      await fetchRussiaNewsFromUpstream({
         endpoint: '/api/today-news',
         cursor,
         topic,
-        limit: Math.max(limit, 12),
-      })
+        limit,
+      }),
+      topic
+    )
+
+    if (!cursor && payload.items.length === 0) {
+      payload = filterPayloadByTopic(
+        await fetchRussiaNewsFromUpstream({
+          endpoint: '/api/today-news',
+          cursor,
+          topic,
+          limit: Math.max(limit, 12),
+        }),
+        topic
+      )
     }
 
     // today endpoint가 비어 있으면 archive를 즉시 fallback으로 사용
     if (payload.items.length === 0) {
-      const archivePayload = await fetchRussiaNewsFromUpstream({
-        endpoint: '/api/archive',
-        cursor,
-        topic,
-        limit,
-      })
+      const archivePayload = filterPayloadByTopic(
+        await fetchRussiaNewsFromUpstream({
+          endpoint: '/api/archive',
+          cursor,
+          topic,
+          limit,
+        }),
+        topic
+      )
       if (archivePayload.items.length > 0) {
         payload = archivePayload
       }
@@ -101,12 +118,15 @@ export async function GET(request: NextRequest) {
 
     // 특정 카테고리에 데이터가 없으면 전체 뉴스로 fallback
     if (payload.items.length === 0 && topic) {
-      const broadPayload = await fetchRussiaNewsFromUpstream({
-        endpoint: '/api/today-news',
-        cursor,
-        topic: null,
-        limit,
-      })
+      const broadPayload = filterPayloadByTopic(
+        await fetchRussiaNewsFromUpstream({
+          endpoint: '/api/today-news',
+          cursor,
+          topic: null,
+          limit,
+        }),
+        topic
+      )
       if (broadPayload.items.length > 0) {
         payload = broadPayload
       }
@@ -135,7 +155,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (topic) {
-      const broadCachedItems = fallbackFromAnyCache()
+      const broadCachedItems = filterPayloadByTopic(
+        { items: fallbackFromAnyCache() },
+        topic
+      ).items
       if (broadCachedItems.length > 0) {
         return NextResponse.json(
           { items: broadCachedItems, stale: true, fallback: 'all-topic-cache' },
@@ -174,7 +197,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (topic) {
-      const broadCachedItems = fallbackFromAnyCache()
+      const broadCachedItems = filterPayloadByTopic(
+        { items: fallbackFromAnyCache() },
+        topic
+      ).items
       if (broadCachedItems.length > 0) {
         return NextResponse.json(
           { items: broadCachedItems, stale: true, fallback: 'all-topic-cache' },
