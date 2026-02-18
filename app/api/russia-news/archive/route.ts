@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { readCachedRussiaNews, writeCachedRussiaNews } from '@/lib/russia-news-cache'
+import { getEmergencyFallbackNews } from '@/lib/russia-news-fallback'
 import { fetchRussiaNewsFromUpstream } from '@/lib/russia-news-proxy'
 
 export async function GET(request: NextRequest) {
@@ -84,9 +85,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const emergencyItems = getEmergencyFallbackNews(topic, limit)
     return NextResponse.json(
-      { items: [], error: '지난 뉴스를 불러오지 못했습니다.' },
-      { status: 503 }
+      { items: emergencyItems, stale: true, fallback: 'emergency-static' },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+          'X-Russia-News-Fallback': 'emergency-static',
+        },
+      }
     )
   } catch (error) {
     const cachedItems = fallbackFromCache()
@@ -117,12 +124,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const emergencyItems = getEmergencyFallbackNews(topic, limit)
     return NextResponse.json(
       {
-        items: [],
+        items: emergencyItems,
+        stale: true,
+        fallback: 'emergency-static',
         error: error instanceof Error ? error.message : 'unknown_error',
       },
-      { status: 503 }
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+          'X-Russia-News-Fallback': 'emergency-static-on-error',
+        },
+      }
     )
   }
 }
