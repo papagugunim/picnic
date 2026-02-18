@@ -3,6 +3,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readCachedRussiaNews, writeCachedRussiaNews } from '@/lib/russia-news-cache'
 import { getEmergencyFallbackNews } from '@/lib/russia-news-fallback'
 import { fetchRussiaNewsFromUpstream } from '@/lib/russia-news-proxy'
+import type { RussiaNewsApiPayload, RussiaNewsTopic } from '@/lib/russia-news'
+
+const TOPIC_BUCKETS: RussiaNewsTopic[] = ['사회', '경제', '문화', '날씨']
+
+function mergeUniqueItems(payloads: RussiaNewsApiPayload[], limit: number): RussiaNewsApiPayload {
+  const map = new Map<string, RussiaNewsApiPayload['items'][number]>()
+  for (const payload of payloads) {
+    for (const item of payload.items) {
+      if (!map.has(item.id)) {
+        map.set(item.id, item)
+      }
+    }
+  }
+  return {
+    items: Array.from(map.values()).slice(0, Math.max(1, Math.min(limit, 20))),
+  }
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -29,6 +46,34 @@ export async function GET(request: NextRequest) {
       topic,
       limit,
     })
+
+    if (payload.items.length === 0 && !topic && !cursor) {
+      const bucketResults = await Promise.allSettled(
+        TOPIC_BUCKETS.map((bucket) =>
+          fetchRussiaNewsFromUpstream({
+            endpoint: '/api/archive',
+            topic: bucket,
+            limit: Math.max(limit, 4),
+          })
+        )
+      )
+
+      const merged = mergeUniqueItems(
+        bucketResults
+          .filter((result): result is PromiseFulfilledResult<RussiaNewsApiPayload> => result.status === 'fulfilled')
+          .map((result) => result.value),
+        limit
+      )
+
+      if (merged.items.length > 0) {
+        writeCachedRussiaNews('archive', '', merged.items)
+        return NextResponse.json(merged, {
+          headers: {
+            'Cache-Control': 'public, s-maxage=180, stale-while-revalidate=120',
+          },
+        })
+      }
+    }
 
     // 특정 카테고리에 데이터가 없으면 전체 아카이브 뉴스로 fallback
     if (payload.items.length === 0 && topic) {

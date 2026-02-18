@@ -3,6 +3,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readCachedRussiaNews, writeCachedRussiaNews } from '@/lib/russia-news-cache'
 import { getEmergencyFallbackNews } from '@/lib/russia-news-fallback'
 import { fetchRussiaNewsFromUpstream } from '@/lib/russia-news-proxy'
+import type { RussiaNewsApiPayload, RussiaNewsTopic } from '@/lib/russia-news'
+
+const TOPIC_BUCKETS: RussiaNewsTopic[] = ['사회', '경제', '문화', '날씨']
+
+function mergeUniqueItems(payloads: RussiaNewsApiPayload[], limit: number): RussiaNewsApiPayload {
+  const map = new Map<string, RussiaNewsApiPayload['items'][number]>()
+  for (const payload of payloads) {
+    for (const item of payload.items) {
+      if (!map.has(item.id)) {
+        map.set(item.id, item)
+      }
+    }
+  }
+  return {
+    items: Array.from(map.values()).slice(0, Math.max(1, Math.min(limit, 20))),
+  }
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -55,6 +72,30 @@ export async function GET(request: NextRequest) {
       })
       if (archivePayload.items.length > 0) {
         payload = archivePayload
+      }
+    }
+
+    // 전체 토픽에서 빈 응답이 나오는 업스트림을 대비해 카테고리별 결과를 병합한다.
+    if (payload.items.length === 0 && !topic && !cursor) {
+      const bucketResults = await Promise.allSettled(
+        TOPIC_BUCKETS.map((bucket) =>
+          fetchRussiaNewsFromUpstream({
+            endpoint: '/api/today-news',
+            topic: bucket,
+            limit: Math.max(limit, 4),
+          })
+        )
+      )
+
+      const merged = mergeUniqueItems(
+        bucketResults
+          .filter((result): result is PromiseFulfilledResult<RussiaNewsApiPayload> => result.status === 'fulfilled')
+          .map((result) => result.value),
+        limit
+      )
+
+      if (merged.items.length > 0) {
+        payload = merged
       }
     }
 
