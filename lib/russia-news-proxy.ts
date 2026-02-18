@@ -143,8 +143,12 @@ function normalizeRemoteTopic(rawTopic: string, title: string, summary: string, 
 
     const weatherScore = scores['날씨']
     const strongestOtherScore = Math.max(scores['사회'], scores['경제'], scores['문화'])
-    if (weatherScore === 0 && strongestOtherScore > 0 && inferred && inferred !== '날씨') {
-      return inferred
+    if (weatherScore === 0) {
+      if (strongestOtherScore > 0 && inferred && inferred !== '날씨') {
+        return inferred
+      }
+      // 비기상 출처인데 날씨 근거가 전혀 없으면 생활/사회성 기사로 기본 분류.
+      return '사회'
     }
     if (strongestOtherScore >= weatherScore + 1 && inferred && inferred !== '날씨') {
       return inferred
