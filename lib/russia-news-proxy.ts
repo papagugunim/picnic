@@ -91,6 +91,15 @@ function normalizeMatchText(input: string): string {
   return input.toLowerCase().replace(/ё/g, 'е')
 }
 
+function keywordMatched(text: string, keyword: string): boolean {
+  // 영문 키워드는 단어 단위로만 매칭해 ukraina -> rain 같은 오탐을 방지한다.
+  if (/^[a-z]+$/.test(keyword)) {
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return new RegExp(`\\b${escaped}\\b`).test(text)
+  }
+  return text.includes(keyword)
+}
+
 function calculateTopicScores(text: string): Record<Exclude<RussiaNewsTopic, ''>, number> {
   const scores: Record<Exclude<RussiaNewsTopic, ''>, number> = {
     사회: 0,
@@ -103,7 +112,7 @@ function calculateTopicScores(text: string): Record<Exclude<RussiaNewsTopic, ''>
     [Exclude<RussiaNewsTopic, ''>, string[]]
   >) {
     for (const keyword of keywords) {
-      if (text.includes(keyword)) {
+      if (keywordMatched(text, keyword)) {
         scores[topic] += 1
       }
     }
