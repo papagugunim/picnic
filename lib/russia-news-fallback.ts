@@ -8,6 +8,13 @@ const BASE_FALLBACK_NEWS: Array<{
   link: string
 }> = [
   {
+    id: 'fallback-politics-1',
+    title: '러시아 정치 뉴스 동기화 중입니다',
+    summary: '정치 카테고리 데이터 수집을 재시도하고 있습니다. 잠시 후 최신 기사로 자동 교체됩니다.',
+    topic: '정치',
+    link: 'https://ria.ru/politics/',
+  },
+  {
     id: 'fallback-social-1',
     title: '모스크바 생활 소식 업데이트 중입니다',
     summary: '러시아 현지 소식을 안정적으로 불러오는 중입니다. 잠시 후 자동으로 최신 기사로 교체됩니다.',
@@ -34,6 +41,13 @@ const BASE_FALLBACK_NEWS: Array<{
     summary: '기상 관련 기사와 도시 생활 정보를 함께 불러오고 있습니다.',
     topic: '날씨',
     link: 'https://meteoinfo.ru',
+  },
+  {
+    id: 'fallback-politics-2',
+    title: '주요 외교·정책 이슈를 불러오는 중입니다',
+    summary: '업스트림 응답이 복구되면 정치 카테고리 최신 뉴스부터 순차 반영됩니다.',
+    topic: '정치',
+    link: 'https://tass.com/politics',
   },
   {
     id: 'fallback-social-2',

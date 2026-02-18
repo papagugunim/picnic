@@ -9,6 +9,7 @@ import { normalizeTopic, type RussiaNewsItem, type RussiaNewsTopic } from '@/lib
 
 const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '전체', value: '' },
+  { label: '정치', value: '정치' },
   { label: '사회', value: '사회' },
   { label: '경제', value: '경제' },
   { label: '문화', value: '문화' },

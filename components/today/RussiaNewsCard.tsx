@@ -22,6 +22,7 @@ function formatDateTime(value: string): string {
 }
 
 function topicBadgeClass(topic: string): string {
+  if (topic === '정치') return 'bg-rose-500/10 text-rose-600 dark:text-rose-300'
   if (topic === '사회') return 'bg-blue-500/10 text-blue-600 dark:text-blue-300'
   if (topic === '경제') return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
   if (topic === '문화') return 'bg-amber-500/10 text-amber-600 dark:text-amber-300'

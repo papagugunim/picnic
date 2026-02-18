@@ -5,7 +5,7 @@ import { getEmergencyFallbackNews } from '@/lib/russia-news-fallback'
 import { fetchRussiaNewsFromUpstream } from '@/lib/russia-news-proxy'
 import { normalizeTopic, type RussiaNewsApiPayload, type RussiaNewsTopic } from '@/lib/russia-news'
 
-const TOPIC_BUCKETS: RussiaNewsTopic[] = ['사회', '경제', '문화', '날씨']
+const TOPIC_BUCKETS: RussiaNewsTopic[] = ['정치', '사회', '경제', '문화', '날씨']
 
 function mergeUniqueItems(payloads: RussiaNewsApiPayload[], limit: number): RussiaNewsApiPayload {
   const map = new Map<string, RussiaNewsApiPayload['items'][number]>()

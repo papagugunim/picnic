@@ -9,6 +9,7 @@ import { normalizeTopic, type RussiaNewsItem, type RussiaNewsTopic } from '@/lib
 
 const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '전체', value: '' },
+  { label: '정치', value: '정치' },
   { label: '사회', value: '사회' },
   { label: '경제', value: '경제' },
   { label: '문화', value: '문화' },
@@ -209,7 +210,7 @@ export function RussiaNewsInfinitePage() {
         <div className="flex items-start gap-2">
           <div>
             <h1 className="text-base font-bold">{sectionTitle}</h1>
-            <p className="mt-1 text-xs text-muted-foreground">정치 제외 · 사회/경제/문화/날씨 중심 · 무한 스크롤</p>
+            <p className="mt-1 text-xs text-muted-foreground">정치/사회/경제/문화/날씨 · 무한 스크롤</p>
           </div>
         </div>
 

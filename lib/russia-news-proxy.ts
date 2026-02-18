@@ -19,6 +19,31 @@ const MAX_LIMIT = 50
 const UPSTREAM_TIMEOUT_MS = 12000
 const WEATHER_SOURCE_HINTS = [/weather/i, /meteoinfo/i, /hydromet/i, /pogoda/i]
 const TOPIC_KEYWORDS: Record<Exclude<RussiaNewsTopic, ''>, string[]> = {
+  정치: [
+    '정치',
+    '대통령',
+    '국회',
+    '선거',
+    '정부',
+    'кремл',
+    'президент',
+    'путин',
+    'дум',
+    'госдум',
+    'депутат',
+    'санкц',
+    'войн',
+    'нато',
+    'оон',
+    'ukraine',
+    'zelensky',
+    'politic',
+    'election',
+    'government',
+    'parliament',
+    'minister',
+    'party',
+  ],
   사회: [
     '사회',
     '생활',
@@ -102,6 +127,7 @@ function keywordMatched(text: string, keyword: string): boolean {
 
 function calculateTopicScores(text: string): Record<Exclude<RussiaNewsTopic, ''>, number> {
   const scores: Record<Exclude<RussiaNewsTopic, ''>, number> = {
+    정치: 0,
     사회: 0,
     경제: 0,
     문화: 0,
@@ -151,7 +177,7 @@ function normalizeRemoteTopic(rawTopic: string, title: string, summary: string, 
     if (isWeatherSource) return '날씨'
 
     const weatherScore = scores['날씨']
-    const strongestOtherScore = Math.max(scores['사회'], scores['경제'], scores['문화'])
+    const strongestOtherScore = Math.max(scores['정치'], scores['사회'], scores['경제'], scores['문화'])
     if (weatherScore === 0) {
       if (strongestOtherScore > 0 && inferred && inferred !== '날씨') {
         return inferred
