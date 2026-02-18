@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowRight, Radio, RefreshCw } from 'lucide-react'
 
 import { RussiaNewsCard } from '@/components/today/RussiaNewsCard'
@@ -16,6 +16,9 @@ const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
 ]
 const NEWS_CACHE_VERSION = '2'
 const LOCAL_CACHE_TTL_MS = 60 * 60 * 1000
+const FETCH_TIMEOUT_MS = 9000
+const AUTO_RECOVERY_DELAY_MS = 6000
+const MAX_RETRY_PER_REQUEST = 2
 
 function buildLocalCacheKey(topic: RussiaNewsTopic): string {
   return `russia-news:today:${topic || 'all'}:v${NEWS_CACHE_VERSION}`
@@ -74,15 +77,108 @@ function writeLocalCachedNews(topic: RussiaNewsTopic, items: RussiaNewsItem[]): 
   }
 }
 
+async function requestNews(
+  endpoint: '/api/russia-news' | '/api/russia-news/archive',
+  topic: RussiaNewsTopic
+): Promise<RussiaNewsItem[]> {
+  const url = new URL(endpoint, window.location.origin)
+  url.searchParams.set('limit', '8')
+  url.searchParams.set('v', NEWS_CACHE_VERSION)
+  if (topic) url.searchParams.set('topic', topic)
+
+  for (let attempt = 0; attempt < MAX_RETRY_PER_REQUEST; attempt++) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+
+    try {
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        cache: 'no-store',
+        signal: controller.signal,
+      })
+      const data = await response.json()
+
+      if (!response.ok || data?.error) {
+        throw new Error(data?.error || '뉴스를 불러오지 못했습니다.')
+      }
+
+      const items = Array.isArray(data?.items) ? (data.items as RussiaNewsItem[]) : []
+      if (items.length > 0) {
+        return items.slice(0, 8)
+      }
+    } catch (error) {
+      const isAbort = error instanceof Error && error.name === 'AbortError'
+      if (!isAbort || attempt === MAX_RETRY_PER_REQUEST - 1) {
+        throw error
+      }
+    } finally {
+      clearTimeout(timeoutId)
+    }
+  }
+
+  return []
+}
+
+async function requestNewsWithFallback(topic: RussiaNewsTopic): Promise<RussiaNewsItem[]> {
+  const candidates: Array<{ endpoint: '/api/russia-news' | '/api/russia-news/archive'; topic: RussiaNewsTopic }> = [
+    { endpoint: '/api/russia-news', topic },
+    { endpoint: '/api/russia-news/archive', topic },
+  ]
+
+  if (topic) {
+    candidates.push(
+      { endpoint: '/api/russia-news', topic: '' },
+      { endpoint: '/api/russia-news/archive', topic: '' }
+    )
+  }
+
+  let lastError: unknown = null
+
+  for (const candidate of candidates) {
+    try {
+      const items = await requestNews(candidate.endpoint, candidate.topic)
+      if (items.length > 0) return items
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  if (lastError instanceof Error) throw lastError
+  return []
+}
+
 export function RussiaNewsSection() {
   const [topic, setTopic] = useState<RussiaNewsTopic>('')
   const [items, setItems] = useState<RussiaNewsItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const latestItemsRef = useRef<RussiaNewsItem[]>([])
+  const requestIdRef = useRef(0)
+  const recoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    latestItemsRef.current = items
+  }, [items])
+
+  const clearRecoveryTimer = useCallback(() => {
+    if (recoveryTimerRef.current) {
+      clearTimeout(recoveryTimerRef.current)
+      recoveryTimerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      clearRecoveryTimer()
+    }
+  }, [clearRecoveryTimer])
 
   const fetchNews = useCallback(
     async (isManualRefresh: boolean) => {
+      const requestId = ++requestIdRef.current
+      clearRecoveryTimer()
+
       if (isManualRefresh) {
         setIsRefreshing(true)
       } else {
@@ -91,20 +187,8 @@ export function RussiaNewsSection() {
       setErrorMessage(null)
 
       try {
-        const url = new URL('/api/russia-news', window.location.origin)
-        url.searchParams.set('limit', '8')
-        url.searchParams.set('v', NEWS_CACHE_VERSION)
-        if (topic) url.searchParams.set('topic', topic)
-
-        const response = await fetch(url.toString(), { method: 'GET' })
-        const data = await response.json()
-
-        if (!response.ok || data?.error) {
-          throw new Error(data?.error || '뉴스를 불러오지 못했습니다.')
-        }
-
-        const nextItems = Array.isArray(data?.items) ? (data.items as RussiaNewsItem[]) : []
-        const clipped = nextItems.slice(0, 8)
+        const clipped = await requestNewsWithFallback(topic)
+        if (requestIdRef.current !== requestId) return
 
         if (clipped.length > 0) {
           setItems(clipped)
@@ -119,23 +203,31 @@ export function RussiaNewsSection() {
           setErrorMessage(null)
           return
         }
-
-        setItems([])
       } catch (error) {
+        if (requestIdRef.current !== requestId) return
+
         const cachedItems = readLocalCachedNews(topic).slice(0, 8)
         if (cachedItems.length > 0) {
           setItems(cachedItems)
           setErrorMessage(null)
         } else {
-          setItems([])
-          setErrorMessage(error instanceof Error ? error.message : '뉴스를 불러오지 못했습니다.')
+          if (latestItemsRef.current.length === 0) {
+            setErrorMessage(error instanceof Error ? error.message : '뉴스를 불러오지 못했습니다.')
+          }
+
+          // 첫 로딩에서 실패한 경우 자동 복구 재시도
+          recoveryTimerRef.current = setTimeout(() => {
+            void fetchNews(false)
+          }, AUTO_RECOVERY_DELAY_MS)
         }
       } finally {
-        setIsLoading(false)
-        setIsRefreshing(false)
+        if (requestIdRef.current === requestId) {
+          setIsLoading(false)
+          setIsRefreshing(false)
+        }
       }
     },
-    [topic]
+    [clearRecoveryTimer, topic]
   )
 
   useEffect(() => {
