@@ -131,6 +131,31 @@ POLITICS_KEYWORDS = [
 ]
 
 TOPIC_KEYWORDS = {
+    "정치": [
+        "кремл",
+        "президент",
+        "путин",
+        "дум",
+        "госдум",
+        "депутат",
+        "санкц",
+        "войн",
+        "нато",
+        "оон",
+        "ukraine",
+        "zelensky",
+        "politic",
+        "election",
+        "government",
+        "parliament",
+        "minister",
+        "party",
+        "정치",
+        "대통령",
+        "국회",
+        "선거",
+        "정부",
+    ],
     "날씨": [
         "погод",
         "метео",
@@ -406,7 +431,9 @@ def _compute_quality_score(
     views_count: int,
 ) -> float:
     score = 0.0
-    if topic == "경제":
+    if topic == "정치":
+        score += 5.5
+    elif topic == "경제":
         score += 6
     elif topic == "날씨":
         score += 6
@@ -518,7 +545,7 @@ def _extract_rss_items(
         topic = _detect_topic(haystack, source_kind="rss")
         if is_vc_source and topic is None:
             topic = _vc_topic_hint(link)
-        if is_political or topic is None:
+        if topic is None:
             continue
         if is_promotional:
             continue
@@ -619,7 +646,7 @@ def _extract_telegram_items(
         is_political = _is_political(haystack)
         is_promotional = _is_promotional(haystack)
         topic = _detect_topic(haystack, source_kind="telegram")
-        if is_political or is_promotional or topic is None:
+        if is_promotional or topic is None:
             continue
 
         is_moscow = _is_moscow_related(haystack, source["name"], "telegram")

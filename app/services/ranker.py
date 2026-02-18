@@ -8,7 +8,7 @@ from dateutil import parser as date_parser
 
 from app.services.db import assign_batch_to_items, create_batch, get_unbatched_items
 
-ALLOWED_TOPICS = {"사회", "경제", "문화", "날씨"}
+ALLOWED_TOPICS = {"정치", "사회", "경제", "문화", "날씨"}
 BATCH_SIZE = int(os.environ.get("NEWS_BATCH_SIZE", "24"))
 
 
@@ -33,6 +33,8 @@ def _ranking_score(item: Dict[str, object]) -> float:
     if source_name == "VC.RU":
         # vc.ru는 보조 소스: 기본 랭킹에서 메인 RSS보다 뒤로 배치.
         score -= 6
+    if item.get("topic") == "정치":
+        score += 1.8
     if item.get("topic") == "경제":
         score += 1.5
     if item.get("topic") == "날씨":
@@ -45,8 +47,6 @@ def select_top_news() -> None:
     candidates = get_unbatched_items(limit=320)
     filtered: List[Dict[str, object]] = []
     for item in candidates:
-        if item.get("is_political"):
-            continue
         if item.get("topic") not in ALLOWED_TOPICS:
             continue
         filtered.append(item)

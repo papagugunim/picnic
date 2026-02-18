@@ -22,7 +22,7 @@
       <header class="timeline-header">
         <div>
           <h1>오늘의 피크닉 투데이</h1>
-          <div class="sub">러시아 사회·경제·문화 뉴스를 3시간마다 자동 수집하고 한글로 번역합니다.</div>
+          <div class="sub">러시아 정치·사회·경제·문화 뉴스를 3시간마다 자동 수집하고 한글로 번역합니다.</div>
         </div>
         <div class="header-actions">
           <button id="refreshBtn" class="refresh-btn" type="button">지금 업데이트</button>
@@ -33,13 +33,15 @@
       <section class="today-panel news-panel">
         <div class="section-title-row">
           <h2>실시간 주요 뉴스</h2>
-          <span class="section-hint">정치 제외 · 사회/경제/문화 · 3시간 자동 업데이트</span>
+          <span class="section-hint">정치/사회/경제/문화/날씨 · 3시간 자동 업데이트</span>
         </div>
         <div class="topic-filters" id="topicFilters">
           <button class="topic-chip active" data-topic="">전체</button>
+          <button class="topic-chip" data-topic="정치">정치</button>
           <button class="topic-chip" data-topic="사회">사회</button>
           <button class="topic-chip" data-topic="경제">경제</button>
           <button class="topic-chip" data-topic="문화">문화</button>
+          <button class="topic-chip" data-topic="날씨">날씨</button>
         </div>
 
         <section id="todayFeed" class="feed"></section>

@@ -307,13 +307,12 @@ def get_items(
 
 def get_today_items(cursor: Optional[str], limit: int, topic: Optional[str] = None) -> List[Dict[str, Any]]:
     def _query(conn: sqlite3.Connection, only_batched: bool) -> List[sqlite3.Row]:
-        allowed_topics = ("사회", "경제", "문화", "날씨")
+        allowed_topics = ("정치", "사회", "경제", "문화", "날씨")
         params: List[Any] = []
 
         base_sql = (
             "SELECT * FROM items "
-            "WHERE is_political = 0 "
-            "AND topic IN (?, ?, ?, ?) "
+            "WHERE topic IN (?, ?, ?, ?, ?) "
             "AND source_name IS NOT NULL "
             "AND source_kind = 'rss' "
         )
@@ -346,7 +345,7 @@ def get_archive_items(cursor: Optional[str], limit: int, topic: Optional[str] = 
         params: List[Any] = []
         sql = "SELECT * FROM items WHERE source_name IS NOT NULL AND source_kind = 'rss' "
 
-        if topic in ("사회", "경제", "문화", "날씨"):
+        if topic in ("정치", "사회", "경제", "문화", "날씨"):
             sql += "AND topic = ? "
             params.append(topic)
 
@@ -428,8 +427,7 @@ def get_admin_metrics(recent_item_limit: int = 8, recent_batch_limit: int = 8) -
             conn.execute(
                 """
                 SELECT COUNT(*) FROM items
-                WHERE is_political = 0
-                  AND topic IN ('사회', '경제', '문화')
+                WHERE topic IN ('정치', '사회', '경제', '문화', '날씨')
                   AND source_name IS NOT NULL
                 """
             ).fetchone()[0]
