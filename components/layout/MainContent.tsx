@@ -13,7 +13,7 @@ export default function MainContent({ children }: MainContentProps) {
   const isFullscreenPage = pathname?.match(/^\/chats\/[^/]+$/) || pathname?.match(/^\/post\/[^/]+$/) || pathname?.match(/^\/community\/[^/]+$/) || pathname === '/settings'
 
   return (
-    <main className={`${isFullscreenPage ? '' : 'pt-14 pb-[72px]'} max-w-screen-xl mx-auto`}>
+    <main className={`${isFullscreenPage ? '' : 'pt-14 pb-[54px]'} max-w-screen-xl mx-auto`}>
       {children}
     </main>
   )

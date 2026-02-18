@@ -49,7 +49,7 @@ function BottomNav() {
 
   return (
     <nav className={`fixed bottom-0 left-0 right-0 z-50 bg-background transition-transform duration-300 ease-in-out ${scrollHidden ? 'translate-y-full' : 'translate-y-0'}`}>
-      <div className="flex items-center justify-around h-[72px] max-w-screen-xl mx-auto">
+      <div className="flex items-center justify-around h-[54px] max-w-screen-xl mx-auto">
         {navItems.map((item) => {
           const isActive = pathname?.startsWith(item.href)
           const Icon = item.icon
@@ -70,7 +70,7 @@ function BottomNav() {
             >
               <div className="relative">
                 <Icon
-                  className={cn('w-[30px] h-[30px]', isActive && 'stroke-[2.5]')}
+                  className={cn('w-[22.5px] h-[22.5px]', isActive && 'stroke-[2.5]')}
                   strokeWidth={isActive ? 2.5 : 2}
                 />
                 {showBadge && (
