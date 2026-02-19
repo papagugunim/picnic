@@ -170,15 +170,6 @@ export function useNotifications(): UseNotificationsReturn {
           // 새 알림을 목록 맨 앞에 추가
           setNotifications(prev => [newNotification, ...prev])
           setUnreadCount(prev => prev + 1)
-
-          // 브라우저 알림 (권한이 있는 경우)
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-            new Notification(newNotification.title, {
-              body: newNotification.message,
-              icon: newNotification.actor?.avatar_url || '/icon.png',
-              tag: newNotification.id,
-            })
-          }
         }
       )
       .subscribe()

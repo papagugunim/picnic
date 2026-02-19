@@ -3,7 +3,7 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('AppointmentProposalForm')
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -30,6 +30,24 @@ interface AppointmentProposalFormProps {
   currentUserId: string
   otherUserId: string
   onPropose: (params: CreateAppointmentParams) => Promise<string>
+}
+
+function toDateTimeLocalValue(date: Date) {
+  const offset = date.getTimezoneOffset() * 60 * 1000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+}
+
+function formatDatePreview(value: string) {
+  if (!value) return '날짜/시간 미정'
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return '날짜/시간 미정'
+  return parsed.toLocaleString('ko-KR', {
+    month: 'short',
+    day: 'numeric',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 export function AppointmentProposalForm({
@@ -76,6 +94,30 @@ export function AppointmentProposalForm({
   }, [open, postId])
 
   const metroStations = useMetroStations(postCity)
+  const minDateValue = useMemo(() => toDateTimeLocalValue(new Date()), [open])
+  const quickDateOptions = useMemo(() => {
+    if (!open) return []
+
+    const now = new Date()
+    const plusOneHour = new Date(now.getTime() + 60 * 60 * 1000)
+    const todayEvening = new Date(now)
+    todayEvening.setHours(19, 0, 0, 0)
+
+    const tomorrowMorning = new Date(now)
+    tomorrowMorning.setDate(now.getDate() + 1)
+    tomorrowMorning.setHours(10, 0, 0, 0)
+
+    const tomorrowEvening = new Date(now)
+    tomorrowEvening.setDate(now.getDate() + 1)
+    tomorrowEvening.setHours(19, 0, 0, 0)
+
+    return [
+      { label: '1시간 후', date: plusOneHour },
+      { label: '오늘 저녁 7시', date: todayEvening },
+      { label: '내일 오전 10시', date: tomorrowMorning },
+      { label: '내일 저녁 7시', date: tomorrowEvening },
+    ].filter((option) => option.date.getTime() > now.getTime() + 10 * 60 * 1000)
+  }, [open])
 
   // 지하철역 정보 가져오기 (한글 이름 + 노선 색상)
   const getStationInfo = (stationValue: string) => {
@@ -102,12 +144,13 @@ export function AppointmentProposalForm({
 
     try {
       setIsSubmitting(true)
+      const normalizedLocation = formData.location.trim() || '장소 협의 중'
 
       await onPropose({
         room_id: roomId,
         post_id: postId,
         appointment_date: new Date(formData.date).toISOString(),
-        location: formData.location.trim() || undefined,
+        location: normalizedLocation,
         memo: formData.memo.trim() || undefined,
         proposer_id: currentUserId,
         responder_id: otherUserId
@@ -148,9 +191,30 @@ export function AppointmentProposalForm({
                 type="datetime-local"
                 value={formData.date}
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                min={new Date().toISOString().slice(0, 16)}
+                min={minDateValue}
                 required
               />
+              {quickDateOptions.length > 0 && (
+                <div className="grid grid-cols-2 gap-2">
+                  {quickDateOptions.map((option) => (
+                    <Button
+                      key={option.label}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="justify-start text-xs"
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          date: toDateTimeLocalValue(option.date),
+                        })
+                      }
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="grid gap-2">
@@ -204,6 +268,16 @@ export function AppointmentProposalForm({
                 onChange={(e) => setFormData({ ...formData, memo: e.target.value })}
                 rows={3}
               />
+            </div>
+
+            <div className="rounded-lg border border-border bg-muted/40 px-3 py-2">
+              <p className="text-xs font-semibold mb-1">제안 미리보기</p>
+              <p className="text-xs text-muted-foreground">
+                시간: {formatDatePreview(formData.date)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                장소: {formData.location.trim() || '장소 협의 중'}
+              </p>
             </div>
           </div>
           <DialogFooter>

@@ -36,6 +36,8 @@ type InsertedMessageRow = {
   created_at: string
 }
 
+export type ChatConnectionStatus = 'connecting' | 'live' | 'reconnecting' | 'offline'
+
 /**
  * 특정 채팅방의 메시지를 가져오고 실시간 업데이트를 제공하는 훅
  */
@@ -46,6 +48,7 @@ export function useMessages(roomId: string) {
   const [isSending, setIsSending] = useState(false)
   const [hasOlderMessages, setHasOlderMessages] = useState(false)
   const [isLoadingOlder, setIsLoadingOlder] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<ChatConnectionStatus>('connecting')
   const isSendingRef = useRef(false)
   const loadedCountRef = useRef(0)
   const latestMessageIdRef = useRef<string | null>(null)
@@ -211,6 +214,7 @@ export function useMessages(roomId: string) {
     if (!roomId) return
 
     pollingRef.current.isPolling = true
+    setConnectionStatus('connecting')
     logger.log('[Long Polling] Starting poll loop')
 
     while (pollingRef.current.isPolling) {
@@ -238,6 +242,7 @@ export function useMessages(roomId: string) {
         }
 
         const data: PollMessagesResponse = await response.json()
+        setConnectionStatus('live')
 
         if (data.messages.length > 0) {
           logger.log(`[Long Polling] Received ${data.messages.length} new messages`)
@@ -294,9 +299,11 @@ export function useMessages(roomId: string) {
         if (pollingRef.current.retryCount > 5) {
           pollingRef.current.isPolling = false
           setError('연결이 끊어졌습니다. 새로고침해주세요.')
+          setConnectionStatus('offline')
           break
         }
 
+        setConnectionStatus('reconnecting')
         await new Promise((resolve) => setTimeout(resolve, delay))
       }
     }
@@ -312,6 +319,7 @@ export function useMessages(roomId: string) {
     setHasOlderMessages(false)
     setIsLoadingOlder(false)
     setIsLoading(true)
+    setConnectionStatus('connecting')
     loadedCountRef.current = 0
     latestMessageIdRef.current = null
     latestMessageAtRef.current = null
@@ -352,6 +360,7 @@ export function useMessages(roomId: string) {
 
         logger.log(`[Realtime] Connecting to room ${roomId}...`)
         logger.log(`[Realtime] User ID: ${user.id}`)
+        setConnectionStatus('connecting')
 
         // Subscribe to new messages in this room
         subscription = supabase
@@ -446,6 +455,7 @@ export function useMessages(roomId: string) {
             if (status === 'SUBSCRIBED') {
               logger.log('[Realtime] ✅ Successfully connected! Ready to receive messages.')
               reconnectAttempts = 0
+              setConnectionStatus('live')
             } else if (status === 'CLOSED') {
               logger.log('[Realtime] ❌ Connection closed')
               handleReconnect()
@@ -467,6 +477,7 @@ export function useMessages(roomId: string) {
     function handleReconnect() {
       if (reconnectAttempts >= maxReconnectAttempts) {
         logger.log('[Realtime] Max reconnection attempts reached, giving up')
+        setConnectionStatus('offline')
         return
       }
 
@@ -474,6 +485,7 @@ export function useMessages(roomId: string) {
       const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000) // Exponential backoff, max 30s
 
       logger.log(`[Realtime] Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`)
+      setConnectionStatus('reconnecting')
 
       reconnectTimer = setTimeout(() => {
         logger.log('[Realtime] Attempting to reconnect...')
@@ -511,6 +523,7 @@ export function useMessages(roomId: string) {
           supabase.removeChannel(subscription)
         }
       }
+      setConnectionStatus('offline')
     }
   }, [roomId, fetchMessages, startPolling])
 
@@ -662,6 +675,7 @@ export function useMessages(roomId: string) {
     isLoading,
     error,
     isSending,
+    connectionStatus,
     hasOlderMessages,
     isLoadingOlder,
     loadOlderMessages,

@@ -5,11 +5,11 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronDown, ChevronLeft, Loader2, Package, Send } from 'lucide-react'
+import { Bell, BellOff, ChevronDown, ChevronLeft, Loader2, Package, RotateCw, Send, Wifi, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
-import { useMessages } from '@/lib/hooks/useMessages'
+import { useMessages, type ChatConnectionStatus } from '@/lib/hooks/useMessages'
 import { useAppointment } from '@/lib/hooks/useAppointment'
 import { useSale } from '@/lib/hooks/useSale'
 import Link from 'next/link'
@@ -21,6 +21,7 @@ import { AppointmentCard } from '@/components/chat/AppointmentCard'
 import { CompleteSaleButton } from '@/components/chat/CompleteSaleButton'
 import { ReviewModal } from '@/components/review/ReviewModal'
 import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
+import { toast } from 'sonner'
 
 type PostWithImages = { images?: string[] | string | null } | null | undefined
 
@@ -54,6 +55,43 @@ function getPostThumbnailUrl(post: PostWithImages): string | null {
   return null
 }
 
+function getConnectionStatusMeta(status: ChatConnectionStatus) {
+  switch (status) {
+    case 'live':
+      return {
+        label: '실시간 연결',
+        textClassName: 'text-emerald-600',
+        bgClassName: 'bg-emerald-50',
+        Icon: Wifi,
+        iconClassName: 'h-3 w-3',
+      }
+    case 'reconnecting':
+      return {
+        label: '재연결 중',
+        textClassName: 'text-amber-600',
+        bgClassName: 'bg-amber-50',
+        Icon: RotateCw,
+        iconClassName: 'h-3 w-3 animate-spin',
+      }
+    case 'offline':
+      return {
+        label: '오프라인',
+        textClassName: 'text-rose-600',
+        bgClassName: 'bg-rose-50',
+        Icon: WifiOff,
+        iconClassName: 'h-3 w-3',
+      }
+    default:
+      return {
+        label: '연결 중',
+        textClassName: 'text-sky-600',
+        bgClassName: 'bg-sky-50',
+        Icon: RotateCw,
+        iconClassName: 'h-3 w-3 animate-spin',
+      }
+  }
+}
+
 export default function ChatRoomPage() {
   const params = useParams()
   const router = useRouter()
@@ -71,7 +109,7 @@ export default function ChatRoomPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const messageInputRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const previousMessagesMetaRef = useRef<{ firstId: string | null; lastId: string | null; count: number }>({
     firstId: null,
@@ -84,11 +122,14 @@ export default function ChatRoomPage() {
   const lastMessagesScrollTopRef = useRef(0)
   const isLoadingOlderRef = useRef(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>('unsupported')
+  const [isRequestingNotificationPermission, setIsRequestingNotificationPermission] = useState(false)
 
   const {
     messages,
     isLoading: isMessagesLoading,
     isSending,
+    connectionStatus,
     hasOlderMessages,
     isLoadingOlder,
     loadOlderMessages,
@@ -355,10 +396,53 @@ export default function ChatRoomPage() {
     }
   }, [])
 
-  async function handleSendMessage() {
-    if (!newMessage.trim() || !currentUserId) return
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      setNotificationPermission('unsupported')
+      return
+    }
+    setNotificationPermission(Notification.permission)
+  }, [])
 
-    const success = await sendMessage(newMessage, currentUserId)
+  const adjustMessageInputHeight = useCallback(() => {
+    const textarea = messageInputRef.current
+    if (!textarea) return
+
+    textarea.style.height = '0px'
+    const nextHeight = Math.min(Math.max(textarea.scrollHeight, 24), 120)
+    textarea.style.height = `${nextHeight}px`
+  }, [])
+
+  useEffect(() => {
+    adjustMessageInputHeight()
+  }, [newMessage, adjustMessageInputHeight])
+
+  const handleRequestBrowserNotifications = useCallback(async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      toast.error('이 브라우저는 알림을 지원하지 않습니다')
+      return
+    }
+
+    try {
+      setIsRequestingNotificationPermission(true)
+      const permission = await Notification.requestPermission()
+      setNotificationPermission(permission)
+
+      if (permission === 'granted') {
+        toast.success('채팅 알림을 켰습니다')
+      } else if (permission === 'denied') {
+        toast.error('브라우저 설정에서 알림 허용 후 사용할 수 있습니다')
+      }
+    } finally {
+      setIsRequestingNotificationPermission(false)
+    }
+  }, [])
+
+  async function handleSendMessage() {
+    const trimmedMessage = newMessage.trim()
+    if (!trimmedMessage || !currentUserId) return
+
+    const success = await sendMessage(trimmedMessage, currentUserId)
     if (success) {
       setNewMessage('')
       requestAnimationFrame(() => {
@@ -410,6 +494,10 @@ export default function ChatRoomPage() {
   // 약속 확정 여부
   const isAppointmentConfirmed = appointment?.status === 'confirmed'
   const postThumbnailUrl = room?.post ? getPostThumbnailUrl(room.post) : null
+  const connectionStatusMeta = getConnectionStatusMeta(connectionStatus)
+  const ConnectionStatusIcon = connectionStatusMeta.Icon
+  const showEnableNotificationButton =
+    notificationPermission !== 'unsupported' && notificationPermission !== 'granted'
 
   if (isLoading) {
     return (
@@ -447,7 +535,7 @@ export default function ChatRoomPage() {
         }`}
       >
         <div className="max-w-screen-xl mx-auto">
-          <div className="flex items-center gap-3 px-4 py-3">
+          <div className="flex items-center gap-2 px-4 py-3">
             <Button
               variant="ghost"
               size="icon"
@@ -456,7 +544,7 @@ export default function ChatRoomPage() {
               <ChevronLeft className="w-5 h-5" />
             </Button>
 
-            <Link href={`/profile/${room.other_user.id}`} className="flex items-center gap-3 flex-1">
+            <Link href={`/profile/${room.other_user.id}`} className="flex items-center gap-3 flex-1 min-w-0">
               {room.other_user.avatar_url ? (
                 <img
                   src={room.other_user.avatar_url}
@@ -468,9 +556,9 @@ export default function ChatRoomPage() {
                   {room.other_user.full_name?.charAt(0).toUpperCase() || '?'}
                 </div>
               )}
-              <div>
+              <div className="min-w-0">
                 <div className="font-semibold flex items-center gap-1">
-                  {room.other_user.full_name || '익명'}
+                  <span className="truncate">{room.other_user.full_name || '익명'}</span>
                   <span className="text-base">
                     {getBreadEmoji(room.other_user.bread_level || 1, room.other_user.user_role || undefined)}
                   </span>
@@ -480,6 +568,28 @@ export default function ChatRoomPage() {
                 </div>
               </div>
             </Link>
+
+            <div className="flex items-center gap-1.5">
+              <div
+                className={`hidden sm:flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium ${connectionStatusMeta.textClassName} ${connectionStatusMeta.bgClassName}`}
+              >
+                <ConnectionStatusIcon className={connectionStatusMeta.iconClassName} />
+                <span>{connectionStatusMeta.label}</span>
+              </div>
+
+              {showEnableNotificationButton && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground"
+                  onClick={handleRequestBrowserNotifications}
+                  disabled={isRequestingNotificationPermission}
+                >
+                  {notificationPermission === 'denied' ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+                </Button>
+              )}
+            </div>
 
             {/* 판매완료 버튼 (판매자만, 약속 확정 후) */}
             {isSeller && isAppointmentConfirmed && !isSold && currentUserId && room.post && (
@@ -563,7 +673,7 @@ export default function ChatRoomPage() {
                 메시지를 보내서 대화를 시작해보세요
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-0">
                 {/* 약속 카드 (있을 경우 맨 위에 표시) */}
                 {appointment && currentUserId && (
                   <AppointmentCard
@@ -573,12 +683,34 @@ export default function ChatRoomPage() {
                   />
                 )}
 
+                {connectionStatus !== 'live' && (
+                  <div className="sticky top-2 z-10 flex justify-center mb-3">
+                    <div className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${connectionStatusMeta.textClassName} ${connectionStatusMeta.bgClassName}`}>
+                      <ConnectionStatusIcon className={connectionStatusMeta.iconClassName} />
+                      {connectionStatusMeta.label}
+                    </div>
+                  </div>
+                )}
+
                 {/* 메시지 목록 */}
                 {messages.map((message, index) => {
                   const isOwnMessage = message.sender_id === currentUserId
+                  const previousMessage = messages[index - 1]
+                  const nextMessage = messages[index + 1]
                   const showDate = index === 0 ||
-                    new Date(messages[index - 1].created_at).toDateString() !==
+                    new Date(previousMessage.created_at).toDateString() !==
                     new Date(message.created_at).toDateString()
+                  const groupedWithPrevious =
+                    !!previousMessage &&
+                    previousMessage.sender_id === message.sender_id &&
+                    new Date(message.created_at).getTime() - new Date(previousMessage.created_at).getTime() < 5 * 60 * 1000
+                  const groupedWithNext =
+                    !!nextMessage &&
+                    nextMessage.sender_id === message.sender_id &&
+                    new Date(nextMessage.created_at).getTime() - new Date(message.created_at).getTime() < 5 * 60 * 1000
+                  const showSenderName = !isOwnMessage && !groupedWithPrevious
+                  const showAvatar = !isOwnMessage && !groupedWithNext
+                  const showMessageMeta = !groupedWithNext
 
                   return (
                     <div
@@ -600,47 +732,52 @@ export default function ChatRoomPage() {
                         </div>
                       )}
 
-                      <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`flex gap-2 max-w-[70%] ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+                      <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} ${groupedWithPrevious ? 'mt-1' : 'mt-3'}`}>
+                        <div className={`flex gap-2 max-w-[80%] ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
                           {!isOwnMessage && (
-                            message.sender.avatar_url ? (
-                              <img
-                                src={message.sender.avatar_url}
-                                alt={message.sender.full_name || '사용자'}
-                                className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                                loading="lazy"
-                                decoding="async"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                                {message.sender.full_name?.charAt(0).toUpperCase() || '?'}
-                              </div>
-                            )
+                            <div className="w-8 flex-shrink-0">
+                              {showAvatar ? (
+                                message.sender.avatar_url ? (
+                                  <img
+                                    src={message.sender.avatar_url}
+                                    alt={message.sender.full_name || '사용자'}
+                                    className="w-8 h-8 rounded-full object-cover"
+                                    loading="lazy"
+                                    decoding="async"
+                                  />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-xs">
+                                    {message.sender.full_name?.charAt(0).toUpperCase() || '?'}
+                                  </div>
+                                )
+                              ) : null}
+                            </div>
                           )}
-
                           <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
-                            {!isOwnMessage && (
+                            {showSenderName && (
                               <span className="text-xs text-muted-foreground mb-1 px-1">
                                 {message.sender.full_name || '익명'}
                               </span>
                             )}
-                            <div className={`px-4 py-2 rounded-2xl ${
+                            <div className={`px-3.5 py-2 rounded-2xl ${
                               isOwnMessage
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-secondary'
                             }`}>
                               <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                             </div>
-                            <div className="flex items-center gap-1 mt-1 px-1">
-                              {isOwnMessage && (
+                            {showMessageMeta && (
+                              <div className="flex items-center gap-1 mt-1 px-1">
+                                {isOwnMessage && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {message.is_read ? '읽음' : '안읽음'}
+                                  </span>
+                                )}
                                 <span className="text-xs text-muted-foreground">
-                                  {message.is_read ? '읽음' : '안읽음'}
+                                  {formatTime(message.created_at)}
                                 </span>
-                              )}
-                              <span className="text-xs text-muted-foreground">
-                                {formatTime(message.created_at)}
-                              </span>
-                            </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -668,9 +805,9 @@ export default function ChatRoomPage() {
         )}
       </div>
 
-      {/* Message Input - 고정되지 않음 */}
-      <div className="flex-shrink-0 bg-background border-t border-border">
-        <div className="max-w-screen-xl mx-auto px-3 py-2">
+      {/* Message Input - 모바일 키보드/안전영역 대응 */}
+      <div className="flex-shrink-0 bg-background border-t border-border safe-area-bottom">
+        <div className="max-w-screen-xl mx-auto px-3 pt-2 pb-1">
           {/* 구매약속 잡기 버튼 (구매자만, 판매완료 아닐 때) */}
           {isBuyer && !isSold && currentUserId && room.post && room.post.author_id && (
             <div className="mb-2">
@@ -685,33 +822,39 @@ export default function ChatRoomPage() {
             </div>
           )}
 
-          <div className="flex gap-2 items-center">
-            <Input
-              ref={inputRef}
-              placeholder="메시지를 입력하세요..."
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onFocus={() => {
-                requestAnimationFrame(() => {
-                  scrollToBottom('smooth')
-                })
-              }}
-              className="flex-1 h-10"
-              style={{ fontSize: '16px' }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  if (!isSending && newMessage.trim()) {
-                    handleSendMessage()
+          <div className="flex gap-2 items-end">
+            <div className="flex-1 rounded-2xl border border-input bg-background px-3 py-2 focus-within:ring-2 focus-within:ring-ring">
+              <Textarea
+                ref={messageInputRef}
+                placeholder="메시지를 입력하세요... (Shift+Enter 줄바꿈)"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onFocus={() => {
+                  requestAnimationFrame(() => {
+                    scrollToBottom('smooth')
+                  })
+                }}
+                rows={1}
+                className="min-h-0 max-h-[120px] resize-none border-0 bg-transparent p-0 text-[16px] leading-5 focus-visible:ring-0 focus-visible:ring-offset-0"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault()
+                    if (!isSending && newMessage.trim()) {
+                      handleSendMessage()
+                    }
                   }
-                }
-              }}
-            />
+                }}
+              />
+              <div className="mt-1 text-[11px] text-muted-foreground">
+                Enter 전송 · Shift+Enter 줄바꿈
+              </div>
+            </div>
             <Button
+              type="button"
               onClick={handleSendMessage}
               disabled={!newMessage.trim() || isSending}
               size="icon"
-              className="flex-shrink-0 h-10 w-10"
+              className="flex-shrink-0 h-11 w-11 rounded-xl"
             >
               <Send className="w-4 h-4" />
             </Button>

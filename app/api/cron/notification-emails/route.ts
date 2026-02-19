@@ -6,14 +6,25 @@ export const dynamic = 'force-dynamic'
 
 const BATCH_SIZE = 20
 const MAX_RETRY_COUNT = 5
+const NEW_MESSAGE_EMAIL_DELAY_MINUTES = 3
 
 interface EmailQueueRow {
   id: number
+  notification_id: string
+  user_id: string
   user_email: string
   subject: string
   message: string
   link: string | null
   retry_count: number
+  created_at: string
+}
+
+interface NotificationMetaRow {
+  id: string
+  type: string
+  is_read: boolean
+  related_room_id: string | null
 }
 
 function resolveLink(link: string | null, origin: string) {
@@ -48,13 +59,33 @@ function buildEmailPayload(row: EmailQueueRow, origin: string) {
   return { html, text }
 }
 
-async function markAsSent(supabase: ReturnType<typeof createAdminClient>, rowId: number) {
+async function markAsSent(
+  supabase: ReturnType<typeof createAdminClient>,
+  rowId: number,
+  note: string | null = null
+) {
   await supabase
     .from('notification_email_queue')
     .update({
       status: 'sent',
       sent_at: new Date().toISOString(),
-      last_error: null,
+      last_error: note,
+    })
+    .eq('id', rowId)
+}
+
+async function scheduleForLater(
+  supabase: ReturnType<typeof createAdminClient>,
+  rowId: number,
+  nextAttemptAt: string,
+  note: string
+) {
+  await supabase
+    .from('notification_email_queue')
+    .update({
+      status: 'pending',
+      next_attempt_at: nextAttemptAt,
+      last_error: note.slice(0, 500),
     })
     .eq('id', rowId)
 }
@@ -77,6 +108,12 @@ async function markAsFailedOrRetry(
       next_attempt_at: nextAttemptAt,
     })
     .eq('id', row.id)
+}
+
+function getRemainingNewMessageDelayMs(createdAt: string) {
+  const elapsedMs = Date.now() - new Date(createdAt).getTime()
+  const delayMs = NEW_MESSAGE_EMAIL_DELAY_MINUTES * 60 * 1000
+  return delayMs - elapsedMs
 }
 
 export async function GET(request: NextRequest) {
@@ -120,7 +157,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('notification_email_queue')
-    .select('id, user_email, subject, message, link, retry_count')
+    .select('id, notification_id, user_id, user_email, subject, message, link, retry_count, created_at')
     .eq('status', 'pending')
     .lte('next_attempt_at', now)
     .order('created_at', { ascending: true })
@@ -135,14 +172,82 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, processed: 0, sent: 0, failed: 0 })
   }
 
+  const notificationIds = queueRows.map((row) => row.notification_id)
+  const { data: notificationData, error: notificationError } = await supabase
+    .from('notifications')
+    .select('id, type, is_read, related_room_id')
+    .in('id', notificationIds)
+
+  if (notificationError) {
+    return NextResponse.json({ error: notificationError.message }, { status: 500 })
+  }
+
+  const notificationMetaMap = new Map(
+    ((notificationData || []) as NotificationMetaRow[]).map((row) => [row.id, row])
+  )
+
+  const newestMessageQueueByRoom = new Map<string, EmailQueueRow>()
+  for (const row of queueRows) {
+    const meta = notificationMetaMap.get(row.notification_id)
+    if (!meta || meta.type !== 'new_message' || !meta.related_room_id) {
+      continue
+    }
+
+    const dedupeKey = `${row.user_id}:${meta.related_room_id}`
+    const existing = newestMessageQueueByRoom.get(dedupeKey)
+    if (!existing || new Date(row.created_at).getTime() > new Date(existing.created_at).getTime()) {
+      newestMessageQueueByRoom.set(dedupeKey, row)
+    }
+  }
+
   let sent = 0
   let failed = 0
+  let suppressed = 0
+  let deferred = 0
 
   for (const row of queueRows) {
     if (!row.user_email) {
       failed += 1
       await markAsFailedOrRetry(supabase, row, 'Missing recipient email')
       continue
+    }
+
+    const notificationMeta = notificationMetaMap.get(row.notification_id)
+    if (!notificationMeta) {
+      failed += 1
+      await markAsFailedOrRetry(supabase, row, 'Notification metadata not found')
+      continue
+    }
+
+    if (notificationMeta.is_read) {
+      suppressed += 1
+      await markAsSent(supabase, row.id, 'Skipped: already read')
+      continue
+    }
+
+    if (notificationMeta.type === 'new_message') {
+      if (notificationMeta.related_room_id) {
+        const dedupeKey = `${row.user_id}:${notificationMeta.related_room_id}`
+        const latestRow = newestMessageQueueByRoom.get(dedupeKey)
+        if (latestRow && latestRow.id !== row.id) {
+          suppressed += 1
+          await markAsSent(supabase, row.id, 'Skipped: newer message notification exists')
+          continue
+        }
+      }
+
+      const remainingDelayMs = getRemainingNewMessageDelayMs(row.created_at)
+      if (remainingDelayMs > 0) {
+        const nextAttemptAt = new Date(Date.now() + remainingDelayMs).toISOString()
+        deferred += 1
+        await scheduleForLater(
+          supabase,
+          row.id,
+          nextAttemptAt,
+          `Deferred: wait ${NEW_MESSAGE_EMAIL_DELAY_MINUTES}m window`
+        )
+        continue
+      }
     }
 
     try {
@@ -183,5 +288,7 @@ export async function GET(request: NextRequest) {
     processed: queueRows.length,
     sent,
     failed,
+    suppressed,
+    deferred,
   })
 }
