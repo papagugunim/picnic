@@ -6,6 +6,11 @@ import { ArrowRight, Radio, RefreshCw } from 'lucide-react'
 
 import { RussiaNewsCard } from '@/components/today/RussiaNewsCard'
 import { normalizeTopic, type RussiaNewsItem, type RussiaNewsTopic } from '@/lib/russia-news'
+import {
+  fetchTodayNewsWithFallback,
+  readTodayLocalCachedNews,
+  writeTodayLocalCachedNews,
+} from '@/lib/today/russia-news-client'
 
 const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '전체', value: '' },
@@ -15,138 +20,7 @@ const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '문화', value: '문화' },
   { label: '날씨', value: '날씨' },
 ]
-const NEWS_CACHE_VERSION = '2'
-const LOCAL_CACHE_TTL_MS = 60 * 60 * 1000
-const FETCH_TIMEOUT_MS = 9000
 const AUTO_RECOVERY_DELAY_MS = 6000
-const MAX_RETRY_PER_REQUEST = 2
-
-function buildLocalCacheKey(topic: RussiaNewsTopic): string {
-  return `russia-news:today:${topic || 'all'}:v${NEWS_CACHE_VERSION}`
-}
-
-function filterItemsByTopic(items: RussiaNewsItem[], topic: RussiaNewsTopic): RussiaNewsItem[] {
-  if (!topic) return items
-  return items.filter((item) => normalizeTopic(item.topic || null) === topic)
-}
-
-function readLocalCachedNews(topic: RussiaNewsTopic): RussiaNewsItem[] {
-  if (typeof window === 'undefined') return []
-
-  const key = buildLocalCacheKey(topic)
-  const raw = window.localStorage.getItem(key)
-  if (!raw) {
-    if (!topic) return []
-    return filterItemsByTopic(readLocalCachedNews(''), topic)
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as { savedAt?: number; items?: RussiaNewsItem[] }
-    if (!parsed?.savedAt || !Array.isArray(parsed?.items)) return []
-    if (Date.now() - parsed.savedAt > LOCAL_CACHE_TTL_MS) {
-      window.localStorage.removeItem(key)
-      if (!topic) return []
-      const broad = readLocalCachedNews('')
-      return broad.length > 0 ? broad : []
-    }
-    const filtered = filterItemsByTopic(parsed.items, topic)
-    if (filtered.length > 0 || !topic) {
-      return filtered
-    }
-
-    const broad = readLocalCachedNews('')
-    return broad.length > 0 ? broad : []
-  } catch {
-    window.localStorage.removeItem(key)
-    if (!topic) return []
-    const broad = readLocalCachedNews('')
-    return broad.length > 0 ? broad : []
-  }
-}
-
-function writeLocalCachedNews(topic: RussiaNewsTopic, items: RussiaNewsItem[]): void {
-  if (typeof window === 'undefined' || items.length === 0) return
-
-  const payload = JSON.stringify({
-    savedAt: Date.now(),
-    items,
-  })
-
-  window.localStorage.setItem(buildLocalCacheKey(topic), payload)
-  if (!topic) {
-    window.localStorage.setItem(buildLocalCacheKey(''), payload)
-  }
-}
-
-async function requestNews(
-  endpoint: '/api/russia-news' | '/api/russia-news/archive',
-  topic: RussiaNewsTopic
-): Promise<RussiaNewsItem[]> {
-  const url = new URL(endpoint, window.location.origin)
-  url.searchParams.set('limit', '8')
-  url.searchParams.set('v', NEWS_CACHE_VERSION)
-  if (topic) url.searchParams.set('topic', topic)
-
-  for (let attempt = 0; attempt < MAX_RETRY_PER_REQUEST; attempt++) {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-
-    try {
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        cache: 'no-store',
-        signal: controller.signal,
-      })
-      const data = await response.json()
-
-      if (!response.ok || data?.error) {
-        throw new Error(data?.error || '뉴스를 불러오지 못했습니다.')
-      }
-
-      const items = Array.isArray(data?.items) ? (data.items as RussiaNewsItem[]) : []
-      if (items.length > 0) {
-        return items.slice(0, 8)
-      }
-    } catch (error) {
-      const isAbort = error instanceof Error && error.name === 'AbortError'
-      if (!isAbort || attempt === MAX_RETRY_PER_REQUEST - 1) {
-        throw error
-      }
-    } finally {
-      clearTimeout(timeoutId)
-    }
-  }
-
-  return []
-}
-
-async function requestNewsWithFallback(topic: RussiaNewsTopic): Promise<RussiaNewsItem[]> {
-  const candidates: Array<{ endpoint: '/api/russia-news' | '/api/russia-news/archive'; topic: RussiaNewsTopic }> = [
-    { endpoint: '/api/russia-news', topic },
-    { endpoint: '/api/russia-news/archive', topic },
-  ]
-
-  if (topic) {
-    candidates.push(
-      { endpoint: '/api/russia-news', topic: '' },
-      { endpoint: '/api/russia-news/archive', topic: '' }
-    )
-  }
-
-  let lastError: unknown = null
-
-  for (const candidate of candidates) {
-    try {
-      const items = await requestNews(candidate.endpoint, candidate.topic)
-      if (items.length > 0) return items
-    } catch (error) {
-      lastError = error
-    }
-  }
-
-  if (lastError instanceof Error) throw lastError
-  return []
-}
 
 export function RussiaNewsSection() {
   const [topic, setTopic] = useState<RussiaNewsTopic>('')
@@ -179,26 +53,35 @@ export function RussiaNewsSection() {
     async (isManualRefresh: boolean) => {
       const requestId = ++requestIdRef.current
       clearRecoveryTimer()
+      const cachedOnStart = isManualRefresh ? [] : readTodayLocalCachedNews(topic, 8)
 
       if (isManualRefresh) {
         setIsRefreshing(true)
       } else {
-        setIsLoading(true)
+        setIsLoading(cachedOnStart.length === 0)
+      }
+
+      if (!isManualRefresh && cachedOnStart.length > 0) {
+        setItems(cachedOnStart)
       }
       setErrorMessage(null)
 
       try {
-        const clipped = await requestNewsWithFallback(topic)
+        const clipped = await fetchTodayNewsWithFallback(topic, {
+          limit: 8,
+          cacheMode: isManualRefresh ? 'no-store' : 'default',
+          bustCache: isManualRefresh,
+        })
         if (requestIdRef.current !== requestId) return
 
         if (clipped.length > 0) {
           setItems(clipped)
-          writeLocalCachedNews(topic, clipped)
+          writeTodayLocalCachedNews(topic, clipped)
           setErrorMessage(null)
           return
         }
 
-        const cachedItems = readLocalCachedNews(topic).slice(0, 8)
+        const cachedItems = readTodayLocalCachedNews(topic, 8)
         if (cachedItems.length > 0) {
           setItems(cachedItems)
           setErrorMessage(null)
@@ -207,7 +90,7 @@ export function RussiaNewsSection() {
       } catch (error) {
         if (requestIdRef.current !== requestId) return
 
-        const cachedItems = readLocalCachedNews(topic).slice(0, 8)
+        const cachedItems = readTodayLocalCachedNews(topic, 8)
         if (cachedItems.length > 0) {
           setItems(cachedItems)
           setErrorMessage(null)
