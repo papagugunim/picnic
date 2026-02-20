@@ -3,19 +3,24 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('Page')
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Package, Users, MessageCircle, Heart, Bookmark, Flag } from 'lucide-react'
 import { useMetroStations } from '@/lib/hooks/useMetroStations'
-import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
+import { useUser } from '@/lib/contexts/UserContext'
 import Link from 'next/link'
 import { BREAD_SCORE_FACTORS, getBreadDescription, getBreadEmoji, getBreadInfo, getBreadLevelByScore, getBreadScoreRange } from '@/lib/bread'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { getLoadingMessage } from '@/lib/loading-messages'
 import { BreadLevelModal } from '@/components/bread-level-modal'
 import { ReportDialog } from '@/components/admin/ReportDialog'
+import {
+  readProfileViewCache,
+  writeProfileViewCache,
+  type ProfileViewCacheData,
+} from '@/lib/profile/profile-view-cache'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,193 +74,416 @@ interface BreadScoreBreakdown {
   suggestedLevel: number
 }
 
+type ProfileTab = 'marketplace' | 'community' | 'likes' | 'interests'
+type ProfileViewCachePatch = Omit<Partial<ProfileViewCacheData>, 'loadedSections'> & {
+  loadedSections?: Partial<ProfileViewCacheData['loadedSections']>
+}
+
+function createBreadScoreBreakdown(
+  postsData: Post[],
+  reviewRatings: number[],
+  communityLikesScoreRaw: number
+): BreadScoreBreakdown {
+  const soldCount = postsData.filter((post) => post.status === 'sold').length
+  const receivedReviews = reviewRatings.length
+  const averageRating = receivedReviews > 0
+    ? reviewRatings.reduce((sum, rating) => sum + rating, 0) / receivedReviews
+    : 0
+  const communityLikesScore = Math.max(0, communityLikesScoreRaw)
+  const salesScore = soldCount * BREAD_SCORE_FACTORS.completedSale
+  const reviewScore = (receivedReviews * BREAD_SCORE_FACTORS.receivedReview)
+    + Math.round(averageRating * BREAD_SCORE_FACTORS.reviewRatingPoint)
+  const totalScore = Math.max(0, Math.round(salesScore + reviewScore + communityLikesScore))
+
+  return {
+    totalScore,
+    soldCount,
+    salesScore,
+    receivedReviews,
+    averageRating,
+    reviewScore,
+    communityLikesScore,
+    suggestedLevel: getBreadLevelByScore(totalScore),
+  }
+}
+
+function createEmptyProfileCacheData(): ProfileViewCacheData {
+  return {
+    profile: null,
+    posts: [],
+    communityPosts: [],
+    likedPosts: [],
+    interestedPosts: [],
+    breadScoreBreakdown: null,
+    loadedSections: {
+      marketplace: false,
+      community: false,
+      likes: false,
+      interests: false,
+    },
+  }
+}
+
 export default function ProfilePage() {
   const params = useParams()
   const router = useRouter()
   const userId = params.userId as string
-  const { theme, resolvedTheme } = useTheme()
+  const { user: contextUser } = useUser()
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [communityPosts, setCommunityPosts] = useState<CommunityPost[]>([])
   const [likedPosts, setLikedPosts] = useState<Post[]>([])
   const [interestedPosts, setInterestedPosts] = useState<Post[]>([])
-  const [activeTab, setActiveTab] = useState<'marketplace' | 'community' | 'likes' | 'interests'>('marketplace')
+  const [activeTab, setActiveTab] = useState<ProfileTab>('marketplace')
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [loadedSections, setLoadedSections] = useState<Record<ProfileTab, boolean>>({
+    marketplace: false,
+    community: false,
+    likes: false,
+    interests: false,
+  })
+  const [loadingSections, setLoadingSections] = useState<Record<ProfileTab, boolean>>({
+    marketplace: false,
+    community: false,
+    likes: false,
+    interests: false,
+  })
   const [isStartingChat, setIsStartingChat] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const [isBreadModalOpen, setIsBreadModalOpen] = useState(false)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [breadScoreBreakdown, setBreadScoreBreakdown] = useState<BreadScoreBreakdown | null>(null)
+  const cacheSnapshotRef = useRef<ProfileViewCacheData>(createEmptyProfileCacheData())
   const metroStations = useMetroStations(profile?.city)
 
-  useEffect(() => {
-    setMounted(true)
+  const updateSectionLoading = useCallback((section: ProfileTab, nextValue: boolean) => {
+    setLoadingSections((prev) => ({ ...prev, [section]: nextValue }))
   }, [])
 
+  const updateSectionLoaded = useCallback((section: ProfileTab, nextValue: boolean) => {
+    setLoadedSections((prev) => ({ ...prev, [section]: nextValue }))
+  }, [])
+
+  const persistCache = useCallback((patch: ProfileViewCachePatch) => {
+    const previous = cacheSnapshotRef.current || createEmptyProfileCacheData()
+    const next: ProfileViewCacheData = {
+      ...previous,
+      ...patch,
+      loadedSections: {
+        ...previous.loadedSections,
+        ...(patch.loadedSections || {}),
+      },
+    }
+
+    cacheSnapshotRef.current = next
+    writeProfileViewCache(userId, next)
+  }, [userId])
+
+  const loadCommunityPosts = useCallback(async () => {
+    if (loadedSections.community || loadingSections.community) return
+
+    updateSectionLoading('community', true)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('community_posts')
+        .select('id, title, content, images, category, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        logger.error('Community posts fetch error:', error)
+        setCommunityPosts([])
+      } else {
+        const nextItems = (data || []) as CommunityPost[]
+        setCommunityPosts(nextItems)
+        persistCache({
+          communityPosts: nextItems,
+          loadedSections: { community: true },
+        })
+      }
+    } catch (error) {
+      logger.error('Community posts fetch exception:', error)
+    } finally {
+      updateSectionLoaded('community', true)
+      updateSectionLoading('community', false)
+    }
+  }, [loadedSections.community, loadingSections.community, persistCache, updateSectionLoaded, updateSectionLoading, userId])
+
+  const loadLikedPosts = useCallback(async () => {
+    if (!isOwnProfile || loadedSections.likes || loadingSections.likes) return
+
+    updateSectionLoading('likes', true)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('post_likes')
+        .select(`
+          post_id,
+          posts:post_id (
+            id,
+            title,
+            price,
+            images,
+            created_at,
+            status
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        logger.error('Liked posts fetch error:', error)
+        setLikedPosts([])
+      } else {
+        const nextItems = (data?.map((item: any) => item.posts).filter(Boolean) || []) as Post[]
+        setLikedPosts(nextItems)
+        persistCache({
+          likedPosts: nextItems,
+          loadedSections: { likes: true },
+        })
+      }
+    } catch (error) {
+      logger.error('Liked posts fetch exception:', error)
+    } finally {
+      updateSectionLoaded('likes', true)
+      updateSectionLoading('likes', false)
+    }
+  }, [isOwnProfile, loadedSections.likes, loadingSections.likes, persistCache, updateSectionLoaded, updateSectionLoading, userId])
+
+  const loadInterestedPosts = useCallback(async () => {
+    if (!isOwnProfile || loadedSections.interests || loadingSections.interests) return
+
+    updateSectionLoading('interests', true)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('post_interests')
+        .select(`
+          post_id,
+          posts:post_id (
+            id,
+            title,
+            price,
+            images,
+            created_at,
+            status
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        logger.error('Interested posts fetch error:', error)
+        setInterestedPosts([])
+      } else {
+        const nextItems = (data?.map((item: any) => item.posts).filter(Boolean) || []) as Post[]
+        setInterestedPosts(nextItems)
+        persistCache({
+          interestedPosts: nextItems,
+          loadedSections: { interests: true },
+        })
+      }
+    } catch (error) {
+      logger.error('Interested posts fetch exception:', error)
+    } finally {
+      updateSectionLoaded('interests', true)
+      updateSectionLoading('interests', false)
+    }
+  }, [isOwnProfile, loadedSections.interests, loadingSections.interests, persistCache, updateSectionLoaded, updateSectionLoading, userId])
+
   useEffect(() => {
-    async function fetchProfileAndPosts() {
+    let cancelled = false
+
+    async function bootstrapProfile() {
       try {
         const supabase = createClient()
+        const sessionUserId = contextUser?.id
+          || (await supabase.auth.getUser()).data.user?.id
 
-        // 현재 사용자 확인
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-
-        if (!user) {
+        if (!sessionUserId) {
           router.push('/login')
           return
         }
 
-        // 본인 프로필인지 확인
-        setIsOwnProfile(user.id === userId)
+        const ownProfile = sessionUserId === userId
+        if (cancelled) return
 
-        // 프로필 정보 가져오기
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, full_name, avatar_url, city, created_at, email, preferred_metro_stations, bread_level, user_role, post_count')
-          .eq('id', userId)
-          .single()
+        setIsOwnProfile(ownProfile)
+        setIsLoading(true)
+        setLoadingSections({
+          marketplace: false,
+          community: false,
+          likes: false,
+          interests: false,
+        })
 
-        if (profileError) {
-          logger.error('Profile fetch error:', profileError)
+        const cached = readProfileViewCache(userId)
+        if (cached) {
+          cacheSnapshotRef.current = cached
+          setProfile(cached.profile as Profile | null)
+          setPosts((cached.posts || []) as Post[])
+          setCommunityPosts((cached.communityPosts || []) as CommunityPost[])
+          setLikedPosts((cached.likedPosts || []) as Post[])
+          setInterestedPosts((cached.interestedPosts || []) as Post[])
+          setBreadScoreBreakdown((cached.breadScoreBreakdown as BreadScoreBreakdown | null) || null)
+          setLoadedSections({
+            marketplace: true,
+            community: !!cached.loadedSections.community,
+            likes: ownProfile ? !!cached.loadedSections.likes : false,
+            interests: ownProfile ? !!cached.loadedSections.interests : false,
+          })
+          setIsLoading(false)
+        } else {
+          cacheSnapshotRef.current = createEmptyProfileCacheData()
+          setLoadedSections({
+            marketplace: false,
+            community: false,
+            likes: false,
+            interests: false,
+          })
+        }
+
+        updateSectionLoading('marketplace', true)
+        const [profileResult, postsResult] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url, city, created_at, email, preferred_metro_stations, bread_level, user_role, post_count')
+            .eq('id', userId)
+            .single(),
+          supabase
+            .from('posts')
+            .select('id, title, price, images, created_at, status')
+            .eq('author_id', userId)
+            .order('created_at', { ascending: false }),
+        ])
+
+        if (cancelled) return
+
+        if (profileResult.error || !profileResult.data) {
+          logger.error('Profile fetch error:', profileResult.error)
+          setIsLoading(false)
           return
         }
 
-        setProfile(profileData)
-
-        // 사용자의 중고거래 게시물 가져오기
-        const { data: postsData, error: postsError } = await supabase
-          .from('posts')
-          .select('id, title, price, images, created_at, status')
-          .eq('author_id', userId)
-          .order('created_at', { ascending: false })
-
-        if (postsError) {
+        if (postsResult.error) {
           logger.error('Posts fetch error:', {
-            message: postsError.message,
-            code: postsError.code,
-            details: postsError.details,
-            hint: postsError.hint,
+            message: postsResult.error.message,
+            code: postsResult.error.code,
+            details: postsResult.error.details,
+            hint: postsResult.error.hint,
           })
-          setPosts([])
-        } else {
-          setPosts(postsData || [])
         }
 
-        // 사용자의 동네생활 게시물 가져오기
-        const { data: communityPostsData, error: communityPostsError } = await supabase
-          .from('community_posts')
-          .select('id, title, content, images, category, created_at')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
+        const nextProfile = profileResult.data as Profile
+        const nextPosts = ((postsResult.data || []) as Post[])
+        const previousCache = cacheSnapshotRef.current || createEmptyProfileCacheData()
 
-        if (communityPostsError) {
-          logger.error('Community posts fetch error:', communityPostsError)
-          setCommunityPosts([])
-        } else {
-          setCommunityPosts(communityPostsData || [])
-        }
+        setProfile(nextProfile)
+        setPosts(nextPosts)
+        setIsLoading(false)
+        updateSectionLoaded('marketplace', true)
+        setBreadScoreBreakdown(previousCache.breadScoreBreakdown as BreadScoreBreakdown | null)
 
-        const soldCount = (postsData || []).filter((post) => post.status === 'sold').length
-        const [reviewResult, communityScoreResult] = await Promise.all([
-          supabase
-            .from('reviews')
-            .select('rating')
-            .eq('reviewee_id', userId),
-          supabase.rpc('calculate_community_score', { p_user_id: userId }),
-        ])
-
-        const reviewRatings = (reviewResult.data || []).map((review) => Number(review.rating) || 0)
-        const receivedReviews = reviewRatings.length
-        const averageRating = receivedReviews > 0
-          ? reviewRatings.reduce((sum, rating) => sum + rating, 0) / receivedReviews
-          : 0
-        const communityLikesScore = Math.max(
-          0,
-          typeof communityScoreResult.data === 'number' ? communityScoreResult.data : 0
-        )
-
-        const salesScore = soldCount * BREAD_SCORE_FACTORS.completedSale
-        const reviewScore = (receivedReviews * BREAD_SCORE_FACTORS.receivedReview)
-          + Math.round(averageRating * BREAD_SCORE_FACTORS.reviewRatingPoint)
-        const totalScore = Math.max(0, Math.round(salesScore + reviewScore + communityLikesScore))
-
-        setBreadScoreBreakdown({
-          totalScore,
-          soldCount,
-          salesScore,
-          receivedReviews,
-          averageRating,
-          reviewScore,
-          communityLikesScore,
-          suggestedLevel: getBreadLevelByScore(totalScore),
+        persistCache({
+          profile: nextProfile,
+          posts: nextPosts,
+          communityPosts: previousCache.communityPosts,
+          likedPosts: previousCache.likedPosts,
+          interestedPosts: previousCache.interestedPosts,
+          breadScoreBreakdown: previousCache.breadScoreBreakdown,
+          loadedSections: {
+            marketplace: true,
+            community: previousCache.loadedSections.community,
+            likes: ownProfile ? previousCache.loadedSections.likes : false,
+            interests: ownProfile ? previousCache.loadedSections.interests : false,
+          },
         })
 
-        // 본인 프로필일 경우 좋아요/관심 게시글 가져오기
-        if (user.id === userId) {
-          // 좋아요한 게시글 가져오기
-          const { data: likedPostsData, error: likedPostsError } = await supabase
-            .from('post_likes')
-            .select(`
-              post_id,
-              posts:post_id (
-                id,
-                title,
-                price,
-                images,
-                created_at,
-                status
-              )
-            `)
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false })
+        void (async () => {
+          try {
+            const [reviewResult, communityScoreResult] = await Promise.all([
+              supabase
+                .from('reviews')
+                .select('rating')
+                .eq('reviewee_id', userId),
+              supabase.rpc('calculate_community_score', { p_user_id: userId }),
+            ])
 
-          if (likedPostsError) {
-            logger.error('Liked posts fetch error:', likedPostsError)
-            setLikedPosts([])
-          } else {
-            const liked = likedPostsData?.map((item: any) => item.posts).filter(Boolean) || []
-            setLikedPosts(liked)
+            if (cancelled) return
+
+            if (reviewResult.error) {
+              logger.warn('Bread review score fetch error:', reviewResult.error)
+            }
+
+            if (communityScoreResult.error) {
+              logger.warn('Bread community score fetch error:', communityScoreResult.error)
+            }
+
+            const reviewRatings = (reviewResult.data || []).map((review) => Number(review.rating) || 0)
+            const communityLikesScore = typeof communityScoreResult.data === 'number'
+              ? communityScoreResult.data
+              : 0
+            const nextBreadScore = createBreadScoreBreakdown(nextPosts, reviewRatings, communityLikesScore)
+
+            setBreadScoreBreakdown(nextBreadScore)
+            persistCache({
+              breadScoreBreakdown: nextBreadScore,
+            })
+          } catch (scoreError) {
+            if (!cancelled) {
+              logger.warn('Bread score background fetch exception:', scoreError)
+            }
           }
-
-          // 관심 있는 게시글 가져오기
-          const { data: interestedPostsData, error: interestedPostsError } = await supabase
-            .from('post_interests')
-            .select(`
-              post_id,
-              posts:post_id (
-                id,
-                title,
-                price,
-                images,
-                created_at,
-                status
-              )
-            `)
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false })
-
-          if (interestedPostsError) {
-            logger.error('Interested posts fetch error:', interestedPostsError)
-            setInterestedPosts([])
-          } else {
-            const interested = interestedPostsData?.map((item: any) => item.posts).filter(Boolean) || []
-            setInterestedPosts(interested)
-          }
+        })()
+      } catch (error) {
+        if (!cancelled) {
+          logger.error('Profile bootstrap error:', error)
+          setIsLoading(false)
         }
-      } catch (err) {
-        logger.error('Fetch error:', err)
       } finally {
-        setIsLoading(false)
+        if (!cancelled) {
+          updateSectionLoading('marketplace', false)
+        }
       }
     }
 
-    fetchProfileAndPosts()
-  }, [userId, router])
+    void bootstrapProfile()
+
+    return () => {
+      cancelled = true
+    }
+  }, [contextUser?.id, persistCache, router, updateSectionLoaded, updateSectionLoading, userId])
+
+  useEffect(() => {
+    if (activeTab === 'community' && !loadedSections.community && !loadingSections.community) {
+      void loadCommunityPosts()
+      return
+    }
+
+    if (activeTab === 'likes' && isOwnProfile && !loadedSections.likes && !loadingSections.likes) {
+      void loadLikedPosts()
+      return
+    }
+
+    if (activeTab === 'interests' && isOwnProfile && !loadedSections.interests && !loadingSections.interests) {
+      void loadInterestedPosts()
+    }
+  }, [
+    activeTab,
+    isOwnProfile,
+    loadedSections.community,
+    loadedSections.likes,
+    loadedSections.interests,
+    loadingSections.community,
+    loadingSections.likes,
+    loadingSections.interests,
+    loadCommunityPosts,
+    loadLikedPosts,
+    loadInterestedPosts,
+  ])
 
   async function startChat() {
     try {
@@ -347,6 +575,13 @@ export default function ProfilePage() {
 
   const getStationInfo = (stationValue: string) => {
     return metroStations.find((s) => s.value === stationValue)
+  }
+
+  const tabCountLabel = (tab: ProfileTab, count: number) => {
+    if (!loadedSections[tab]) {
+      return '...'
+    }
+    return String(count)
   }
 
   return (
@@ -493,7 +728,7 @@ export default function ProfilePage() {
               }`}
             >
               <Package className="w-5 h-5" />
-              중고거래 ({posts.length})
+              중고거래 ({tabCountLabel('marketplace', posts.length)})
             </button>
             <button
               onClick={() => setActiveTab('community')}
@@ -504,7 +739,7 @@ export default function ProfilePage() {
               }`}
             >
               <Users className="w-5 h-5" />
-              동네생활 ({communityPosts.length})
+              동네생활 ({tabCountLabel('community', communityPosts.length)})
             </button>
             {isOwnProfile && (
               <>
@@ -517,7 +752,7 @@ export default function ProfilePage() {
                   }`}
                 >
                   <Heart className="w-5 h-5" />
-                  좋아요 ({likedPosts.length})
+                  좋아요 ({tabCountLabel('likes', likedPosts.length)})
                 </button>
                 <button
                   onClick={() => setActiveTab('interests')}
@@ -528,7 +763,7 @@ export default function ProfilePage() {
                   }`}
                 >
                   <Bookmark className="w-5 h-5" />
-                  관심 ({interestedPosts.length})
+                  관심 ({tabCountLabel('interests', interestedPosts.length)})
                 </button>
               </>
             )}
@@ -540,7 +775,11 @@ export default function ProfilePage() {
       <div className="max-w-4xl mx-auto px-4 py-4">
         {activeTab === 'likes' ? (
           <>
-            {likedPosts.length === 0 ? (
+            {loadingSections.likes && !loadedSections.likes ? (
+              <div className="text-center py-16 text-muted-foreground">
+                좋아요 게시글을 불러오는 중입니다...
+              </div>
+            ) : likedPosts.length === 0 ? (
               <div className="text-center py-16">
                 <Heart className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground mb-4">
@@ -597,7 +836,11 @@ export default function ProfilePage() {
           </>
         ) : activeTab === 'interests' ? (
           <>
-            {interestedPosts.length === 0 ? (
+            {loadingSections.interests && !loadedSections.interests ? (
+              <div className="text-center py-16 text-muted-foreground">
+                관심 게시글을 불러오는 중입니다...
+              </div>
+            ) : interestedPosts.length === 0 ? (
               <div className="text-center py-16">
                 <Bookmark className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground mb-4">
@@ -654,7 +897,11 @@ export default function ProfilePage() {
           </>
         ) : activeTab === 'marketplace' ? (
           <>
-        {posts.length === 0 ? (
+        {loadingSections.marketplace && !loadedSections.marketplace ? (
+          <div className="text-center py-16 text-muted-foreground">
+            중고거래 게시글을 불러오는 중입니다...
+          </div>
+        ) : posts.length === 0 ? (
           <div className="text-center py-16">
             <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground mb-4">
@@ -711,7 +958,11 @@ export default function ProfilePage() {
           </>
         ) : (
           <>
-            {communityPosts.length === 0 ? (
+            {loadingSections.community && !loadedSections.community ? (
+              <div className="text-center py-16 text-muted-foreground">
+                동네생활 게시글을 불러오는 중입니다...
+              </div>
+            ) : communityPosts.length === 0 ? (
               <div className="text-center py-16">
                 <Users className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground mb-4">
