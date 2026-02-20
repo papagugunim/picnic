@@ -12,6 +12,8 @@ async function getAdminStats() {
     { count: recentSignups },
     { count: suspendedUsers },
     { count: pendingReports },
+    { count: moscowUsers },
+    { count: spbUsers },
   ] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
     supabase
@@ -26,13 +28,27 @@ async function getAdminStats() {
       .from('reports')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending'),
+    supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .in('city', ['moscow', 'Moscow', '모스크바']),
+    supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .in('city', ['spb', 'Saint Petersburg', 'saint petersburg', '상트페테르부르크']),
   ])
+
+  const normalizedMoscowUsers = moscowUsers || 0
+  const normalizedSpbUsers = spbUsers || 0
 
   return {
     totalUsers: totalUsers || 0,
     recentSignups: recentSignups || 0,
     suspendedUsers: suspendedUsers || 0,
     pendingReports: pendingReports || 0,
+    moscowUsers: normalizedMoscowUsers,
+    spbUsers: normalizedSpbUsers,
+    trackedCityUsers: normalizedMoscowUsers + normalizedSpbUsers,
   }
 }
 
@@ -80,6 +96,25 @@ function formatRelativeDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
 }
 
+function formatCityLabel(city: string | null) {
+  if (!city) return '미설정'
+
+  const normalized = city.trim().toLowerCase()
+  if (normalized === 'moscow' || normalized === '모스크바') return '모스크바'
+  if (
+    normalized === 'spb'
+    || normalized === 'saint petersburg'
+    || normalized === 'saint-petersburg'
+    || normalized === 'st. petersburg'
+    || normalized === 'st petersburg'
+    || normalized === '상트페테르부르크'
+  ) {
+    return '상트'
+  }
+
+  return city
+}
+
 export default async function AdminDashboardPage() {
   const [stats, recentUsers, recentReports] = await Promise.all([
     getAdminStats(),
@@ -112,6 +147,14 @@ export default async function AdminDashboardPage() {
           <p className="text-[10px] md:text-xs text-muted-foreground">미처리 신고</p>
         </div>
       </div>
+      <div className="rounded-lg bg-card p-2.5 md:p-4">
+        <p className="text-[10px] md:text-xs text-muted-foreground">도시별 회원</p>
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs md:text-sm">
+          <span>모스크바 {stats.moscowUsers}명</span>
+          <span>상트 {stats.spbUsers}명</span>
+          <span className="font-semibold">합계 {stats.trackedCityUsers}명</span>
+        </div>
+      </div>
 
       {/* Recent Reports - TOP priority */}
       <RecentReports reports={recentReports} />
@@ -138,7 +181,7 @@ export default async function AdminDashboardPage() {
                       <span className="ml-0.5">{getBreadEmoji(user.bread_level, user.user_role || undefined)}</span>
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {user.city === 'Moscow' ? '모스크바' : user.city === 'Saint Petersburg' ? '상트' : '-'}
+                      {formatCityLabel(user.city)}
                       <span className="hidden sm:inline">
                         {' · '}게시글 {user.post_count ?? 0}개
                       </span>
