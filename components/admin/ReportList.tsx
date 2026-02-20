@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,7 +23,7 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { DotsHorizontalIcon } from '@radix-ui/react-icons'
+import { DotsHorizontalIcon, ExternalLinkIcon } from '@radix-ui/react-icons'
 import { toast } from 'sonner'
 import {
   REPORT_REASONS,
@@ -41,6 +42,19 @@ interface ReportListProps {
     status: ReportStatus,
     actionTaken?: string
   ) => Promise<{ success: boolean; error?: string }>
+}
+
+function getTargetUrl(targetType: ReportTargetType, targetId: string): string | null {
+  switch (targetType) {
+    case 'post':
+      return `/post/${targetId}`
+    case 'community_post':
+      return `/community/${targetId}`
+    case 'user':
+      return `/profile/${targetId}`
+    default:
+      return null
+  }
 }
 
 export function ReportList({ reports, onUpdateStatus }: ReportListProps) {
@@ -122,77 +136,88 @@ export function ReportList({ reports, onUpdateStatus }: ReportListProps) {
     <>
       {/* 모바일 카드 뷰 */}
       <div className="md:hidden space-y-2">
-        {reports.map((report) => (
-          <div key={report.id} className="bg-card border rounded-lg p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <Avatar className="h-8 w-8 flex-shrink-0">
-                  <AvatarImage src={report.reporter?.avatar_url || undefined} />
-                  <AvatarFallback className="text-xs">
-                    {(report.reporter?.full_name || '?').slice(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">
-                    {report.reporter?.full_name || '알 수 없음'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(report.created_at)}
-                  </p>
+        {reports.map((report) => {
+          const targetUrl = getTargetUrl(report.target_type, report.target_id)
+          return (
+            <div key={report.id} className="bg-card border rounded-lg p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarImage src={report.reporter?.avatar_url || undefined} />
+                    <AvatarFallback className="text-xs">
+                      {(report.reporter?.full_name || '?').slice(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">
+                      {report.reporter?.full_name || '알 수 없음'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(report.created_at)}
+                    </p>
+                  </div>
                 </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      disabled={report.status !== 'pending'}
+                    >
+                      <DotsHorizontalIcon className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>처리</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleAction(report, 'reviewed')}>
+                      검토 완료
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleAction(report, 'resolved')}>
+                      처리 완료
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleAction(report, 'dismissed')}
+                      className="text-muted-foreground"
+                    >
+                      기각
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={report.status !== 'pending'}
-                  >
-                    <DotsHorizontalIcon className="h-4 w-4" />
+              <div className="mt-2 space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="outline" className="text-xs">
+                    {TARGET_TYPE_LABELS[report.target_type as ReportTargetType]}
+                  </Badge>
+                  <Badge variant={getStatusBadgeVariant(report.status as ReportStatus)} className="text-xs">
+                    {REPORT_STATUS_LABELS[report.status as ReportStatus]}
+                  </Badge>
+                </div>
+                {targetUrl && (
+                  <Button variant="outline" size="sm" className="h-7 text-xs w-fit" asChild>
+                    <Link href={targetUrl}>
+                      <ExternalLinkIcon className="h-3 w-3 mr-1" />
+                      {report.target_type === 'user' ? '프로필 보기' : '게시글 보기'}
+                    </Link>
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>처리</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleAction(report, 'reviewed')}>
-                    검토 완료
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleAction(report, 'resolved')}>
-                    처리 완료
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleAction(report, 'dismissed')}
-                    className="text-muted-foreground"
-                  >
-                    기각
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <div className="mt-2 space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline" className="text-xs">
-                  {TARGET_TYPE_LABELS[report.target_type as ReportTargetType]}
-                </Badge>
-                <Badge variant={getStatusBadgeVariant(report.status as ReportStatus)} className="text-xs">
-                  {REPORT_STATUS_LABELS[report.status as ReportStatus]}
-                </Badge>
-              </div>
-              <p className="text-xs">
-                <span className="text-muted-foreground">사유: </span>
-                {REPORT_REASONS[report.reason as ReportReason]}
-              </p>
-              {report.details && (
-                <p className="text-xs text-muted-foreground line-clamp-2">
-                  {report.details}
+                )}
+                <p className="text-xs">
+                  <span className="text-muted-foreground">사유: </span>
+                  {REPORT_REASONS[report.reason as ReportReason]}
                 </p>
-              )}
+                {report.details && (
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    {report.details}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* 데스크톱 테이블 뷰 */}
@@ -237,9 +262,25 @@ export function ReportList({ reports, onUpdateStatus }: ReportListProps) {
                   </div>
                 </td>
                 <td className="p-4">
-                  <Badge variant="outline">
-                    {TARGET_TYPE_LABELS[report.target_type as ReportTargetType]}
-                  </Badge>
+                  <div className="flex flex-col items-start gap-1.5">
+                    <Badge variant="outline">
+                      {TARGET_TYPE_LABELS[report.target_type as ReportTargetType]}
+                    </Badge>
+                    {(() => {
+                      const targetUrl = getTargetUrl(report.target_type, report.target_id)
+                      if (!targetUrl) return null
+
+                      return (
+                        <Link
+                          href={targetUrl}
+                          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <ExternalLinkIcon className="h-3 w-3" />
+                          {report.target_type === 'user' ? '프로필 보기' : '게시글 보기'}
+                        </Link>
+                      )
+                    })()}
+                  </div>
                 </td>
                 <td className="p-4 text-sm">
                   {REPORT_REASONS[report.reason as ReportReason]}
