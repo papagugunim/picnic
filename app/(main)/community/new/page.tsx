@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
 import ImageUpload from '@/components/post/ImageUpload'
-import { cleanupUploadedPostImages, uploadPostImagesWithRetry } from '@/lib/post-image-upload'
+import { cleanupUploadedPostImages, createClientId, uploadPostImagesWithRetry } from '@/lib/post-image-upload'
 
 const categories = [
   { id: 'chat', name: '잡담', emoji: '💬' },
@@ -55,7 +55,7 @@ export default function NewCommunityPostPage() {
       // 이미지 업로드 (있는 경우)
       let imageUrls: string[] = []
       if (images.length > 0) {
-        const uploadGroupId = crypto.randomUUID()
+        const uploadGroupId = createClientId()
         const uploadedImages = await uploadPostImagesWithRetry({
           supabase,
           userId: user.id,

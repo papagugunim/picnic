@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input'
 import ImageUpload from './ImageUpload'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES } from '@/lib/constants'
-import { cleanupUploadedPostImages, uploadPostImagesWithRetry } from '@/lib/post-image-upload'
+import { cleanupUploadedPostImages, createClientId, uploadPostImagesWithRetry } from '@/lib/post-image-upload'
 
 const postSchema = z.object({
   title: z.string().min(2, '제목은 최소 2자 이상이어야 합니다').max(100, '제목은 최대 100자까지 가능합니다'),
@@ -109,7 +109,7 @@ export default function NewPostForm() {
       }
 
       // 임시 post ID 생성 (이미지 업로드용)
-      const tempPostId = crypto.randomUUID()
+      const tempPostId = createClientId()
 
       // 이미지 업로드
       let imageUrls: string[] = []

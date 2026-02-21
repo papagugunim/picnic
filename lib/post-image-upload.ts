@@ -5,6 +5,18 @@ const logger = createNamespacedLogger('PostImageUpload')
 
 const POST_IMAGE_BUCKET = 'post-images'
 
+export function createClientId(): string {
+  try {
+    if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
+      return globalThis.crypto.randomUUID()
+    }
+  } catch {
+    // Fallback below
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`
+}
+
 export interface UploadedPostImage {
   path: string
   url: string
@@ -115,7 +127,7 @@ export async function uploadPostImagesWithRetry({
   for (let index = 0; index < files.length; index += 1) {
     const file = files[index]
     const fileExt = normalizeFileExt(file)
-    const fileName = `${Date.now()}-${crypto.randomUUID()}-${index}.${fileExt}`
+    const fileName = `${Date.now()}-${createClientId()}-${index}.${fileExt}`
     const filePath = `${userId}/${scope}/${entityId}/${fileName}`
 
     try {

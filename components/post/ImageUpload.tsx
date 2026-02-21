@@ -15,15 +15,11 @@ interface ImageUploadProps {
   maxSize?: number // bytes
 }
 
-function getFileSignature(file: File): string {
-  return `${file.name}:${file.size}:${file.lastModified}`
-}
-
 export default function ImageUpload({
   value,
   onChange,
   maxFiles = 5,
-  maxSize = 5 * 1024 * 1024, // 5MB
+  maxSize = 15 * 1024 * 1024, // 15MB
 }: ImageUploadProps) {
   const [message, setMessage] = useState<string | null>(null)
   const inputId = useId()
@@ -60,13 +56,9 @@ export default function ImageUpload({
 
     const filesWithinLimit = selectedFiles.slice(0, remainingSlots)
     const droppedByLimit = selectedFiles.length - filesWithinLimit.length
-    const existingSignatures = new Set(value.map(getFileSignature))
-    const pendingSignatures = new Set<string>()
-
     const validFiles: File[] = []
     let invalidTypeCount = 0
     let invalidSizeCount = 0
-    let duplicateCount = 0
 
     for (const file of filesWithinLimit) {
       const isImageByType = file.type.startsWith('image/')
@@ -81,14 +73,6 @@ export default function ImageUpload({
         invalidSizeCount += 1
         continue
       }
-
-      const signature = getFileSignature(file)
-      if (existingSignatures.has(signature) || pendingSignatures.has(signature)) {
-        duplicateCount += 1
-        continue
-      }
-
-      pendingSignatures.add(signature)
       validFiles.push(file)
     }
 
@@ -105,7 +89,6 @@ export default function ImageUpload({
     if (droppedByLimit > 0) notices.push(`초과 ${droppedByLimit}개 제외`)
     if (invalidTypeCount > 0) notices.push(`형식 오류 ${invalidTypeCount}개`)
     if (invalidSizeCount > 0) notices.push(`용량 초과 ${invalidSizeCount}개`)
-    if (duplicateCount > 0) notices.push(`중복 ${duplicateCount}개`)
 
     if (notices.length > 0) {
       showMessage(notices.join(' · '))
