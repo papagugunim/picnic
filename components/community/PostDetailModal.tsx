@@ -182,20 +182,31 @@ export function PostDetailModal({
 
             {/* Images */}
             {post.images && post.images.length > 0 && (
-              <div className="grid grid-cols-2 gap-2 mb-6">
+              <div className={`mb-6 ${post.images.length === 1 ? '' : 'grid grid-cols-2 gap-2'}`}>
                 {post.images.map((image, idx) => (
                   <div
                     key={idx}
                     onClick={(e) => onImageClick(post.images!, idx, e)}
-                    className="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                    className={`relative rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity bg-muted ${
+                      post.images!.length === 1 ? '' : 'aspect-square'
+                    }`}
                   >
-                    <Image
-                      src={image}
-                      alt={`이미지 ${idx + 1}`}
-                      fill
-                      sizes="(max-width: 768px) 50vw, 400px"
-                      className="object-cover"
-                    />
+                    {post.images!.length === 1 ? (
+                      <img
+                        src={image}
+                        alt={`이미지 ${idx + 1}`}
+                        loading="lazy"
+                        className="block w-full h-auto max-h-[520px] object-contain"
+                      />
+                    ) : (
+                      <Image
+                        src={image}
+                        alt={`이미지 ${idx + 1}`}
+                        fill
+                        sizes="(max-width: 768px) 50vw, 400px"
+                        className="object-contain"
+                      />
+                    )}
                   </div>
                 ))}
               </div>
