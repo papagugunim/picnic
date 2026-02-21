@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -103,29 +102,6 @@ export function InlineImageCarousel({
 
       {hasMultiple && (
         <>
-          <button
-            type="button"
-            onClick={(event) => {
-              stopEvent(event)
-              goToPrev()
-            }}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/45 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
-            aria-label="이전 이미지"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={(event) => {
-              stopEvent(event)
-              goToNext()
-            }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/45 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
-            aria-label="다음 이미지"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/35">
             {images.map((_, index) => (
               <button
