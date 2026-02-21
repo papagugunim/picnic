@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Package, Users, MessageCircle, Heart, Bookmark, Flag } from 'lucide-react'
+import { Package, Users, MessageCircle, Bookmark, Flag } from 'lucide-react'
 import { useMetroStations } from '@/lib/hooks/useMetroStations'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -74,7 +74,7 @@ interface BreadScoreBreakdown {
   suggestedLevel: number
 }
 
-type ProfileTab = 'marketplace' | 'community' | 'likes' | 'interests'
+type ProfileTab = 'marketplace' | 'community' | 'interests'
 type ProfileViewCachePatch = Omit<Partial<ProfileViewCacheData>, 'loadedSections'> & {
   loadedSections?: Partial<ProfileViewCacheData['loadedSections']>
 }
@@ -133,7 +133,6 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [communityPosts, setCommunityPosts] = useState<CommunityPost[]>([])
-  const [likedPosts, setLikedPosts] = useState<Post[]>([])
   const [interestedPosts, setInterestedPosts] = useState<Post[]>([])
   const [activeTab, setActiveTab] = useState<ProfileTab>('marketplace')
   const [isOwnProfile, setIsOwnProfile] = useState(false)
@@ -141,13 +140,11 @@ export default function ProfilePage() {
   const [loadedSections, setLoadedSections] = useState<Record<ProfileTab, boolean>>({
     marketplace: false,
     community: false,
-    likes: false,
     interests: false,
   })
   const [loadingSections, setLoadingSections] = useState<Record<ProfileTab, boolean>>({
     marketplace: false,
     community: false,
-    likes: false,
     interests: false,
   })
   const [isStartingChat, setIsStartingChat] = useState(false)
@@ -212,47 +209,6 @@ export default function ProfilePage() {
     }
   }, [loadedSections.community, loadingSections.community, persistCache, updateSectionLoaded, updateSectionLoading, userId])
 
-  const loadLikedPosts = useCallback(async () => {
-    if (!isOwnProfile || loadedSections.likes || loadingSections.likes) return
-
-    updateSectionLoading('likes', true)
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('post_likes')
-        .select(`
-          post_id,
-          posts:post_id (
-            id,
-            title,
-            price,
-            images,
-            created_at,
-            status
-          )
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        logger.error('Liked posts fetch error:', error)
-        setLikedPosts([])
-      } else {
-        const nextItems = (data?.map((item: any) => item.posts).filter(Boolean) || []) as Post[]
-        setLikedPosts(nextItems)
-        persistCache({
-          likedPosts: nextItems,
-          loadedSections: { likes: true },
-        })
-      }
-    } catch (error) {
-      logger.error('Liked posts fetch exception:', error)
-    } finally {
-      updateSectionLoaded('likes', true)
-      updateSectionLoading('likes', false)
-    }
-  }, [isOwnProfile, loadedSections.likes, loadingSections.likes, persistCache, updateSectionLoaded, updateSectionLoading, userId])
-
   const loadInterestedPosts = useCallback(async () => {
     if (!isOwnProfile || loadedSections.interests || loadingSections.interests) return
 
@@ -279,7 +235,13 @@ export default function ProfilePage() {
         logger.error('Interested posts fetch error:', error)
         setInterestedPosts([])
       } else {
-        const nextItems = (data?.map((item: any) => item.posts).filter(Boolean) || []) as Post[]
+        const nextItems = (data || [])
+          .map((item) => {
+            const related = (item as { posts?: unknown }).posts
+            const candidate = Array.isArray(related) ? related[0] : related
+            return candidate && typeof candidate === 'object' ? (candidate as Post) : null
+          })
+          .filter((item): item is Post => Boolean(item))
         setInterestedPosts(nextItems)
         persistCache({
           interestedPosts: nextItems,
@@ -316,7 +278,6 @@ export default function ProfilePage() {
         setLoadingSections({
           marketplace: false,
           community: false,
-          likes: false,
           interests: false,
         })
 
@@ -326,13 +287,11 @@ export default function ProfilePage() {
           setProfile(cached.profile as Profile | null)
           setPosts((cached.posts || []) as Post[])
           setCommunityPosts((cached.communityPosts || []) as CommunityPost[])
-          setLikedPosts((cached.likedPosts || []) as Post[])
           setInterestedPosts((cached.interestedPosts || []) as Post[])
           setBreadScoreBreakdown((cached.breadScoreBreakdown as BreadScoreBreakdown | null) || null)
           setLoadedSections({
             marketplace: true,
             community: !!cached.loadedSections.community,
-            likes: ownProfile ? !!cached.loadedSections.likes : false,
             interests: ownProfile ? !!cached.loadedSections.interests : false,
           })
           setIsLoading(false)
@@ -341,7 +300,6 @@ export default function ProfilePage() {
           setLoadedSections({
             marketplace: false,
             community: false,
-            likes: false,
             interests: false,
           })
         }
@@ -397,7 +355,6 @@ export default function ProfilePage() {
           loadedSections: {
             marketplace: true,
             community: previousCache.loadedSections.community,
-            likes: ownProfile ? previousCache.loadedSections.likes : false,
             interests: ownProfile ? previousCache.loadedSections.interests : false,
           },
         })
@@ -458,13 +415,13 @@ export default function ProfilePage() {
   }, [contextUser?.id, persistCache, router, updateSectionLoaded, updateSectionLoading, userId])
 
   useEffect(() => {
-    if (activeTab === 'community' && !loadedSections.community && !loadingSections.community) {
-      void loadCommunityPosts()
+    if (!isOwnProfile && activeTab === 'interests') {
+      setActiveTab('marketplace')
       return
     }
 
-    if (activeTab === 'likes' && isOwnProfile && !loadedSections.likes && !loadingSections.likes) {
-      void loadLikedPosts()
+    if (activeTab === 'community' && !loadedSections.community && !loadingSections.community) {
+      void loadCommunityPosts()
       return
     }
 
@@ -475,13 +432,10 @@ export default function ProfilePage() {
     activeTab,
     isOwnProfile,
     loadedSections.community,
-    loadedSections.likes,
     loadedSections.interests,
     loadingSections.community,
-    loadingSections.likes,
     loadingSections.interests,
     loadCommunityPosts,
-    loadLikedPosts,
     loadInterestedPosts,
   ])
 
@@ -742,30 +696,17 @@ export default function ProfilePage() {
               동네생활 ({tabCountLabel('community', communityPosts.length)})
             </button>
             {isOwnProfile && (
-              <>
-                <button
-                  onClick={() => setActiveTab('likes')}
-                  className={`flex items-center gap-2 px-4 py-3 transition-colors whitespace-nowrap ${
-                    activeTab === 'likes'
-                      ? 'text-primary font-semibold'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Heart className="w-5 h-5" />
-                  좋아요 ({tabCountLabel('likes', likedPosts.length)})
-                </button>
-                <button
-                  onClick={() => setActiveTab('interests')}
-                  className={`flex items-center gap-2 px-4 py-3 transition-colors whitespace-nowrap ${
-                    activeTab === 'interests'
-                      ? 'text-primary font-semibold'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Bookmark className="w-5 h-5" />
-                  관심 ({tabCountLabel('interests', interestedPosts.length)})
-                </button>
-              </>
+              <button
+                onClick={() => setActiveTab('interests')}
+                className={`flex items-center gap-2 px-4 py-3 transition-colors whitespace-nowrap ${
+                  activeTab === 'interests'
+                    ? 'text-primary font-semibold'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Bookmark className="w-5 h-5" />
+                관심 ({tabCountLabel('interests', interestedPosts.length)})
+              </button>
             )}
           </div>
         </div>
@@ -773,70 +714,13 @@ export default function ProfilePage() {
 
       {/* 게시물 목록 */}
       <div className="max-w-4xl mx-auto px-4 py-4">
-        {activeTab === 'likes' ? (
+        {activeTab === 'interests' ? (
           <>
-            {loadingSections.likes && !loadedSections.likes ? (
+            {!isOwnProfile ? (
               <div className="text-center py-16 text-muted-foreground">
-                좋아요 게시글을 불러오는 중입니다...
+                관심 탭은 본인만 확인할 수 있습니다
               </div>
-            ) : likedPosts.length === 0 ? (
-              <div className="text-center py-16">
-                <Heart className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  아직 좋아요한 게시글이 없습니다
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {likedPosts.map((post) => (
-                  <Link
-                    key={post.id}
-                    href={`/post/${post.id}`}
-                    className="group cursor-pointer"
-                  >
-                    <div className="aspect-square rounded-xl overflow-hidden bg-muted mb-2 relative">
-                      {post.images && post.images.length > 0 ? (
-                        <img
-                          src={post.images[0]}
-                          alt={post.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                          <Package className="w-8 h-8" />
-                        </div>
-                      )}
-                      {post.status === 'reserved' && (
-                        <div className="absolute inset-0 bg-orange-900/60 flex items-center justify-center">
-                          <span className="text-white font-bold text-lg">
-                            예약중
-                          </span>
-                        </div>
-                      )}
-                      {post.status === 'sold' && (
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                          <span className="text-white font-bold text-lg">
-                            판매완료
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <h3 className="text-sm font-medium line-clamp-2 mb-1">
-                      {post.title}
-                    </h3>
-                    <p className="text-sm font-bold">
-                      {post.price === 0 || post.price === null
-                        ? '무료나눔'
-                        : `${post.price.toLocaleString()}₽`}
-                    </p>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </>
-        ) : activeTab === 'interests' ? (
-          <>
-            {loadingSections.interests && !loadedSections.interests ? (
+            ) : loadingSections.interests && !loadedSections.interests ? (
               <div className="text-center py-16 text-muted-foreground">
                 관심 게시글을 불러오는 중입니다...
               </div>
