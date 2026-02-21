@@ -21,11 +21,14 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { useState } from 'react'
+import { cn } from '@/lib/utils'
 
 interface AppointmentCardProps {
   appointment: PurchaseAppointment
   currentUserId: string
   onRespond?: (appointmentId: string, status: 'confirmed' | 'cancelled') => Promise<boolean>
+  compact?: boolean
+  className?: string
 }
 
 function formatRemainingTime(targetDate: Date) {
@@ -54,7 +57,9 @@ function toGoogleCalendarDate(date: Date) {
 export function AppointmentCard({
   appointment,
   currentUserId,
-  onRespond
+  onRespond,
+  compact = false,
+  className,
 }: AppointmentCardProps) {
   const [isResponding, setIsResponding] = useState(false)
   const isSeller = currentUserId === appointment.responder_id
@@ -115,8 +120,119 @@ export function AppointmentCard({
     }
   }
 
+  if (compact) {
+    return (
+      <div className={cn('mx-auto max-w-2xl', className)}>
+        <div className="rounded-xl border border-border/80 bg-card/95 px-3 py-2.5 shadow-sm backdrop-blur">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5 text-blue-500" />
+                <span>구매약속</span>
+              </div>
+              <p className="mt-1 truncate text-sm font-medium">
+                {formatDate(appointmentDate, 'M월 D일 (ddd) HH:mm')}
+              </p>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                {appointment.location || '장소 협의 중'}
+              </p>
+              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                {statusMeta.helper}
+              </p>
+            </div>
+            <Badge className={cn('shrink-0 text-[10px] px-1.5 py-0.5', statusMeta.badgeClassName)}>
+              {statusMeta.label}
+            </Badge>
+          </div>
+
+          {appointment.memo && (
+            <div className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+              {appointment.memo}
+            </div>
+          )}
+
+          {(appointment.status === 'proposed' || appointment.status === 'confirmed') && (
+            <div className="mt-2">
+              <a
+                href={googleCalendarUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center text-[11px] text-primary hover:underline"
+              >
+                캘린더에 추가
+              </a>
+            </div>
+          )}
+
+          {isSeller && appointment.status === 'proposed' && onRespond && (
+            <div className="mt-2 flex gap-1.5">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 flex-1 text-xs"
+                    disabled={isResponding}
+                  >
+                    거부
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="glass">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>약속을 거부하시겠습니까?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      구매자의 약속 제안을 거부합니다.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>취소</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleRespond('cancelled')}>
+                      거부하기
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="h-7 flex-1 bg-green-600 text-xs text-white hover:bg-green-700"
+                    disabled={isResponding}
+                  >
+                    승인
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="glass">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>약속을 승인하시겠습니까?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      구매자의 약속 제안을 승인하고 거래 일정을 확정합니다.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>취소</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleRespond('confirmed')}>
+                      승인하기
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
+
+          {!isSeller && appointment.status === 'proposed' && (
+            <div className="mt-2 text-[11px] text-muted-foreground">
+              판매자 응답 대기 중
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="my-4 mx-auto max-w-md">
+    <div className={cn('my-4 mx-auto max-w-md', className)}>
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">

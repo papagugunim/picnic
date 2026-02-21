@@ -152,6 +152,7 @@ export default function ChatRoomPage() {
   const lastMessagesScrollTopRef = useRef(0)
   const isLoadingOlderRef = useRef(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>('unsupported')
   const [isRequestingNotificationPermission, setIsRequestingNotificationPermission] = useState(false)
 
@@ -399,34 +400,48 @@ export default function ChatRoomPage() {
     previousMessagesMetaRef.current = { firstId, lastId, count: messages.length }
   }, [messages, isAtBottom, isInitialLoad, scrollToBottom])
 
-  // iOS 키보드 대응 - visualViewport resize만 사용해 불필요한 스크롤 이벤트 갱신을 줄임
+  // iOS 키보드 대응 - visualViewport 높이 기반으로 실제 보이는 영역을 사용
   useEffect(() => {
     if (typeof window === 'undefined') return
 
     const viewport = window.visualViewport
     if (!viewport) return
 
-    const handleViewportResize = () => {
+    const handleViewportChange = () => {
       if (keyboardRafRef.current !== null) {
         cancelAnimationFrame(keyboardRafRef.current)
       }
 
       keyboardRafRef.current = requestAnimationFrame(() => {
-        const keyboardDelta = Math.max(window.innerHeight - viewport.height, 0)
+        const visibleHeight = Math.max(viewport.height, 320)
+        setViewportHeight(visibleHeight)
+        const keyboardDelta = Math.max(window.innerHeight - viewport.height - viewport.offsetTop, 0)
         setKeyboardHeight(keyboardDelta > 50 ? keyboardDelta : 0)
       })
     }
 
-    handleViewportResize()
-    viewport.addEventListener('resize', handleViewportResize)
+    handleViewportChange()
+    viewport.addEventListener('resize', handleViewportChange)
+    viewport.addEventListener('scroll', handleViewportChange)
 
     return () => {
-      viewport.removeEventListener('resize', handleViewportResize)
+      viewport.removeEventListener('resize', handleViewportChange)
+      viewport.removeEventListener('scroll', handleViewportChange)
       if (keyboardRafRef.current !== null) {
         cancelAnimationFrame(keyboardRafRef.current)
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (!isInputFocused) return
+
+    const timer = setTimeout(() => {
+      scrollToBottom('auto')
+    }, 80)
+
+    return () => clearTimeout(timer)
+  }, [keyboardHeight, isInputFocused, scrollToBottom])
 
   useEffect(() => {
     const nextPreviewUrls = pendingImageFiles.map((file) => URL.createObjectURL(file))
@@ -615,13 +630,25 @@ export default function ChatRoomPage() {
     notificationPermission !== 'unsupported' && notificationPermission !== 'granted'
   const quickMessageTemplates = useMemo(() => {
     const postTitle = room?.post?.title?.trim() || '상품'
+    const priceLabel =
+      room?.post?.price === 0 || room?.post?.price === null || room?.post?.price === undefined
+        ? '무료나눔'
+        : `${room.post.price.toLocaleString()}₽`
+
+    if (isSeller) {
+      return [
+        `안녕하세요! ${postTitle} 문의 주셔서 감사합니다 🙌`,
+        '거래 가능한 시간은 오늘 저녁/내일 오전입니다. 편한 시간을 알려주세요.',
+        '원하시면 제품 상태를 확인할 수 있게 추가 사진을 보내드릴게요.',
+      ]
+    }
 
     return [
-      `안녕하세요! ${postTitle} 아직 거래 가능할까요?`,
+      `안녕하세요! ${postTitle}(${priceLabel}) 아직 거래 가능할까요?`,
       '오늘 저녁 또는 내일 오전에 거래 가능하실까요?',
-      '가능한 거래 장소를 알려주시면 맞춰서 이동할게요.',
+      '거래 가능한 장소를 알려주시면 맞춰서 이동할게요.',
     ]
-  }, [room?.post?.title])
+  }, [isSeller, room?.post?.price, room?.post?.title])
   const insertMessageTemplate = useCallback(
     (template: string) => {
       setNewMessage((prev) => (prev.trim().length > 0 ? `${prev.trim()}\n${template}` : template))
@@ -634,6 +661,7 @@ export default function ChatRoomPage() {
     [scrollToBottom]
   )
   const canSendMessage = (newMessage.trim().length > 0 || pendingImageFiles.length > 0) && !isSending && !isUploadingImages
+  const showFloatingAppointment = Boolean(appointment && currentUserId)
 
   if (isLoading) {
     return (
@@ -660,124 +688,151 @@ export default function ChatRoomPage() {
     <div
       ref={containerRef}
       className="flex flex-col bg-background"
-      style={{ height: keyboardHeight > 0 ? `calc(100dvh - ${keyboardHeight}px)` : '100dvh' }}
+      style={{ height: viewportHeight ? `${viewportHeight}px` : '100dvh' }}
     >
-      {/* Header / Product info - 스크롤 다운 시 숨김 */}
-      <div
-        className={`flex-shrink-0 overflow-hidden bg-background transition-[max-height,opacity,transform,border-color] duration-300 ease-out ${
-          isChatInfoHidden
-            ? 'max-h-0 opacity-0 -translate-y-1 border-b border-transparent pointer-events-none'
-            : 'max-h-[220px] opacity-100 translate-y-0 border-b border-border'
-        }`}
-      >
-        <div className="max-w-screen-xl mx-auto">
-          <div className="flex items-center gap-2 px-4 py-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.back()}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </Button>
-
-            <Link href={`/profile/${room.other_user.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-              {room.other_user.avatar_url ? (
-                <img
-                  src={room.other_user.avatar_url}
-                  alt={room.other_user.full_name || '사용자'}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold">
-                  {room.other_user.full_name?.charAt(0).toUpperCase() || '?'}
+      {/* Header / Product info */}
+      <div className="flex-shrink-0 border-b border-border bg-background">
+        <div
+          className={`overflow-hidden transition-[max-height,opacity,transform] duration-300 ease-out ${
+            isChatInfoHidden
+              ? 'max-h-0 opacity-0 -translate-y-1 pointer-events-none'
+              : 'max-h-[120px] opacity-100 translate-y-0'
+          }`}
+        >
+          <div className="max-w-screen-xl mx-auto">
+            <div className="flex items-center gap-2 px-4 py-2.5">
+              <Link href={`/profile/${room.other_user.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                {room.other_user.avatar_url ? (
+                  <img
+                    src={room.other_user.avatar_url}
+                    alt={room.other_user.full_name || '사용자'}
+                    className="w-9 h-9 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                    {room.other_user.full_name?.charAt(0).toUpperCase() || '?'}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <div className="font-semibold flex items-center gap-1">
+                    <span className="truncate">{room.other_user.full_name || '익명'}</span>
+                    <span className="text-base">
+                      {getBreadEmoji(room.other_user.bread_level || 1, room.other_user.user_role || undefined)}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {getBreadInfo(room.other_user.bread_level || 1, room.other_user.user_role || undefined).name}
+                  </div>
                 </div>
-              )}
-              <div className="min-w-0">
-                <div className="font-semibold flex items-center gap-1">
-                  <span className="truncate">{room.other_user.full_name || '익명'}</span>
-                  <span className="text-base">
-                    {getBreadEmoji(room.other_user.bread_level || 1, room.other_user.user_role || undefined)}
-                  </span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {getBreadInfo(room.other_user.bread_level || 1, room.other_user.user_role || undefined).name}
-                </div>
-              </div>
-            </Link>
+              </Link>
 
-            <div className="flex items-center gap-1.5">
-              <div
-                className={`hidden sm:flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium ${connectionStatusMeta.textClassName} ${connectionStatusMeta.bgClassName}`}
-              >
-                <ConnectionStatusIcon className={connectionStatusMeta.iconClassName} />
-                <span>{connectionStatusMeta.label}</span>
-              </div>
-
-              {showEnableNotificationButton && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground"
-                  onClick={handleRequestBrowserNotifications}
-                  disabled={isRequestingNotificationPermission}
+              <div className="flex items-center gap-1.5">
+                <div
+                  className={`hidden sm:flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium ${connectionStatusMeta.textClassName} ${connectionStatusMeta.bgClassName}`}
                 >
-                  {notificationPermission === 'denied' ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
-                </Button>
+                  <ConnectionStatusIcon className={connectionStatusMeta.iconClassName} />
+                  <span>{connectionStatusMeta.label}</span>
+                </div>
+
+                {showEnableNotificationButton && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground"
+                    onClick={handleRequestBrowserNotifications}
+                    disabled={isRequestingNotificationPermission}
+                  >
+                    {notificationPermission === 'denied' ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+                  </Button>
+                )}
+              </div>
+
+              {isSeller && isAppointmentConfirmed && !isSold && currentUserId && room.post && (
+                <CompleteSaleButton onReviewRequest={() => setShowReviewModal(true)} />
               )}
             </div>
-
-            {/* 판매완료 버튼 (판매자만, 약속 확정 후) */}
-            {isSeller && isAppointmentConfirmed && !isSold && currentUserId && room.post && (
-              <CompleteSaleButton
-                onReviewRequest={() => setShowReviewModal(true)}
-              />
-            )}
           </div>
+        </div>
 
-          {/* Related Post Banner */}
-          {room.post && (
-            <Link
-              href={`/post/${room.post.id}`}
-              className="flex items-center gap-3 px-4 py-2 bg-background border-t border-border hover:bg-muted transition-colors"
-            >
-              {postThumbnailUrl ? (
-                <img
-                  src={postThumbnailUrl}
-                  alt={room.post.title}
-                  className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                  <Package className="w-6 h-6 text-muted-foreground" />
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">
-                  {room.post.title}
-                </div>
-                <div className="text-xs text-muted-foreground flex items-center gap-2">
-                  <span>
-                    {room.post.price === 0 || room.post.price === null
-                      ? '무료나눔'
-                      : `${room.post.price.toLocaleString()}₽`}
-                  </span>
-                  {room.post.status && (
-                    <span className={`px-2 py-0.5 rounded-full ${getPostStatusInfo(room.post.status as PostStatus).bgColor} ${getPostStatusInfo(room.post.status as PostStatus).textColor} font-medium`}>
-                      {getPostStatusInfo(room.post.status as PostStatus).label}
+        <div className="max-w-screen-xl mx-auto">
+          {room.post ? (
+            <div className="flex items-center gap-2 border-t border-border/60 px-3 py-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.back()}
+                className="h-8 w-8 shrink-0"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </Button>
+
+              <Link
+                href={`/post/${room.post.id}`}
+                className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1.5 py-1 hover:bg-muted transition-colors"
+              >
+                {postThumbnailUrl ? (
+                  <img
+                    src={postThumbnailUrl}
+                    alt={room.post.title}
+                    className="w-10 h-10 rounded-md object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-md bg-secondary flex items-center justify-center flex-shrink-0">
+                    <Package className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium truncate">{room.post.title}</div>
+                  <div className="text-xs text-muted-foreground flex items-center gap-2">
+                    <span>
+                      {room.post.price === 0 || room.post.price === null
+                        ? '무료나눔'
+                        : `${room.post.price.toLocaleString()}₽`}
                     </span>
-                  )}
+                    {room.post.status && (
+                      <span className={`px-1.5 py-0.5 rounded-full ${getPostStatusInfo(room.post.status as PostStatus).bgColor} ${getPostStatusInfo(room.post.status as PostStatus).textColor} font-medium`}>
+                        {getPostStatusInfo(room.post.status as PostStatus).label}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </Link>
+              </Link>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.back()}
+                className="h-8 w-8 shrink-0"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </Button>
+              <span className="text-sm font-medium truncate">
+                {room.other_user.full_name || '익명'}
+              </span>
+            </div>
           )}
         </div>
       </div>
 
       {/* Messages - inner scroll */}
       <div className="relative flex-1">
+        {appointment && currentUserId && (
+          <div className="pointer-events-none absolute inset-x-3 top-2 z-20">
+            <AppointmentCard
+              appointment={appointment}
+              currentUserId={currentUserId}
+              onRespond={respondToAppointment}
+              compact
+              className="pointer-events-auto"
+            />
+          </div>
+        )}
+
         <div ref={messagesContainerRef} className="h-full overflow-y-auto overscroll-none">
-          <div className="max-w-screen-xl mx-auto p-4">
+          <div className={`max-w-screen-xl mx-auto p-4 ${showFloatingAppointment ? 'pt-24' : ''}`}>
             <div ref={topSentinelRef} className="h-px" />
 
             {isLoadingOlder && (
@@ -810,15 +865,6 @@ export default function ChatRoomPage() {
               </div>
             ) : (
               <div className="space-y-0">
-                {/* 약속 카드 (있을 경우 맨 위에 표시) */}
-                {appointment && currentUserId && (
-                  <AppointmentCard
-                    appointment={appointment}
-                    currentUserId={currentUserId}
-                    onRespond={respondToAppointment}
-                  />
-                )}
-
                 {connectionStatus !== 'live' && (
                   <div className="sticky top-2 z-10 flex justify-center mb-3">
                     <div className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${connectionStatusMeta.textClassName} ${connectionStatusMeta.bgClassName}`}>
