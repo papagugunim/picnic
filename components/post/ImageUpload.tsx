@@ -154,7 +154,7 @@ export default function ImageUpload({
       {message && (
         <div className={`p-2 rounded-lg text-xs ${
           message.startsWith('✅')
-            ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+            ? 'bg-white text-black border border-gray-200'
             : 'bg-destructive/10 text-destructive'
         }`}>
           {message}
