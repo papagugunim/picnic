@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input'
 import ImageUpload from './ImageUpload'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES } from '@/lib/constants'
+import { cleanupUploadedPostImages, uploadPostImagesWithRetry } from '@/lib/post-image-upload'
 
 const postSchema = z.object({
   title: z.string().min(2, '제목은 최소 2자 이상이어야 합니다').max(100, '제목은 최대 100자까지 가능합니다'),
@@ -74,42 +75,13 @@ export default function NewPostForm() {
     },
   })
 
-  async function uploadImages(userId: string, postId: string): Promise<string[]> {
-    const supabase = createClient()
-    const imageUrls: string[] = []
-
-    for (let i = 0; i < images.length; i++) {
-      const file = images[i]
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}_${i}.${fileExt}`
-      const filePath = `${userId}/${postId}/${fileName}`
-
-      const { error: uploadError, data } = await supabase.storage
-        .from('post-images')
-        .upload(filePath, file)
-
-      if (uploadError) {
-        logger.error('Image upload error:', uploadError)
-        throw new Error('이미지 업로드 중 오류가 발생했습니다')
-      }
-
-      // 공개 URL 생성
-      const { data: { publicUrl } } = supabase.storage
-        .from('post-images')
-        .getPublicUrl(filePath)
-
-      imageUrls.push(publicUrl)
-    }
-
-    return imageUrls
-  }
-
   async function onSubmit(values: PostFormValues) {
+    const supabase = createClient()
+    let uploadedImagePaths: string[] = []
+
     try {
       setIsLoading(true)
       setError(null)
-
-      const supabase = createClient()
 
       // 사용자 정보 가져오기
       const { data: { user } } = await supabase.auth.getUser()
@@ -142,7 +114,15 @@ export default function NewPostForm() {
       // 이미지 업로드
       let imageUrls: string[] = []
       if (images.length > 0) {
-        imageUrls = await uploadImages(user.id, tempPostId)
+        const uploadedImages = await uploadPostImagesWithRetry({
+          supabase,
+          userId: user.id,
+          scope: 'post',
+          entityId: tempPostId,
+          files: images,
+        })
+        uploadedImagePaths = uploadedImages.map((item) => item.path)
+        imageUrls = uploadedImages.map((item) => item.url)
       }
 
       // 게시물 생성
@@ -171,6 +151,7 @@ export default function NewPostForm() {
 
       if (postError) {
         logger.error('Post creation error:', postError)
+        await cleanupUploadedPostImages(supabase, uploadedImagePaths)
         setError(`게시물 작성 중 오류가 발생했습니다: ${postError.message || JSON.stringify(postError)}`)
         return
       }
@@ -180,6 +161,7 @@ export default function NewPostForm() {
       router.refresh()
     } catch (err) {
       logger.error('Submission error:', err)
+      await cleanupUploadedPostImages(supabase, uploadedImagePaths)
       setError(err instanceof Error ? err.message : '게시물 작성 중 오류가 발생했습니다')
     } finally {
       setIsLoading(false)

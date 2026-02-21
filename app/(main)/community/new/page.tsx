@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
 import ImageUpload from '@/components/post/ImageUpload'
+import { cleanupUploadedPostImages, uploadPostImagesWithRetry } from '@/lib/post-image-upload'
 
 const categories = [
   { id: 'chat', name: '잡담', emoji: '💬' },
@@ -27,42 +28,6 @@ export default function NewCommunityPostPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // 이미지 업로드 함수 (submit 시 호출)
-  async function uploadImages(userId: string): Promise<string[]> {
-    const supabase = createClient()
-    const imageUrls: string[] = []
-
-    for (let i = 0; i < images.length; i++) {
-      const file = images[i]
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${userId}_${Date.now()}_${i}.${fileExt}`
-      const filePath = `community/${fileName}`
-
-      logger.log(`Uploading: ${fileName}`)
-
-      const { error: uploadError } = await supabase.storage
-        .from('post-images')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        })
-
-      if (uploadError) {
-        logger.error('Upload error:', uploadError)
-        throw new Error('이미지 업로드 중 오류가 발생했습니다')
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('post-images')
-        .getPublicUrl(filePath)
-
-      imageUrls.push(publicUrl)
-      logger.log(`Upload success: ${publicUrl}`)
-    }
-
-    return imageUrls
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -74,11 +39,12 @@ export default function NewCommunityPostPage() {
     // 내용 첫 줄에서 제목 자동 생성
     const title = content.trim().split('\n')[0].slice(0, 50)
 
+    const supabase = createClient()
+    let uploadedImagePaths: string[] = []
+
     try {
       setIsSubmitting(true)
       setError(null)
-
-      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
@@ -89,13 +55,16 @@ export default function NewCommunityPostPage() {
       // 이미지 업로드 (있는 경우)
       let imageUrls: string[] = []
       if (images.length > 0) {
-        try {
-          imageUrls = await uploadImages(user.id)
-        } catch (err) {
-          logger.error('Image upload error:', err)
-          setError('이미지 업로드 중 오류가 발생했습니다')
-          return
-        }
+        const uploadGroupId = crypto.randomUUID()
+        const uploadedImages = await uploadPostImagesWithRetry({
+          supabase,
+          userId: user.id,
+          scope: 'community',
+          entityId: uploadGroupId,
+          files: images,
+        })
+        uploadedImagePaths = uploadedImages.map((item) => item.path)
+        imageUrls = uploadedImages.map((item) => item.url)
       }
 
       logger.log('Inserting post with data:', {
@@ -126,6 +95,7 @@ export default function NewCommunityPostPage() {
           details: insertError.details,
           hint: insertError.hint,
         })
+        await cleanupUploadedPostImages(supabase, uploadedImagePaths)
         setError(`게시글 작성 중 오류가 발생했습니다: ${insertError.message}`)
         return
       }
@@ -143,6 +113,7 @@ export default function NewCommunityPostPage() {
       router.refresh()
     } catch (err) {
       logger.error('Submit error:', err)
+      await cleanupUploadedPostImages(supabase, uploadedImagePaths)
       setError(err instanceof Error ? err.message : '게시글 작성 중 오류가 발생했습니다')
     } finally {
       setIsSubmitting(false)
@@ -244,7 +215,7 @@ export default function NewCommunityPostPage() {
 
           {/* Submit */}
           <Button
-            onClick={handleSubmit}
+            type="submit"
             disabled={isSubmitting || !content.trim()}
             className="w-full h-12 text-base"
           >

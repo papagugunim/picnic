@@ -1,11 +1,12 @@
 'use client'
 
+import { useEffect, useId, useMemo, useState } from 'react'
+import Image from 'next/image'
+import { Upload, X } from 'lucide-react'
+
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('ImageUpload')
-import { useState } from 'react'
-import { X, Upload, ChevronLeft, ChevronRight } from 'lucide-react'
-import Image from 'next/image'
 
 interface ImageUploadProps {
   value: File[]
@@ -14,115 +15,117 @@ interface ImageUploadProps {
   maxSize?: number // bytes
 }
 
+function getFileSignature(file: File): string {
+  return `${file.name}:${file.size}:${file.lastModified}`
+}
+
 export default function ImageUpload({
   value,
   onChange,
   maxFiles = 5,
   maxSize = 5 * 1024 * 1024, // 5MB
 }: ImageUploadProps) {
-  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+  const inputId = useId()
+
+  const previews = useMemo(
+    () => value.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    [value]
+  )
+
+  useEffect(() => {
+    return () => {
+      previews.forEach((preview) => URL.revokeObjectURL(preview.url))
+    }
+  }, [previews])
+
+  const showMessage = (text: string, timeoutMs: number = 2600) => {
+    setMessage(text)
+    window.setTimeout(() => setMessage(null), timeoutMs)
+  }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
-    logger.log('handleImageUpload called, files:', files)
+    if (!files || files.length === 0) return
 
-    if (!files || files.length === 0) {
-      logger.log('No files selected')
-      return
-    }
-
-    const newFiles = Array.from(files)
-    logger.log('New files count:', newFiles.length)
-
-    // 입력 필드 초기화 (같은 파일 다시 선택 가능하도록)
+    // 같은 파일 재선택 허용
     e.target.value = ''
 
-    // 파일 개수 검증
-    if (value.length + newFiles.length > maxFiles) {
-      setError(`이미지는 최대 ${maxFiles}개까지 업로드할 수 있습니다`)
-      setTimeout(() => setError(null), 3000)
+    const selectedFiles = Array.from(files)
+    const remainingSlots = Math.max(0, maxFiles - value.length)
+    if (remainingSlots <= 0) {
+      showMessage(`이미지는 최대 ${maxFiles}개까지 업로드할 수 있습니다`)
       return
     }
 
-    // 파일 크기 및 타입 검증
-    let errorCount = 0
+    const filesWithinLimit = selectedFiles.slice(0, remainingSlots)
+    const droppedByLimit = selectedFiles.length - filesWithinLimit.length
+    const existingSignatures = new Set(value.map(getFileSignature))
+    const pendingSignatures = new Set<string>()
+
     const validFiles: File[] = []
+    let invalidTypeCount = 0
+    let invalidSizeCount = 0
+    let duplicateCount = 0
 
-    for (const file of newFiles) {
-      logger.log(`Processing file: ${file.name}, type: ${file.type}, size: ${file.size}`)
-
-      // 파일 타입 검증 (확장자로도 체크)
+    for (const file of filesWithinLimit) {
       const isImageByType = file.type.startsWith('image/')
       const isImageByExt = /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(file.name)
 
       if (!isImageByType && !isImageByExt) {
-        logger.error(`Invalid file type: ${file.type}, name: ${file.name}`)
-        errorCount++
+        invalidTypeCount += 1
         continue
       }
 
-      // 파일 크기 검증
       if (file.size > maxSize) {
-        logger.error(`File too large: ${(file.size / 1024 / 1024).toFixed(2)}MB`)
-        errorCount++
+        invalidSizeCount += 1
         continue
       }
 
-      logger.log(`File validated: ${file.name}`)
+      const signature = getFileSignature(file)
+      if (existingSignatures.has(signature) || pendingSignatures.has(signature)) {
+        duplicateCount += 1
+        continue
+      }
+
+      pendingSignatures.add(signature)
       validFiles.push(file)
     }
 
-    logger.log('Valid files count:', validFiles.length)
-
     if (validFiles.length > 0) {
       onChange([...value, ...validFiles])
-      setError(`✅ ${validFiles.length}개 사진 추가됨`)
-      setTimeout(() => setError(null), 2000)
-      logger.log('Images state updated, new length:', value.length + validFiles.length)
+      logger.log('Images selected:', {
+        added: validFiles.length,
+        total: value.length + validFiles.length,
+      })
     }
 
-    if (errorCount > 0) {
-      setError(`${errorCount}개 파일 실패 (${maxSize / 1024 / 1024}MB 이하의 이미지 파일만 가능)`)
-      setTimeout(() => setError(null), 3000)
+    const notices: string[] = []
+    if (validFiles.length > 0) notices.push(`✅ ${validFiles.length}개 추가됨`)
+    if (droppedByLimit > 0) notices.push(`초과 ${droppedByLimit}개 제외`)
+    if (invalidTypeCount > 0) notices.push(`형식 오류 ${invalidTypeCount}개`)
+    if (invalidSizeCount > 0) notices.push(`용량 초과 ${invalidSizeCount}개`)
+    if (duplicateCount > 0) notices.push(`중복 ${duplicateCount}개`)
+
+    if (notices.length > 0) {
+      showMessage(notices.join(' · '))
     }
   }
 
   const removeImage = (index: number) => {
-    const newFiles = value.filter((_, i) => i !== index)
-    onChange(newFiles)
-    setError(null)
-  }
-
-  const moveImageLeft = (index: number) => {
-    if (index === 0) return
-    const newFiles = [...value]
-    const temp = newFiles[index]
-    newFiles[index] = newFiles[index - 1]
-    newFiles[index - 1] = temp
-    onChange(newFiles)
-  }
-
-  const moveImageRight = (index: number) => {
-    if (index === value.length - 1) return
-    const newFiles = [...value]
-    const temp = newFiles[index]
-    newFiles[index] = newFiles[index + 1]
-    newFiles[index + 1] = temp
-    onChange(newFiles)
+    onChange(value.filter((_, i) => i !== index))
+    setMessage(null)
   }
 
   return (
     <div className="space-y-2">
-      {/* 업로드된 이미지 미리보기 + 추가 버튼 */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-        {value.map((file, index) => (
-          <div key={index} className="relative w-20 h-20 flex-shrink-0 group">
-            {/* 순서 번호 */}
+        {previews.map((preview, index) => (
+          <div key={`${preview.file.name}-${preview.file.lastModified}-${index}`} className="relative w-20 h-20 flex-shrink-0 group">
             <div className="absolute top-1 left-1 w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[10px] font-bold z-10">
               {index + 1}
             </div>
 
-            {/* 삭제 버튼 */}
             <button
               type="button"
               onClick={() => removeImage(index)}
@@ -134,7 +137,7 @@ export default function ImageUpload({
 
             <div className="w-full h-full rounded-lg overflow-hidden">
               <Image
-                src={URL.createObjectURL(file)}
+                src={preview.url}
                 alt={`미리보기 ${index + 1}`}
                 width={80}
                 height={80}
@@ -144,10 +147,9 @@ export default function ImageUpload({
           </div>
         ))}
 
-        {/* 추가 버튼 */}
         {value.length < maxFiles && (
           <label
-            htmlFor="image-upload-input"
+            htmlFor={inputId}
             className="flex items-center justify-center w-20 h-20 flex-shrink-0 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-colors"
           >
             <div className="text-center">
@@ -155,9 +157,10 @@ export default function ImageUpload({
               <span className="text-[10px] text-muted-foreground">{value.length}/{maxFiles}</span>
             </div>
             <input
-              id="image-upload-input"
+              id={inputId}
               type="file"
               accept="image/*"
+              multiple
               onChange={handleImageUpload}
               className="hidden"
             />
@@ -165,14 +168,13 @@ export default function ImageUpload({
         )}
       </div>
 
-      {/* 에러 메시지 */}
-      {error && (
+      {message && (
         <div className={`p-2 rounded-lg text-xs ${
-          error.startsWith('✅')
+          message.startsWith('✅')
             ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
             : 'bg-destructive/10 text-destructive'
         }`}>
-          {error}
+          {message}
         </div>
       )}
     </div>
