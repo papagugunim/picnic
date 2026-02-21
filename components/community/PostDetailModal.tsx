@@ -4,11 +4,11 @@ import { useState, useCallback } from 'react'
 import { Heart, MessageCircle, BarChart2, ChevronLeft, MoreVertical, Trash2, Edit, Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import Image from 'next/image'
 import { getBreadEmoji } from '@/lib/bread'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { CommentSection } from '@/components/comment/CommentSection'
 import { ReportDialog } from '@/components/admin/ReportDialog'
+import { InlineImageCarousel } from '@/components/community/InlineImageCarousel'
 import {
   Dialog,
   DialogContent,
@@ -182,34 +182,12 @@ export function PostDetailModal({
 
             {/* Images */}
             {post.images && post.images.length > 0 && (
-              <div className={`mb-6 ${post.images.length === 1 ? '' : 'grid grid-cols-2 gap-2'}`}>
-                {post.images.map((image, idx) => (
-                  <div
-                    key={idx}
-                    onClick={(e) => onImageClick(post.images!, idx, e)}
-                    className={`relative rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity bg-muted ${
-                      post.images!.length === 1 ? '' : 'aspect-square'
-                    }`}
-                  >
-                    {post.images!.length === 1 ? (
-                      <img
-                        src={image}
-                        alt={`이미지 ${idx + 1}`}
-                        loading="lazy"
-                        className="block w-full h-auto max-h-[520px] object-contain"
-                      />
-                    ) : (
-                      <Image
-                        src={image}
-                        alt={`이미지 ${idx + 1}`}
-                        fill
-                        sizes="(max-width: 768px) 50vw, 400px"
-                        className="object-contain"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
+              <InlineImageCarousel
+                images={post.images}
+                className="mb-6"
+                maxHeightClassName="max-h-[520px]"
+                onImageClick={(index, event) => onImageClick(post.images!, index, event)}
+              />
             )}
 
             {/* Actions */}

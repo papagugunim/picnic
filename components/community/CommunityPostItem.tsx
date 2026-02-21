@@ -5,6 +5,7 @@ import { Heart, MessageCircle, BarChart2 } from 'lucide-react'
 import Link from 'next/link'
 import { getBreadEmoji } from '@/lib/bread'
 import { UserAvatar } from '@/components/ui/user-avatar'
+import { InlineImageCarousel } from '@/components/community/InlineImageCarousel'
 
 export interface CommunityPost {
   id: string
@@ -144,42 +145,13 @@ export function CommunityPostItem({
 
         {/* Images */}
         {post.images && post.images.length > 0 && (
-          <div className={`mb-3 rounded-2xl overflow-hidden border border-border bg-muted/40 ${
-            post.images.length === 1 ? '' : 'grid grid-cols-2 gap-0.5'
-          }`}>
-            {post.images.slice(0, 4).map((image, idx) => (
-              <div
-                key={idx}
-                onClick={(e) => onImageClick(post.images!, idx, e)}
-                className={`relative bg-muted cursor-pointer hover:opacity-90 transition-opacity ${
-                  post.images!.length === 1 ? '' :
-                  post.images!.length === 3 && idx === 0 ? 'row-span-2 aspect-square' :
-                  'aspect-square'
-                }`}
-              >
-                {post.images!.length === 1 ? (
-                  <img
-                    src={image}
-                    alt={`이미지 ${idx + 1}`}
-                    loading="lazy"
-                    className="block w-full h-auto max-h-[460px] object-contain"
-                  />
-                ) : (
-                  <img
-                    src={image}
-                    alt={`이미지 ${idx + 1}`}
-                    loading="lazy"
-                    className="absolute inset-0 w-full h-full object-contain"
-                  />
-                )}
-                {idx === 3 && post.images!.length > 4 && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-xl">
-                    +{post.images!.length - 4}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          <InlineImageCarousel
+            images={post.images}
+            className="mb-3"
+            maxHeightClassName="max-h-[460px]"
+            stopPropagation
+            onImageClick={(index, event) => onImageClick(post.images!, index, event)}
+          />
         )}
 
         {/* Action buttons */}

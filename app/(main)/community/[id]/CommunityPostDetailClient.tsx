@@ -12,6 +12,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadEmoji } from '@/lib/bread'
+import { InlineImageCarousel } from '@/components/community/InlineImageCarousel'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -558,34 +559,12 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
 
           {/* Images */}
           {post.images && post.images.length > 0 && (
-            <div className={`mb-6 ${post.images.length === 1 ? '' : 'grid grid-cols-2 gap-2'}`}>
-              {post.images.map((image, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => openGallery(post.images!, idx)}
-                  className={`relative rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity bg-muted ${
-                    post.images!.length === 1 ? '' : 'aspect-square'
-                  }`}
-                >
-                  {post.images!.length === 1 ? (
-                    <img
-                      src={image}
-                      alt={`이미지 ${idx + 1}`}
-                      loading="lazy"
-                      className="block w-full h-auto max-h-[520px] object-contain"
-                    />
-                  ) : (
-                    <Image
-                      src={image}
-                      alt={`이미지 ${idx + 1}`}
-                      fill
-                      sizes="(max-width: 768px) 50vw, 400px"
-                      className="object-contain"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
+            <InlineImageCarousel
+              images={post.images}
+              className="mb-6"
+              maxHeightClassName="max-h-[520px]"
+              onImageClick={(index) => openGallery(post.images!, index)}
+            />
           )}
 
           {/* Actions */}
