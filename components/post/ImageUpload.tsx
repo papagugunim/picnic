@@ -41,13 +41,12 @@ export default function ImageUpload({
   }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
+    // 일부 모바일 브라우저(iOS Safari)는 input value를 먼저 비우면 FileList가 비어버릴 수 있음
+    const selectedFiles = Array.from(e.currentTarget.files || [])
+    if (selectedFiles.length === 0) return
 
     // 같은 파일 재선택 허용
-    e.target.value = ''
-
-    const selectedFiles = Array.from(files)
+    e.currentTarget.value = ''
     const remainingSlots = Math.max(0, maxFiles - value.length)
     if (remainingSlots <= 0) {
       showMessage(`이미지는 최대 ${maxFiles}개까지 업로드할 수 있습니다`)
@@ -63,8 +62,9 @@ export default function ImageUpload({
     for (const file of filesWithinLimit) {
       const isImageByType = file.type.startsWith('image/')
       const isImageByExt = /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(file.name)
+      const isLikelyImageWithoutMime = !file.type && file.size > 0
 
-      if (!isImageByType && !isImageByExt) {
+      if (!isImageByType && !isImageByExt && !isLikelyImageWithoutMime) {
         invalidTypeCount += 1
         continue
       }
