@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
 import ImageUpload from '@/components/post/ImageUpload'
+import { UploadProgressButton } from '@/components/post/UploadProgressButton'
 import { cleanupUploadedPostImages, createClientId, uploadPostImagesWithRetry } from '@/lib/post-image-upload'
 
 const categories = [
@@ -27,6 +28,8 @@ export default function NewCommunityPostPage() {
   const [images, setImages] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [submitProgress, setSubmitProgress] = useState(0)
+  const [submitStatusText, setSubmitStatusText] = useState('🧺 준비 중')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,6 +48,8 @@ export default function NewCommunityPostPage() {
     try {
       setIsSubmitting(true)
       setError(null)
+      setSubmitProgress(6)
+      setSubmitStatusText('🧺 준비 중')
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
@@ -55,6 +60,8 @@ export default function NewCommunityPostPage() {
       // 이미지 업로드 (있는 경우)
       let imageUrls: string[] = []
       if (images.length > 0) {
+        setSubmitProgress(12)
+        setSubmitStatusText(`📸 사진 업로드 0/${images.length}`)
         const uploadGroupId = createClientId()
         const uploadedImages = await uploadPostImagesWithRetry({
           supabase,
@@ -62,10 +69,19 @@ export default function NewCommunityPostPage() {
           scope: 'community',
           entityId: uploadGroupId,
           files: images,
+          onProgress: ({ uploaded, total }) => {
+            const ratio = total > 0 ? uploaded / total : 0
+            const nextProgress = Math.round(12 + ratio * 70)
+            setSubmitProgress(Math.max(12, Math.min(82, nextProgress)))
+            setSubmitStatusText(`📸 사진 업로드 ${uploaded}/${total}`)
+          },
         })
         uploadedImagePaths = uploadedImages.map((item) => item.path)
         imageUrls = uploadedImages.map((item) => item.url)
       }
+
+      setSubmitProgress(90)
+      setSubmitStatusText('📝 글 저장 중')
 
       logger.log('Inserting post with data:', {
         user_id: user.id,
@@ -109,12 +125,17 @@ export default function NewCommunityPostPage() {
       logger.log('Post created successfully:', data)
 
       // 동네생활 목록으로 리다이렉트
+      setSubmitProgress(100)
+      setSubmitStatusText('✅ 게시 완료!')
+      await new Promise((resolve) => setTimeout(resolve, 700))
       router.push('/community')
       router.refresh()
     } catch (err) {
       logger.error('Submit error:', err)
       await cleanupUploadedPostImages(supabase, uploadedImagePaths)
       setError(err instanceof Error ? err.message : '게시글 작성 중 오류가 발생했습니다')
+      setSubmitProgress(0)
+      setSubmitStatusText('⚠️ 다시 시도')
     } finally {
       setIsSubmitting(false)
     }
@@ -214,13 +235,15 @@ export default function NewCommunityPostPage() {
           </div>
 
           {/* Submit */}
-          <Button
+          <UploadProgressButton
             type="submit"
             disabled={isSubmitting || !content.trim()}
+            isLoading={isSubmitting}
+            progress={submitProgress}
+            loadingText={submitStatusText}
+            idleText="올리기"
             className="w-full h-12 text-base"
-          >
-            {isSubmitting ? '올리는 중...' : '올리기'}
-          </Button>
+          />
         </form>
       </div>
     </div>

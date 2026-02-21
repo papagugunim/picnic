@@ -8,9 +8,7 @@ import { useRouter } from 'next/navigation'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import * as z from 'zod'
-import { Loader2 } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -21,6 +19,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import ImageUpload from './ImageUpload'
+import { UploadProgressButton } from './UploadProgressButton'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES } from '@/lib/constants'
 import { cleanupUploadedPostImages, createClientId, uploadPostImagesWithRetry } from '@/lib/post-image-upload'
@@ -46,6 +45,8 @@ export default function NewPostForm() {
   const [freeBounce, setFreeBounce] = useState(false)
   const [confettiParticles, setConfettiParticles] = useState<{ id: number; emoji: string; x: number; y: number; delay: number }[]>([])
   const freeBtnRef = useRef<HTMLButtonElement>(null)
+  const [submitProgress, setSubmitProgress] = useState(0)
+  const [submitStatusText, setSubmitStatusText] = useState('🧺 준비 중')
 
   const triggerFreeEffect = useCallback(() => {
     // 바운스
@@ -82,6 +83,8 @@ export default function NewPostForm() {
     try {
       setIsLoading(true)
       setError(null)
+      setSubmitProgress(6)
+      setSubmitStatusText('🧺 준비 중')
 
       // 사용자 정보 가져오기
       const { data: { user } } = await supabase.auth.getUser()
@@ -114,16 +117,27 @@ export default function NewPostForm() {
       // 이미지 업로드
       let imageUrls: string[] = []
       if (images.length > 0) {
+        setSubmitProgress(12)
+        setSubmitStatusText(`📸 사진 업로드 0/${images.length}`)
         const uploadedImages = await uploadPostImagesWithRetry({
           supabase,
           userId: user.id,
           scope: 'post',
           entityId: tempPostId,
           files: images,
+          onProgress: ({ uploaded, total }) => {
+            const ratio = total > 0 ? uploaded / total : 0
+            const nextProgress = Math.round(12 + ratio * 70)
+            setSubmitProgress(Math.max(12, Math.min(82, nextProgress)))
+            setSubmitStatusText(`📸 사진 업로드 ${uploaded}/${total}`)
+          },
         })
         uploadedImagePaths = uploadedImages.map((item) => item.path)
         imageUrls = uploadedImages.map((item) => item.url)
       }
+
+      setSubmitProgress(90)
+      setSubmitStatusText('📝 글 저장 중')
 
       // 게시물 생성
       const postData = {
@@ -157,12 +171,17 @@ export default function NewPostForm() {
       }
 
       // 성공! 게시물 상세 페이지로 이동
+      setSubmitProgress(100)
+      setSubmitStatusText('✅ 게시 완료!')
+      await new Promise((resolve) => setTimeout(resolve, 700))
       router.push(`/post/${tempPostId}`)
       router.refresh()
     } catch (err) {
       logger.error('Submission error:', err)
       await cleanupUploadedPostImages(supabase, uploadedImagePaths)
       setError(err instanceof Error ? err.message : '게시물 작성 중 오류가 발생했습니다')
+      setSubmitProgress(0)
+      setSubmitStatusText('⚠️ 다시 시도')
     } finally {
       setIsLoading(false)
     }
@@ -325,16 +344,15 @@ export default function NewPostForm() {
         )}
 
         {/* 제출 버튼 */}
-        <Button type="submit" disabled={isLoading} className="w-full h-11 text-base">
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              게시 중...
-            </>
-          ) : (
-            '게시하기'
-          )}
-        </Button>
+        <UploadProgressButton
+          type="submit"
+          disabled={isLoading}
+          isLoading={isLoading}
+          progress={submitProgress}
+          loadingText={submitStatusText}
+          idleText="게시하기"
+          className="w-full h-11 text-base"
+        />
       </form>
     </Form>
   )

@@ -29,6 +29,11 @@ interface UploadPostImagesOptions {
   entityId: string
   files: File[]
   maxRetries?: number
+  onProgress?: (progress: {
+    uploaded: number
+    total: number
+    fileName: string
+  }) => void
 }
 
 function sleep(ms: number) {
@@ -119,6 +124,7 @@ export async function uploadPostImagesWithRetry({
   entityId,
   files,
   maxRetries = 2,
+  onProgress,
 }: UploadPostImagesOptions): Promise<UploadedPostImage[]> {
   if (files.length === 0) return []
 
@@ -139,6 +145,12 @@ export async function uploadPostImagesWithRetry({
       uploaded.push({
         path: filePath,
         url: publicUrl,
+      })
+
+      onProgress?.({
+        uploaded: uploaded.length,
+        total: files.length,
+        fileName: file.name,
       })
     } catch (error) {
       logger.error(`이미지 업로드 실패 (${index + 1}/${files.length}):`, error)
