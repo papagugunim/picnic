@@ -66,6 +66,7 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
   // Post detail modal state
   const [selectedPost, setSelectedPost] = useState<CommunityPost | null>(null)
   const [isPostModalOpen, setIsPostModalOpen] = useState(false)
+  const [focusCommentsOnOpen, setFocusCommentsOnOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
@@ -226,14 +227,27 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
       e.preventDefault()
       e.stopPropagation()
     }
+    setFocusCommentsOnOpen(false)
     setSelectedPost(post)
     setIsPostModalOpen(true)
     window.history.pushState({ modal: 'post', postId: post.id }, '')
   }, [])
 
+  const openPostComments = useCallback((post: CommunityPost, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    setFocusCommentsOnOpen(true)
+    setSelectedPost(post)
+    setIsPostModalOpen(true)
+    window.history.pushState({ modal: 'post', postId: post.id, comments: true }, '')
+  }, [])
+
   const closePostModal = useCallback(() => {
     setIsPostModalOpen(false)
     setSelectedPost(null)
+    setFocusCommentsOnOpen(false)
   }, [])
 
   // Browser back button closes modal instead of navigating away
@@ -491,6 +505,7 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
                     key={post.id}
                     post={post}
                     onPostClick={openPostModal}
+                    onCommentClick={openPostComments}
                     onLikeToggle={toggleLike}
                     onImageClick={openGallery}
                     onView={handlePostView}
@@ -542,6 +557,7 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
             onImageClick={openGallery}
             onCommentCountChange={handleCommentCountChange}
             isDeleting={isDeleting}
+            focusCommentsOnOpen={focusCommentsOnOpen}
             formatTimeAgo={formatTimeAgo}
             getCategoryEmoji={getCategoryEmoji}
             getCategoryName={getCategoryName}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Heart, MessageCircle, BarChart2, ChevronLeft, MoreVertical, Trash2, Edit, Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
@@ -34,6 +34,7 @@ interface PostDetailModalProps {
   onImageClick: (images: string[], index: number, e: React.MouseEvent) => void
   onCommentCountChange: (count: number) => void
   isDeleting: boolean
+  focusCommentsOnOpen?: boolean
   formatTimeAgo: (dateString: string) => string
   getCategoryEmoji: (category: string) => string
   getCategoryName: (category: string) => string
@@ -49,17 +50,32 @@ export function PostDetailModal({
   onImageClick,
   onCommentCountChange,
   isDeleting,
+  focusCommentsOnOpen = false,
   formatTimeAgo,
   getCategoryEmoji,
   getCategoryName,
 }: PostDetailModalProps) {
   const [modalCommentCount, setModalCommentCount] = useState(post.comments_count)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
+  const commentsSectionRef = useRef<HTMLDivElement>(null)
 
   const handleCommentCountChange = useCallback((count: number) => {
     setModalCommentCount(count)
     onCommentCountChange(count)
   }, [onCommentCountChange])
+
+  const scrollToComments = useCallback((smooth = true) => {
+    commentsSectionRef.current?.scrollIntoView({
+      behavior: smooth ? 'smooth' : 'auto',
+      block: 'start',
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!focusCommentsOnOpen) return
+    const timer = window.setTimeout(() => scrollToComments(true), 80)
+    return () => window.clearTimeout(timer)
+  }, [focusCommentsOnOpen, post.id, scrollToComments])
 
   return (
     <Dialog open onOpenChange={(open) => !open && window.history.back()}>
@@ -209,10 +225,14 @@ export function PostDetailModal({
                 </span>
               </button>
 
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <button
+                onClick={() => scrollToComments(true)}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+                aria-label="댓글로 이동"
+              >
                 <MessageCircle className="w-6 h-6" />
                 <span>{modalCommentCount}</span>
-              </div>
+              </button>
 
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <BarChart2 className="w-6 h-6" />
@@ -222,7 +242,7 @@ export function PostDetailModal({
           </div>
 
           {/* Comments Section - 인라인 입력 포함 */}
-          <div className="max-w-3xl mx-auto pb-16">
+          <div ref={commentsSectionRef} className="max-w-3xl mx-auto pb-16">
             <CommentSection
               postId={post.id}
               currentUserId={currentUserId}

@@ -31,6 +31,7 @@ export interface CommunityPost {
 interface CommunityPostItemProps {
   post: CommunityPost
   onPostClick: (post: CommunityPost, e?: React.MouseEvent) => void
+  onCommentClick: (post: CommunityPost, e?: React.MouseEvent) => void
   onLikeToggle: (postId: string, currentlyLiked: boolean) => void
   onImageClick: (images: string[], index: number, e: React.MouseEvent) => void
   onView?: (postId: string) => void
@@ -43,6 +44,7 @@ interface CommunityPostItemProps {
 export function CommunityPostItem({
   post,
   onPostClick,
+  onCommentClick,
   onLikeToggle,
   onImageClick,
   onView,
@@ -157,7 +159,7 @@ export function CommunityPostItem({
         {/* Action buttons */}
         <div className="flex items-center justify-end gap-4 text-muted-foreground">
           <button
-            onClick={(e) => onPostClick(post, e)}
+            onClick={(e) => onCommentClick(post, e)}
             className="flex items-center gap-2 p-2 -ml-2 rounded-full hover:bg-primary/10 hover:text-primary transition-colors group"
             aria-label="댓글"
           >
