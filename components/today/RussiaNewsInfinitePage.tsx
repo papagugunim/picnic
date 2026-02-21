@@ -15,11 +15,31 @@ const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '문화', value: '문화' },
   { label: '날씨', value: '날씨' },
 ]
-const NEWS_CACHE_VERSION = '2'
-const LOCAL_CACHE_TTL_MS = 60 * 60 * 1000
+const NEWS_CACHE_VERSION = '3'
+const LOCAL_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
+const ARCHIVE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+const PAGE_SIZE = 20
 
 function buildLocalCacheKey(topic: RussiaNewsTopic): string {
   return `russia-news:archive:${topic || 'all'}:v${NEWS_CACHE_VERSION}`
+}
+
+function parsePublishedAtMs(value: string): number {
+  const ms = Date.parse(value)
+  return Number.isFinite(ms) ? ms : 0
+}
+
+function sortByPublishedAtDesc(items: RussiaNewsItem[]): RussiaNewsItem[] {
+  return [...items].sort((a, b) => parsePublishedAtMs(b.published_at) - parsePublishedAtMs(a.published_at))
+}
+
+function keepLastWeek(items: RussiaNewsItem[]): RussiaNewsItem[] {
+  const minTime = Date.now() - ARCHIVE_WINDOW_MS
+  return sortByPublishedAtDesc(items).filter((item) => parsePublishedAtMs(item.published_at) >= minTime)
+}
+
+function isFallbackPlaceholderItems(items: RussiaNewsItem[]): boolean {
+  return items.length > 0 && items.every((item) => item.source_name === 'picnic-fallback')
 }
 
 function readLocalCachedNews(topic: RussiaNewsTopic): RussiaNewsItem[] {
@@ -35,7 +55,12 @@ function readLocalCachedNews(topic: RussiaNewsTopic): RussiaNewsItem[] {
       window.localStorage.removeItem(key)
       return []
     }
-    return parsed.items
+    const recentItems = keepLastWeek(parsed.items)
+    if (recentItems.length === 0) {
+      window.localStorage.removeItem(key)
+      return []
+    }
+    return recentItems
   } catch {
     window.localStorage.removeItem(key)
     return []
@@ -44,9 +69,11 @@ function readLocalCachedNews(topic: RussiaNewsTopic): RussiaNewsItem[] {
 
 function writeLocalCachedNews(topic: RussiaNewsTopic, items: RussiaNewsItem[]): void {
   if (typeof window === 'undefined' || items.length === 0) return
+  const recentItems = keepLastWeek(items)
+  if (recentItems.length === 0) return
   window.localStorage.setItem(
     buildLocalCacheKey(topic),
-    JSON.stringify({ savedAt: Date.now(), items })
+    JSON.stringify({ savedAt: Date.now(), items: recentItems })
   )
 }
 
@@ -54,7 +81,7 @@ function mergeUnique(prev: RussiaNewsItem[], next: RussiaNewsItem[]): RussiaNews
   const map = new Map<string, RussiaNewsItem>()
   for (const item of prev) map.set(item.id, item)
   for (const item of next) map.set(item.id, item)
-  return Array.from(map.values())
+  return keepLastWeek(Array.from(map.values()))
 }
 
 export function RussiaNewsInfinitePage() {
@@ -76,8 +103,8 @@ export function RussiaNewsInfinitePage() {
     setHasMore(true)
 
     try {
-      const url = new URL('/api/russia-news', window.location.origin)
-      url.searchParams.set('limit', '20')
+      const url = new URL('/api/russia-news/archive', window.location.origin)
+      url.searchParams.set('limit', String(PAGE_SIZE))
       url.searchParams.set('v', NEWS_CACHE_VERSION)
       if (topic) url.searchParams.set('topic', topic)
 
@@ -86,17 +113,18 @@ export function RussiaNewsInfinitePage() {
       if (!response.ok || data?.error) throw new Error(data?.error || '뉴스를 불러오지 못했습니다.')
 
       const firstItems = Array.isArray(data?.items) ? (data.items as RussiaNewsItem[]) : []
-      if (firstItems.length > 0) {
-        setItems(firstItems)
-        writeLocalCachedNews(topic, firstItems)
-        const nextCursor = firstItems[firstItems.length - 1].published_at
+      const usableItems = isFallbackPlaceholderItems(firstItems) ? [] : keepLastWeek(firstItems)
+      if (usableItems.length > 0) {
+        setItems(usableItems)
+        writeLocalCachedNews(topic, usableItems)
+        const nextCursor = usableItems[usableItems.length - 1].published_at
         setCursor(nextCursor)
-        setHasMore(true)
+        setHasMore(usableItems.length >= PAGE_SIZE)
       } else {
         const cached = readLocalCachedNews(topic)
         setItems(cached)
         setCursor(cached.length > 0 ? cached[cached.length - 1].published_at : null)
-        setHasMore(cached.length > 0)
+        setHasMore(cached.length >= PAGE_SIZE)
       }
     } catch (error) {
       const cached = readLocalCachedNews(topic)
@@ -128,7 +156,7 @@ export function RussiaNewsInfinitePage() {
 
     try {
       const url = new URL('/api/russia-news/archive', window.location.origin)
-      url.searchParams.set('limit', '20')
+      url.searchParams.set('limit', String(PAGE_SIZE))
       url.searchParams.set('v', NEWS_CACHE_VERSION)
       url.searchParams.set('cursor', cursor)
       if (topic) url.searchParams.set('topic', topic)
@@ -138,13 +166,37 @@ export function RussiaNewsInfinitePage() {
       if (!response.ok || data?.error) throw new Error(data?.error || '지난 뉴스를 불러오지 못했습니다.')
 
       const nextItems = Array.isArray(data?.items) ? (data.items as RussiaNewsItem[]) : []
-      if (nextItems.length === 0) {
+      if (nextItems.length === 0 || isFallbackPlaceholderItems(nextItems)) {
         setHasMore(false)
         return
       }
 
-      setItems((prev) => mergeUnique(prev, nextItems))
-      setCursor(nextItems[nextItems.length - 1].published_at)
+      let mergedItems: RussiaNewsItem[] = []
+      let hasProgress = false
+
+      setItems((prev) => {
+        const merged = mergeUnique(prev, nextItems)
+        hasProgress = merged.length > prev.length
+        mergedItems = merged
+        return merged
+      })
+
+      if (!hasProgress) {
+        setHasMore(false)
+        return
+      }
+
+      writeLocalCachedNews(topic, mergedItems)
+      const nextCursor = nextItems[nextItems.length - 1].published_at
+      if (!nextCursor || nextCursor === cursor) {
+        setHasMore(false)
+        return
+      }
+
+      setCursor(nextCursor)
+      if (nextItems.length < PAGE_SIZE) {
+        setHasMore(false)
+      }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '지난 뉴스를 불러오지 못했습니다.')
     } finally {
@@ -210,7 +262,7 @@ export function RussiaNewsInfinitePage() {
         <div className="flex items-start gap-2">
           <div>
             <h1 className="text-base font-bold">{sectionTitle}</h1>
-            <p className="mt-1 text-xs text-muted-foreground">정치/사회/경제/문화/날씨 · 무한 스크롤</p>
+            <p className="mt-1 text-xs text-muted-foreground">최근 7일 아카이브 · 무한 스크롤</p>
           </div>
         </div>
 

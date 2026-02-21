@@ -36,21 +36,21 @@ export async function GET(request: NextRequest) {
   const limit = Number(searchParams.get('limit') || '20')
 
   const fallbackFromCache = () => {
-    const cachedToday = readCachedRussiaNews('today', topic, limit)
+    const cachedToday = readCachedRussiaNews('today', topic, limit, cursor)
     if (cachedToday.length > 0) {
       return cachedToday
     }
 
-    const cachedArchive = readCachedRussiaNews('archive', topic, limit)
+    const cachedArchive = readCachedRussiaNews('archive', topic, limit, cursor)
     return cachedArchive
   }
 
   const fallbackFromAnyCache = () => {
-    const cachedToday = readCachedRussiaNews('today', '', limit)
+    const cachedToday = readCachedRussiaNews('today', '', limit, cursor)
     if (cachedToday.length > 0) {
       return cachedToday
     }
-    return readCachedRussiaNews('archive', '', limit)
+    return readCachedRussiaNews('archive', '', limit, cursor)
   }
 
   try {

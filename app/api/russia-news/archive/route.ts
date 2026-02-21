@@ -36,15 +36,15 @@ export async function GET(request: NextRequest) {
   const limit = Number(searchParams.get('limit') || '20')
 
   const fallbackFromCache = () => {
-    const cachedArchive = readCachedRussiaNews('archive', topic, limit)
+    const cachedArchive = readCachedRussiaNews('archive', topic, limit, cursor)
     if (cachedArchive.length > 0) return cachedArchive
-    return readCachedRussiaNews('today', topic, limit)
+    return readCachedRussiaNews('today', topic, limit, cursor)
   }
 
   const fallbackFromAnyCache = () => {
-    const cachedArchive = readCachedRussiaNews('archive', '', limit)
+    const cachedArchive = readCachedRussiaNews('archive', '', limit, cursor)
     if (cachedArchive.length > 0) return cachedArchive
-    return readCachedRussiaNews('today', '', limit)
+    return readCachedRussiaNews('today', '', limit, cursor)
   }
 
   try {
@@ -147,6 +147,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // cursor 기반 무한 스크롤에서는 플레이스홀더 응답 대신 종료 신호를 반환한다.
+    if (cursor) {
+      return NextResponse.json(
+        { items: [], stale: true, fallback: 'empty-after-cursor' },
+        {
+          headers: {
+            'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+            'X-Russia-News-Fallback': 'empty-after-cursor',
+          },
+        }
+      )
+    }
+
     const emergencyItems = getEmergencyFallbackNews(topic, limit)
     return NextResponse.json(
       { items: emergencyItems, stale: true, fallback: 'emergency-static' },
@@ -187,6 +200,19 @@ export async function GET(request: NextRequest) {
           }
         )
       }
+    }
+
+    // cursor 기반 무한 스크롤에서는 플레이스홀더 응답 대신 종료 신호를 반환한다.
+    if (cursor) {
+      return NextResponse.json(
+        { items: [], stale: true, fallback: 'empty-after-cursor' },
+        {
+          headers: {
+            'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+            'X-Russia-News-Fallback': 'empty-after-cursor-on-error',
+          },
+        }
+      )
     }
 
     const emergencyItems = getEmergencyFallbackNews(topic, limit)

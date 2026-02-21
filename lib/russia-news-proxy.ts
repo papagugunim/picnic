@@ -301,34 +301,34 @@ export async function fetchRussiaNewsFromUpstream(options: FetchRussiaNewsOption
   // NOTE: some upstream deployments intermittently return an empty list
   // when a small `limit` is explicitly provided. Retry once without `limit`.
   const initialLimit = !topic && requestedLimit === DEFAULT_LIMIT ? undefined : requestedLimit
+  const baseUrls = Array.from(new Set([primaryBaseUrl, fallbackBaseUrl]))
 
-  const primaryPayload = await requestFrom(primaryBaseUrl, initialLimit)
-  if (primaryPayload.items.length > 0) {
-    return clipPayload(primaryPayload, requestedLimit)
-  }
+  let lastError: unknown = null
+  let lastEmptyPayload: RussiaNewsApiPayload | null = null
 
-  if (!topic && typeof initialLimit === 'number') {
-    const primaryRelaxed = await requestFrom(primaryBaseUrl)
-    if (primaryRelaxed.items.length > 0) {
-      return clipPayload(primaryRelaxed, requestedLimit)
+  for (const baseUrl of baseUrls) {
+    try {
+      const firstAttempt = await requestFrom(baseUrl, initialLimit)
+      if (firstAttempt.items.length > 0) {
+        return clipPayload(firstAttempt, requestedLimit)
+      }
+      lastEmptyPayload = firstAttempt
+
+      if (!topic && typeof initialLimit === 'number') {
+        const relaxedAttempt = await requestFrom(baseUrl)
+        if (relaxedAttempt.items.length > 0) {
+          return clipPayload(relaxedAttempt, requestedLimit)
+        }
+        lastEmptyPayload = relaxedAttempt
+      }
+    } catch (error) {
+      lastError = error
     }
   }
 
-  if (primaryBaseUrl === fallbackBaseUrl) {
-    return clipPayload(primaryPayload, requestedLimit)
+  if (lastError && !lastEmptyPayload) {
+    throw lastError
   }
 
-  const fallbackPayload = await requestFrom(fallbackBaseUrl, initialLimit)
-  if (fallbackPayload.items.length > 0) {
-    return clipPayload(fallbackPayload, requestedLimit)
-  }
-
-  if (!topic && typeof initialLimit === 'number') {
-    const fallbackRelaxed = await requestFrom(fallbackBaseUrl)
-    if (fallbackRelaxed.items.length > 0) {
-      return clipPayload(fallbackRelaxed, requestedLimit)
-    }
-  }
-
-  return clipPayload(fallbackPayload, requestedLimit)
+  return clipPayload(lastEmptyPayload || { items: [] }, requestedLimit)
 }
