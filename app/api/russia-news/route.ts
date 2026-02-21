@@ -4,6 +4,7 @@ import { readCachedRussiaNews, writeCachedRussiaNews } from '@/lib/russia-news-c
 import { getEmergencyFallbackNews } from '@/lib/russia-news-fallback'
 import { fetchRussiaNewsFromUpstream } from '@/lib/russia-news-proxy'
 import { normalizeTopic, type RussiaNewsApiPayload, type RussiaNewsTopic } from '@/lib/russia-news'
+import { readRussiaNewsFromArchiveStore, saveRussiaNewsArchiveItems } from '@/lib/russia-news-archive-store'
 
 const TOPIC_BUCKETS: RussiaNewsTopic[] = ['정치', '사회', '경제', '문화', '날씨']
 
@@ -34,6 +35,14 @@ export async function GET(request: NextRequest) {
   const cursor = searchParams.get('cursor')
   const topic = searchParams.get('topic')
   const limit = Number(searchParams.get('limit') || '20')
+
+  const fallbackFromStore = async () => {
+    return readRussiaNewsFromArchiveStore({
+      topic,
+      limit,
+      cursor,
+    })
+  }
 
   const fallbackFromCache = () => {
     const cachedToday = readCachedRussiaNews('today', topic, limit, cursor)
@@ -133,12 +142,27 @@ export async function GET(request: NextRequest) {
     }
 
     if (payload.items.length > 0) {
+      await saveRussiaNewsArchiveItems(payload.items)
       writeCachedRussiaNews('today', topic, payload.items)
       return NextResponse.json(payload, {
         headers: {
           'Cache-Control': 'public, s-maxage=180, stale-while-revalidate=120',
         },
       })
+    }
+
+    const storedItems = await fallbackFromStore()
+    if (storedItems.length > 0) {
+      writeCachedRussiaNews('today', topic, storedItems)
+      return NextResponse.json(
+        { items: storedItems, stale: true, fallback: 'archive-store' },
+        {
+          headers: {
+            'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+            'X-Russia-News-Fallback': 'archive-store',
+          },
+        }
+      )
     }
 
     const cachedItems = fallbackFromCache()
@@ -183,6 +207,20 @@ export async function GET(request: NextRequest) {
       }
     )
   } catch (error) {
+    const storedItems = await fallbackFromStore()
+    if (storedItems.length > 0) {
+      writeCachedRussiaNews('today', topic, storedItems)
+      return NextResponse.json(
+        { items: storedItems, stale: true, fallback: 'archive-store-on-error' },
+        {
+          headers: {
+            'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+            'X-Russia-News-Fallback': 'archive-store-on-error',
+          },
+        }
+      )
+    }
+
     const cachedItems = fallbackFromCache()
     if (cachedItems.length > 0) {
       return NextResponse.json(
