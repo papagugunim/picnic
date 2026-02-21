@@ -21,6 +21,7 @@ export interface ChatMessage {
   room_id: string
   sender_id: string
   content: string
+  image_urls: string[]
   is_read: boolean
   created_at: string
 }
@@ -68,7 +69,8 @@ export interface CreateChatRoomParams {
 export interface SendMessageParams {
   room_id: string
   sender_id: string
-  content: string
+  content?: string
+  image_urls?: string[]
 }
 
 /**
@@ -86,7 +88,8 @@ export interface PollMessagesResponse {
 // 메시지 전송 요청
 export interface SendMessageRequest {
   room_id: string
-  content: string
+  content?: string
+  image_urls?: string[]
 }
 
 // 메시지 전송 응답

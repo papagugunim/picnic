@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Bell, BellOff, ChevronDown, ChevronLeft, Loader2, Package, Plus, RotateCw, Send, Wifi, WifiOff } from 'lucide-react'
+import { Bell, BellOff, ChevronDown, ChevronLeft, ImagePlus, Loader2, Package, Plus, RotateCw, Send, Wifi, WifiOff, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
@@ -22,9 +22,11 @@ import { CompleteSaleButton } from '@/components/chat/CompleteSaleButton'
 import { ReviewModal } from '@/components/review/ReviewModal'
 import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
 import { toast } from 'sonner'
+import { cleanupUploadedPostImages, createClientId, uploadPostImagesWithRetry } from '@/lib/post-image-upload'
 
 type PostWithImages = { images?: string[] | string | null } | null | undefined
 const urlPattern = /(https?:\/\/[^\s]+)/gi
+const CHAT_MAX_IMAGE_FILES = 5
 
 function renderMessageContent(content: string) {
   return content.split(urlPattern).map((part, index) => {
@@ -130,10 +132,14 @@ export default function ChatRoomPage() {
   const [pendingMessageCount, setPendingMessageCount] = useState(0)
   const [showComposerTools, setShowComposerTools] = useState(false)
   const [isInputFocused, setIsInputFocused] = useState(false)
+  const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([])
+  const [pendingImagePreviewUrls, setPendingImagePreviewUrls] = useState<string[]>([])
+  const [isUploadingImages, setIsUploadingImages] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const messageInputRef = useRef<HTMLTextAreaElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const previousMessagesMetaRef = useRef<{ firstId: string | null; lastId: string | null; count: number }>({
     firstId: null,
@@ -234,6 +240,7 @@ export default function ChatRoomPage() {
     setIsAtBottom(true)
     setIsChatInfoHidden(false)
     setShowComposerTools(false)
+    setPendingImageFiles([])
     lastMessagesScrollTopRef.current = 0
     previousMessagesMetaRef.current = { firstId: null, lastId: null, count: 0 }
     fetchRoom()
@@ -422,6 +429,15 @@ export default function ChatRoomPage() {
   }, [])
 
   useEffect(() => {
+    const nextPreviewUrls = pendingImageFiles.map((file) => URL.createObjectURL(file))
+    setPendingImagePreviewUrls(nextPreviewUrls)
+
+    return () => {
+      nextPreviewUrls.forEach((url) => URL.revokeObjectURL(url))
+    }
+  }, [pendingImageFiles])
+
+  useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
       setNotificationPermission('unsupported')
       return
@@ -463,17 +479,88 @@ export default function ChatRoomPage() {
     }
   }, [])
 
+  const openImagePicker = useCallback(() => {
+    imageInputRef.current?.click()
+  }, [])
+
+  const removePendingImage = useCallback((indexToRemove: number) => {
+    setPendingImageFiles((prev) => prev.filter((_, index) => index !== indexToRemove))
+  }, [])
+
+  const handleSelectImages = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files ?? [])
+    event.target.value = ''
+    if (selectedFiles.length === 0) return
+
+    const onlyImageFiles = selectedFiles.filter((file) => file.type.startsWith('image/'))
+    if (onlyImageFiles.length < selectedFiles.length) {
+      toast.error('이미지 파일만 첨부할 수 있습니다')
+    }
+
+    setPendingImageFiles((prev) => {
+      const remainingSlots = CHAT_MAX_IMAGE_FILES - prev.length
+      if (remainingSlots <= 0) {
+        toast.error(`이미지는 최대 ${CHAT_MAX_IMAGE_FILES}장까지 첨부할 수 있습니다`)
+        return prev
+      }
+
+      const accepted = onlyImageFiles.slice(0, remainingSlots)
+      if (onlyImageFiles.length > remainingSlots) {
+        toast.error(`이미지는 최대 ${CHAT_MAX_IMAGE_FILES}장까지 첨부할 수 있습니다`)
+      }
+
+      return [...prev, ...accepted]
+    })
+  }, [])
+
   async function handleSendMessage() {
     const trimmedMessage = newMessage.trim()
-    if (!trimmedMessage || !currentUserId) return
+    if ((!trimmedMessage && pendingImageFiles.length === 0) || !currentUserId) return
 
-    const success = await sendMessage(trimmedMessage, currentUserId)
-    if (success) {
+    const supabase = createClient()
+    let uploadedImagePaths: string[] = []
+    let uploadedImageUrls: string[] = []
+
+    try {
+      if (pendingImageFiles.length > 0) {
+        setIsUploadingImages(true)
+        const uploadBatchId = createClientId()
+        const uploadedImages = await uploadPostImagesWithRetry({
+          supabase,
+          userId: currentUserId,
+          scope: 'chat',
+          entityId: `${roomId}-${uploadBatchId}`,
+          files: pendingImageFiles,
+        })
+
+        uploadedImagePaths = uploadedImages.map((item) => item.path)
+        uploadedImageUrls = uploadedImages.map((item) => item.url)
+      }
+
+      const success = await sendMessage({
+        senderId: currentUserId,
+        content: trimmedMessage,
+        imageUrls: uploadedImageUrls,
+      })
+
+      if (!success) {
+        await cleanupUploadedPostImages(supabase, uploadedImagePaths)
+        toast.error('메시지 전송에 실패했습니다')
+        return
+      }
+
       setNewMessage('')
+      setPendingImageFiles([])
       setShowComposerTools(false)
       requestAnimationFrame(() => {
         scrollToBottom('smooth')
       })
+    } catch (error) {
+      logger.error('Send message with images error:', error)
+      await cleanupUploadedPostImages(supabase, uploadedImagePaths)
+      toast.error(error instanceof Error ? error.message : '사진 전송 중 오류가 발생했습니다')
+    } finally {
+      setIsUploadingImages(false)
     }
   }
 
@@ -546,6 +633,7 @@ export default function ChatRoomPage() {
     },
     [scrollToBottom]
   )
+  const canSendMessage = (newMessage.trim().length > 0 || pendingImageFiles.length > 0) && !isSending && !isUploadingImages
 
   if (isLoading) {
     return (
@@ -759,6 +847,11 @@ export default function ChatRoomPage() {
                   const showSenderName = !isOwnMessage && !groupedWithPrevious
                   const showAvatar = !isOwnMessage && !groupedWithNext
                   const showMessageMeta = !groupedWithNext
+                  const messageImageUrls = Array.isArray(message.image_urls)
+                    ? message.image_urls.filter((url) => typeof url === 'string' && url.trim().length > 0)
+                    : []
+                  const hasMessageImages = messageImageUrls.length > 0
+                  const showTextContent = message.content.trim().length > 0
 
                   return (
                     <div
@@ -807,19 +900,46 @@ export default function ChatRoomPage() {
                                 {message.sender.full_name || '익명'}
                               </span>
                             )}
-                            <div className={`px-3.5 py-2 rounded-2xl ${
-                              isOwnMessage
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-secondary'
-                            }`}>
-                              <p
-                                className={`text-sm whitespace-pre-wrap break-words [&_a]:underline [&_a]:underline-offset-2 [&_a]:font-medium [&_a]:break-all ${
-                                  isOwnMessage ? '[&_a]:text-primary-foreground' : '[&_a]:text-primary'
+                            {hasMessageImages && (
+                              <div
+                                className={`grid gap-1.5 overflow-hidden rounded-2xl border ${
+                                  messageImageUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
                                 }`}
                               >
-                                {renderMessageContent(message.content)}
-                              </p>
-                            </div>
+                                {messageImageUrls.map((imageUrl, imageIndex) => (
+                                  <a
+                                    key={`${message.id}-image-${imageIndex}`}
+                                    href={imageUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="block overflow-hidden bg-muted"
+                                  >
+                                    <img
+                                      src={imageUrl}
+                                      alt={`채팅 이미지 ${imageIndex + 1}`}
+                                      className="block w-full h-auto max-h-[220px] object-cover"
+                                      loading="lazy"
+                                      decoding="async"
+                                    />
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                            {showTextContent && (
+                              <div className={`px-3.5 py-2 rounded-2xl ${
+                                isOwnMessage
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-secondary'
+                              } ${hasMessageImages ? 'mt-1.5' : ''}`}>
+                                <p
+                                  className={`text-sm whitespace-pre-wrap break-words [&_a]:underline [&_a]:underline-offset-2 [&_a]:font-medium [&_a]:break-all ${
+                                    isOwnMessage ? '[&_a]:text-primary-foreground' : '[&_a]:text-primary'
+                                  }`}
+                                >
+                                  {renderMessageContent(message.content)}
+                                </p>
+                              </div>
+                            )}
                             {showMessageMeta && (
                               <div className="flex items-center gap-1 mt-1 px-1">
                                 {isOwnMessage && (
@@ -867,6 +987,15 @@ export default function ChatRoomPage() {
             paddingBottom: keyboardHeight > 0 ? '8px' : 'calc(0.5rem + env(safe-area-inset-bottom))',
           }}
         >
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleSelectImages}
+          />
+
           {canProposeAppointment && room?.post && currentUserId && (
             <div className="mb-2 flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <AppointmentProposalForm
@@ -896,8 +1025,65 @@ export default function ChatRoomPage() {
             </div>
           )}
 
+          {pendingImageFiles.length > 0 && (
+            <div className="mb-2 rounded-2xl border border-border bg-muted/40 p-2.5">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[11px] font-medium text-muted-foreground">
+                  첨부 사진 {pendingImageFiles.length}/{CHAT_MAX_IMAGE_FILES}
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px] text-muted-foreground"
+                  onClick={() => setPendingImageFiles([])}
+                >
+                  모두 삭제
+                </Button>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {pendingImagePreviewUrls.map((previewUrl, index) => (
+                  <div
+                    key={`${previewUrl}-${index}`}
+                    className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-muted"
+                  >
+                    <img
+                      src={previewUrl}
+                      alt={`첨부 이미지 ${index + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      className="absolute right-0.5 top-0.5 h-5 w-5 rounded-full"
+                      onClick={() => removePendingImage(index)}
+                      aria-label={`첨부 이미지 ${index + 1} 제거`}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {showComposerTools && (
             <div className="mb-2 rounded-2xl border border-border bg-muted/40 p-2.5">
+              <p className="mb-2 text-[11px] font-medium text-muted-foreground">빠른 도구</p>
+              <div className="mb-2 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 rounded-full px-3 text-xs font-normal"
+                  onClick={openImagePicker}
+                  disabled={pendingImageFiles.length >= CHAT_MAX_IMAGE_FILES}
+                >
+                  <ImagePlus className="h-3.5 w-3.5" />
+                  사진 추가
+                </Button>
+              </div>
               <p className="mb-2 text-[11px] font-medium text-muted-foreground">빠른 메시지</p>
               <div className="flex flex-wrap gap-2">
                 {quickMessageTemplates.map((template) => (
@@ -952,7 +1138,7 @@ export default function ChatRoomPage() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault()
-                    if (!isSending && newMessage.trim()) {
+                    if (canSendMessage) {
                       handleSendMessage()
                     }
                   }
@@ -963,11 +1149,11 @@ export default function ChatRoomPage() {
             <Button
               type="button"
               onClick={handleSendMessage}
-              disabled={!newMessage.trim() || isSending}
+              disabled={!canSendMessage}
               size="icon"
               className="h-9 w-9 flex-shrink-0 rounded-full"
             >
-              <Send className="h-4 w-4" />
+              {isUploadingImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
         </div>

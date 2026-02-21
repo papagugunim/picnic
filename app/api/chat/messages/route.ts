@@ -31,14 +31,36 @@ export async function POST(request: Request) {
 
     // 2. Request Body 파싱
     const body: SendMessageRequest = await request.json()
-    const { room_id, content } = body
+    const { room_id } = body
+    const normalizedContent = body.content?.trim() ?? ''
+    const imageUrls = (body.image_urls ?? []).filter((url): url is string => {
+      if (typeof url !== 'string') return false
+      const trimmed = url.trim()
+      return trimmed.length > 0 && /^https?:\/\//i.test(trimmed)
+    })
 
-    if (!room_id || !content || !content.trim()) {
+    if (!room_id) {
       return NextResponse.json(
-        { error: 'room_id와 content가 필요합니다' },
+        { error: 'room_id가 필요합니다' },
         { status: 400 }
       )
     }
+
+    if (!normalizedContent && imageUrls.length === 0) {
+      return NextResponse.json(
+        { error: '메시지 내용 또는 이미지가 필요합니다' },
+        { status: 400 }
+      )
+    }
+
+    if (imageUrls.length > 5) {
+      return NextResponse.json(
+        { error: '이미지는 최대 5장까지 전송할 수 있습니다' },
+        { status: 400 }
+      )
+    }
+
+    const contentForInsert = normalizedContent || ' '
 
     logger.log(`[Send] User ${user.id} sending message to room ${room_id}`)
 
@@ -66,7 +88,8 @@ export async function POST(request: Request) {
       .insert({
         room_id,
         sender_id: user.id,
-        content: content.trim(),
+        content: contentForInsert,
+        image_urls: imageUrls,
         is_read: false,
       })
       .select(
@@ -75,6 +98,7 @@ export async function POST(request: Request) {
         room_id,
         sender_id,
         content,
+        image_urls,
         is_read,
         created_at
       `
@@ -97,7 +121,7 @@ export async function POST(request: Request) {
     await supabase
       .from('chat_rooms')
       .update({
-        last_message: content.trim(),
+        last_message: normalizedContent || (imageUrls.length > 0 ? '📷 사진' : ''),
         last_message_at: message.created_at,
         updated_at: new Date().toISOString(),
       })

@@ -6,6 +6,23 @@ import { createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import type { PollMessagesResponse } from '@/types/chat'
 
+type RawProfileRow = {
+  id: string
+  full_name: string | null
+  avatar_url: string | null
+}
+
+type RawPolledMessageRow = {
+  id: string
+  room_id: string
+  sender_id: string
+  content: string
+  image_urls: string[] | null
+  is_read: boolean
+  created_at: string
+  profiles: RawProfileRow | RawProfileRow[] | null
+}
+
 /**
  * Long Polling 메시지 조회 엔드포인트
  * GET /api/chat/poll?roomId={id}&lastMessageId={id}&timeout={ms}
@@ -95,6 +112,7 @@ export async function GET(request: Request) {
           room_id,
           sender_id,
           content,
+          image_urls,
           is_read,
           created_at,
           profiles:sender_id (
@@ -121,10 +139,24 @@ export async function GET(request: Request) {
 
       // 6. 새 메시지가 있으면 즉시 응답
       if (messages && messages.length > 0) {
-        const formattedMessages = messages.map((msg: any) => ({
-          ...msg,
-          sender: msg.profiles,
-        }))
+        const formattedMessages = (messages as RawPolledMessageRow[]).map((msg) => {
+          const senderProfile = Array.isArray(msg.profiles) ? msg.profiles[0] : msg.profiles
+
+          return {
+            id: msg.id,
+            room_id: msg.room_id,
+            sender_id: msg.sender_id,
+            content: msg.content,
+            image_urls: msg.image_urls ?? [],
+            is_read: msg.is_read,
+            created_at: msg.created_at,
+            sender: senderProfile || {
+              id: msg.sender_id,
+              full_name: null,
+              avatar_url: null,
+            },
+          }
+        })
 
         const response: PollMessagesResponse = {
           messages: formattedMessages,

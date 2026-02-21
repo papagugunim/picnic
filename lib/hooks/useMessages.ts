@@ -22,6 +22,7 @@ type RawMessageRow = {
   room_id: string
   sender_id: string
   content: string
+  image_urls: string[] | null
   is_read: boolean
   created_at: string
   profiles: RawProfileRow | RawProfileRow[] | null
@@ -32,8 +33,15 @@ type InsertedMessageRow = {
   room_id: string
   sender_id: string
   content: string
+  image_urls: string[] | null
   is_read: boolean
   created_at: string
+}
+
+interface SendMessageInput {
+  senderId: string
+  content?: string
+  imageUrls?: string[]
 }
 
 export type ChatConnectionStatus = 'connecting' | 'live' | 'reconnecting' | 'offline'
@@ -72,6 +80,7 @@ export function useMessages(roomId: string) {
         room_id: message.room_id,
         sender_id: message.sender_id,
         content: message.content,
+        image_urls: message.image_urls ?? [],
         is_read: message.is_read,
         created_at: message.created_at,
         sender: senderProfile || {
@@ -98,6 +107,7 @@ export function useMessages(roomId: string) {
           room_id,
           sender_id,
           content,
+          image_urls,
           is_read,
           created_at,
           profiles:sender_id (
@@ -151,6 +161,7 @@ export function useMessages(roomId: string) {
           room_id,
           sender_id,
           content,
+          image_urls,
           is_read,
           created_at,
           profiles:sender_id (
@@ -376,19 +387,36 @@ export function useMessages(roomId: string) {
             async (payload) => {
               logger.log('[Realtime] ✅ New message received:', payload.new)
               logger.log(`[Realtime] Sender: ${payload.new.sender_id}, Current User: ${user.id}`)
-              const newMessage = payload.new
+                const newMessage = payload.new
 
               // 본인이 보낸 메시지는 무시 (이미 낙관적 업데이트로 추가됨)
               if (newMessage.sender_id === user.id) {
                 logger.log('[Realtime] 📤 Own message detected (optimistic update), updating with real ID')
                 // 낙관적 업데이트 메시지를 실제 ID로 교체
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id.toString().startsWith('temp-') && msg.content === newMessage.content
-                      ? { ...msg, id: newMessage.id, created_at: newMessage.created_at }
-                      : msg
-                  )
-                )
+                setMessages((prev) => {
+                  let targetIndex = -1
+                  for (let i = prev.length - 1; i >= 0; i -= 1) {
+                    if (prev[i]?.id.toString().startsWith('temp-') && prev[i]?.sender_id === user.id) {
+                      targetIndex = i
+                      break
+                    }
+                  }
+
+                  if (targetIndex === -1) return prev
+
+                  const next = [...prev]
+                  next[targetIndex] = {
+                    ...next[targetIndex],
+                    id: newMessage.id,
+                    content: newMessage.content,
+                    image_urls: Array.isArray((newMessage as { image_urls?: unknown }).image_urls)
+                      ? (((newMessage as { image_urls?: unknown }).image_urls as string[]) ?? [])
+                      : [],
+                    created_at: newMessage.created_at,
+                  }
+
+                  return next
+                })
                 latestMessageIdRef.current = newMessage.id
                 latestMessageAtRef.current = newMessage.created_at
                 return
@@ -528,8 +556,10 @@ export function useMessages(roomId: string) {
   }, [roomId, fetchMessages, startPolling])
 
   const sendMessage = useCallback(
-    async (content: string, senderId: string) => {
-      if (!content.trim() || !roomId) return false
+    async ({ senderId, content, imageUrls }: SendMessageInput) => {
+      const trimmedContent = content?.trim() ?? ''
+      const normalizedImageUrls = (imageUrls ?? []).filter((url) => typeof url === 'string' && url.trim().length > 0)
+      if ((!trimmedContent && normalizedImageUrls.length === 0) || !roomId) return false
 
       // 이미 전송 중이면 중복 방지 (useRef 사용으로 클로저 문제 해결)
       if (isSendingRef.current) {
@@ -561,7 +591,8 @@ export function useMessages(roomId: string) {
           id: tempId,
           room_id: roomId,
           sender_id: senderId,
-          content: content.trim(),
+          content: trimmedContent,
+          image_urls: normalizedImageUrls,
           is_read: false,
           created_at: new Date().toISOString(),
           sender: senderProfile || {
@@ -587,7 +618,8 @@ export function useMessages(roomId: string) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 room_id: roomId,
-                content: content.trim(),
+                content: trimmedContent,
+                image_urls: normalizedImageUrls,
               }),
             })
 
@@ -605,13 +637,14 @@ export function useMessages(roomId: string) {
           logger.log('[Send] Using Supabase direct')
           const result = await supabase
             .from('chat_messages')
-            .insert({
-              room_id: roomId,
-              sender_id: senderId,
-              content: content.trim(),
-            })
-            .select()
-            .single()
+              .insert({
+                room_id: roomId,
+                sender_id: senderId,
+                content: trimmedContent || ' ',
+                image_urls: normalizedImageUrls,
+              })
+              .select()
+              .single()
 
           data = result.data as InsertedMessageRow | null
           sendError = result.error ? new Error(result.error.message) : null
@@ -637,6 +670,7 @@ export function useMessages(roomId: string) {
               msg.id === tempId
                 ? {
                     ...data,
+                    image_urls: data.image_urls ?? [],
                     sender: senderProfile || {
                       id: senderId,
                       full_name: null,
