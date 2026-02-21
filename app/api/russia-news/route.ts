@@ -4,7 +4,7 @@ import { readCachedRussiaNews, writeCachedRussiaNews } from '@/lib/russia-news-c
 import { getEmergencyFallbackNews } from '@/lib/russia-news-fallback'
 import { fetchRussiaNewsFromUpstream } from '@/lib/russia-news-proxy'
 import { normalizeTopic, type RussiaNewsApiPayload, type RussiaNewsTopic } from '@/lib/russia-news'
-import { readRussiaNewsFromArchiveStore, saveRussiaNewsArchiveItems } from '@/lib/russia-news-archive-store'
+import { isInArchiveWindow, readRussiaNewsFromArchiveStore, saveRussiaNewsArchiveItems } from '@/lib/russia-news-archive-store'
 
 const TOPIC_BUCKETS: RussiaNewsTopic[] = ['정치', '사회', '경제', '문화', '날씨']
 
@@ -27,6 +27,12 @@ function filterPayloadByTopic(payload: RussiaNewsApiPayload, topicInput: string 
   if (!requestedTopic) return payload
   return {
     items: payload.items.filter((item) => normalizeTopic(item.topic || null) === requestedTopic),
+  }
+}
+
+function filterPayloadToArchiveWindow(payload: RussiaNewsApiPayload): RussiaNewsApiPayload {
+  return {
+    items: payload.items.filter((item) => isInArchiveWindow(item.published_at)),
   }
 }
 
@@ -63,7 +69,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    let payload = filterPayloadByTopic(
+    let payload = filterPayloadToArchiveWindow(filterPayloadByTopic(
       await fetchRussiaNewsFromUpstream({
         endpoint: '/api/today-news',
         cursor,
@@ -71,10 +77,10 @@ export async function GET(request: NextRequest) {
         limit,
       }),
       topic
-    )
+    ))
 
     if (!cursor && payload.items.length === 0) {
-      payload = filterPayloadByTopic(
+      payload = filterPayloadToArchiveWindow(filterPayloadByTopic(
         await fetchRussiaNewsFromUpstream({
           endpoint: '/api/today-news',
           cursor,
@@ -82,12 +88,12 @@ export async function GET(request: NextRequest) {
           limit: Math.max(limit, 12),
         }),
         topic
-      )
+      ))
     }
 
     // today endpoint가 비어 있으면 archive를 즉시 fallback으로 사용
     if (payload.items.length === 0) {
-      const archivePayload = filterPayloadByTopic(
+      const archivePayload = filterPayloadToArchiveWindow(filterPayloadByTopic(
         await fetchRussiaNewsFromUpstream({
           endpoint: '/api/archive',
           cursor,
@@ -95,7 +101,7 @@ export async function GET(request: NextRequest) {
           limit,
         }),
         topic
-      )
+      ))
       if (archivePayload.items.length > 0) {
         payload = archivePayload
       }
@@ -113,12 +119,12 @@ export async function GET(request: NextRequest) {
         )
       )
 
-      const merged = mergeUniqueItems(
+      const merged = filterPayloadToArchiveWindow(mergeUniqueItems(
         bucketResults
           .filter((result): result is PromiseFulfilledResult<RussiaNewsApiPayload> => result.status === 'fulfilled')
           .map((result) => result.value),
         limit
-      )
+      ))
 
       if (merged.items.length > 0) {
         payload = merged
@@ -127,7 +133,7 @@ export async function GET(request: NextRequest) {
 
     // 특정 카테고리에 데이터가 없으면 전체 뉴스로 fallback
     if (payload.items.length === 0 && topic) {
-      const broadPayload = filterPayloadByTopic(
+      const broadPayload = filterPayloadToArchiveWindow(filterPayloadByTopic(
         await fetchRussiaNewsFromUpstream({
           endpoint: '/api/today-news',
           cursor,
@@ -135,7 +141,7 @@ export async function GET(request: NextRequest) {
           limit,
         }),
         topic
-      )
+      ))
       if (broadPayload.items.length > 0) {
         payload = broadPayload
       }
