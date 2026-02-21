@@ -4,7 +4,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('AppointmentProposalForm')
 import { useEffect, useMemo, useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { Button, type ButtonProps } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -22,14 +22,20 @@ import type { CreateAppointmentParams } from '@/types/purchase'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { useMetroStations } from '@/lib/hooks/useMetroStations'
+import { cn } from '@/lib/utils'
 
 interface AppointmentProposalFormProps {
   roomId: string
   postId: string
-  postAuthorId: string
   currentUserId: string
   otherUserId: string
   onPropose: (params: CreateAppointmentParams) => Promise<string>
+  triggerLabel?: string
+  triggerVariant?: ButtonProps['variant']
+  triggerSize?: ButtonProps['size']
+  triggerClassName?: string
+  showTriggerIcon?: boolean
+  onProposed?: () => void
 }
 
 function toDateTimeLocalValue(date: Date) {
@@ -53,10 +59,15 @@ function formatDatePreview(value: string) {
 export function AppointmentProposalForm({
   roomId,
   postId,
-  postAuthorId,
   currentUserId,
   otherUserId,
-  onPropose
+  onPropose,
+  triggerLabel = '구매약속 잡기',
+  triggerVariant = 'outline',
+  triggerSize = 'sm',
+  triggerClassName,
+  showTriggerIcon = true,
+  onProposed
 }: AppointmentProposalFormProps) {
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -94,7 +105,7 @@ export function AppointmentProposalForm({
   }, [open, postId])
 
   const metroStations = useMetroStations(postCity)
-  const minDateValue = useMemo(() => toDateTimeLocalValue(new Date()), [open])
+  const minDateValue = toDateTimeLocalValue(new Date())
   const quickDateOptions = useMemo(() => {
     if (!open) return []
 
@@ -118,6 +129,11 @@ export function AppointmentProposalForm({
       { label: '내일 저녁 7시', date: tomorrowEvening },
     ].filter((option) => option.date.getTime() > now.getTime() + 10 * 60 * 1000)
   }, [open])
+  const quickMemoOptions = useMemo(() => ([
+    '도착 10분 전에 채팅으로 연락드릴게요.',
+    '시간이 바뀌면 미리 말씀드릴게요.',
+    '현장에서 상태 확인 후 거래할게요.',
+  ]), [])
 
   // 지하철역 정보 가져오기 (한글 이름 + 노선 색상)
   const getStationInfo = (stationValue: string) => {
@@ -159,6 +175,7 @@ export function AppointmentProposalForm({
       toast.success('구매약속을 제안했습니다')
       setOpen(false)
       setFormData({ date: '', location: '', memo: '' })
+      onProposed?.()
     } catch (error) {
       logger.error('Appointment proposal error:', error)
       toast.error('약속 제안에 실패했습니다')
@@ -170,12 +187,16 @@ export function AppointmentProposalForm({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="w-full gap-2">
-          <Calendar className="h-4 w-4" />
-          구매약속 잡기
+        <Button
+          variant={triggerVariant}
+          size={triggerSize}
+          className={cn(triggerClassName ?? 'w-full gap-2', showTriggerIcon ? 'gap-2' : '')}
+        >
+          {showTriggerIcon && <Calendar className="h-4 w-4" />}
+          {triggerLabel}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] glass">
+      <DialogContent className="sm:max-w-[425px] max-h-[85dvh] overflow-y-auto glass">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>구매약속 제안</DialogTitle>
@@ -260,6 +281,25 @@ export function AppointmentProposalForm({
 
             <div className="grid gap-2">
               <Label htmlFor="memo">추가 협의 사항 (선택)</Label>
+              <div className="flex flex-wrap gap-2">
+                {quickMemoOptions.map((memo) => (
+                  <Button
+                    key={memo}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 rounded-full px-2.5 text-[11px] font-normal"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        memo: prev.memo.trim().length > 0 ? `${prev.memo.trim()}\n${memo}` : memo,
+                      }))
+                    }
+                  >
+                    {memo}
+                  </Button>
+                ))}
+              </div>
               <Textarea
                 id="memo"
                 placeholder="예: 지하철역 안에 탑승 플랫폼 가운데 쪽에서 만나요

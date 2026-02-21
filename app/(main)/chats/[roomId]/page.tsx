@@ -3,9 +3,9 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('Page')
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Bell, BellOff, ChevronDown, ChevronLeft, Loader2, Package, RotateCw, Send, Wifi, WifiOff } from 'lucide-react'
+import { Bell, BellOff, ChevronDown, ChevronLeft, Loader2, Package, Plus, RotateCw, Send, Wifi, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
@@ -24,6 +24,28 @@ import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
 import { toast } from 'sonner'
 
 type PostWithImages = { images?: string[] | string | null } | null | undefined
+const urlPattern = /(https?:\/\/[^\s]+)/gi
+
+function renderMessageContent(content: string) {
+  return content.split(urlPattern).map((part, index) => {
+    const isUrl = /^https?:\/\//i.test(part)
+
+    if (isUrl) {
+      return (
+        <a
+          key={`${part}-${index}`}
+          href={part}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {part}
+        </a>
+      )
+    }
+
+    return <span key={`${index}-${part.slice(0, 8)}`}>{part}</span>
+  })
+}
 
 function getPostThumbnailUrl(post: PostWithImages): string | null {
   const images = post?.images
@@ -106,6 +128,8 @@ export default function ChatRoomPage() {
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [isChatInfoHidden, setIsChatInfoHidden] = useState(false)
   const [pendingMessageCount, setPendingMessageCount] = useState(0)
+  const [showComposerTools, setShowComposerTools] = useState(false)
+  const [isInputFocused, setIsInputFocused] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
@@ -209,6 +233,7 @@ export default function ChatRoomPage() {
     setPendingMessageCount(0)
     setIsAtBottom(true)
     setIsChatInfoHidden(false)
+    setShowComposerTools(false)
     lastMessagesScrollTopRef.current = 0
     previousMessagesMetaRef.current = { firstId: null, lastId: null, count: 0 }
     fetchRoom()
@@ -445,6 +470,7 @@ export default function ChatRoomPage() {
     const success = await sendMessage(trimmedMessage, currentUserId)
     if (success) {
       setNewMessage('')
+      setShowComposerTools(false)
       requestAnimationFrame(() => {
         scrollToBottom('smooth')
       })
@@ -493,11 +519,33 @@ export default function ChatRoomPage() {
   const isSold = room?.post?.status === 'sold'
   // 약속 확정 여부
   const isAppointmentConfirmed = appointment?.status === 'confirmed'
+  const hasActiveAppointment = appointment?.status === 'proposed' || appointment?.status === 'confirmed'
+  const canProposeAppointment = Boolean(isBuyer && !isSold && currentUserId && room?.post && room.post.author_id)
   const postThumbnailUrl = room?.post ? getPostThumbnailUrl(room.post) : null
   const connectionStatusMeta = getConnectionStatusMeta(connectionStatus)
   const ConnectionStatusIcon = connectionStatusMeta.Icon
   const showEnableNotificationButton =
     notificationPermission !== 'unsupported' && notificationPermission !== 'granted'
+  const quickMessageTemplates = useMemo(() => {
+    const postTitle = room?.post?.title?.trim() || '상품'
+
+    return [
+      `안녕하세요! ${postTitle} 아직 거래 가능할까요?`,
+      '오늘 저녁 또는 내일 오전에 거래 가능하실까요?',
+      '가능한 거래 장소를 알려주시면 맞춰서 이동할게요.',
+    ]
+  }, [room?.post?.title])
+  const insertMessageTemplate = useCallback(
+    (template: string) => {
+      setNewMessage((prev) => (prev.trim().length > 0 ? `${prev.trim()}\n${template}` : template))
+      setShowComposerTools(false)
+      requestAnimationFrame(() => {
+        messageInputRef.current?.focus()
+        scrollToBottom('smooth')
+      })
+    },
+    [scrollToBottom]
+  )
 
   if (isLoading) {
     return (
@@ -764,7 +812,13 @@ export default function ChatRoomPage() {
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-secondary'
                             }`}>
-                              <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                              <p
+                                className={`text-sm whitespace-pre-wrap break-words [&_a]:underline [&_a]:underline-offset-2 [&_a]:font-medium [&_a]:break-all ${
+                                  isOwnMessage ? '[&_a]:text-primary-foreground' : '[&_a]:text-primary'
+                                }`}
+                              >
+                                {renderMessageContent(message.content)}
+                              </p>
                             </div>
                             {showMessageMeta && (
                               <div className="flex items-center gap-1 mt-1 px-1">
@@ -806,36 +860,95 @@ export default function ChatRoomPage() {
       </div>
 
       {/* Message Input - 모바일 키보드/안전영역 대응 */}
-      <div className="flex-shrink-0 bg-background border-t border-border safe-area-bottom">
-        <div className="max-w-screen-xl mx-auto px-3 pt-2 pb-1">
-          {/* 구매약속 잡기 버튼 (구매자만, 판매완료 아닐 때) */}
-          {isBuyer && !isSold && currentUserId && room.post && room.post.author_id && (
-            <div className="mb-2">
+      <div className="flex-shrink-0 bg-background border-t border-border">
+        <div
+          className="max-w-screen-xl mx-auto px-3 pt-2"
+          style={{
+            paddingBottom: keyboardHeight > 0 ? '8px' : 'calc(0.5rem + env(safe-area-inset-bottom))',
+          }}
+        >
+          {canProposeAppointment && room?.post && currentUserId && (
+            <div className="mb-2 flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <AppointmentProposalForm
                 roomId={roomId}
                 postId={room.post.id}
-                postAuthorId={room.post.author_id}
                 currentUserId={currentUserId}
                 otherUserId={room.other_user.id}
                 onPropose={proposeAppointment}
+                triggerLabel={hasActiveAppointment ? '약속 다시 제안' : '구매약속 제안'}
+                triggerVariant="secondary"
+                triggerSize="sm"
+                triggerClassName="shrink-0 rounded-full h-8 px-3 text-xs font-medium"
+                showTriggerIcon={false}
               />
+              {!hasActiveAppointment && quickMessageTemplates.slice(1).map((template) => (
+                <Button
+                  key={template}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shrink-0 rounded-full px-3 text-xs font-normal"
+                  onClick={() => insertMessageTemplate(template)}
+                >
+                  {template}
+                </Button>
+              ))}
             </div>
           )}
 
-          <div className="flex gap-2 items-end">
-            <div className="flex-1 rounded-2xl border border-input bg-background px-3 py-2 focus-within:ring-2 focus-within:ring-ring">
+          {showComposerTools && (
+            <div className="mb-2 rounded-2xl border border-border bg-muted/40 p-2.5">
+              <p className="mb-2 text-[11px] font-medium text-muted-foreground">빠른 메시지</p>
+              <div className="flex flex-wrap gap-2">
+                {quickMessageTemplates.map((template) => (
+                  <Button
+                    key={template}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-full px-3 text-xs font-normal"
+                    onClick={() => insertMessageTemplate(template)}
+                  >
+                    {template}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div
+            className={`flex items-end gap-1.5 rounded-2xl border px-2 py-1.5 transition-colors ${
+              isInputFocused ? 'border-ring ring-1 ring-ring' : 'border-input'
+            }`}
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={`h-9 w-9 rounded-full text-muted-foreground ${
+                showComposerTools ? 'bg-accent text-foreground' : ''
+              }`}
+              onClick={() => setShowComposerTools((prev) => !prev)}
+              aria-label="빠른 메시지 열기"
+            >
+              <Plus className="h-5 w-5" />
+            </Button>
+
+            <div className="min-w-0 flex-1">
               <Textarea
                 ref={messageInputRef}
-                placeholder="메시지를 입력하세요... (Shift+Enter 줄바꿈)"
+                placeholder="메시지 보내기"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onFocus={() => {
+                  setIsInputFocused(true)
                   requestAnimationFrame(() => {
                     scrollToBottom('smooth')
                   })
                 }}
+                onBlur={() => setIsInputFocused(false)}
                 rows={1}
-                className="min-h-0 max-h-[120px] resize-none border-0 bg-transparent p-0 text-[16px] leading-5 focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="min-h-[24px] max-h-[120px] resize-none border-0 bg-transparent px-1 py-1 text-[16px] leading-5 focus-visible:ring-0 focus-visible:ring-offset-0"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault()
@@ -845,18 +958,16 @@ export default function ChatRoomPage() {
                   }
                 }}
               />
-              <div className="mt-1 text-[11px] text-muted-foreground">
-                Enter 전송 · Shift+Enter 줄바꿈
-              </div>
             </div>
+
             <Button
               type="button"
               onClick={handleSendMessage}
               disabled={!newMessage.trim() || isSending}
               size="icon"
-              className="flex-shrink-0 h-11 w-11 rounded-xl"
+              className="h-9 w-9 flex-shrink-0 rounded-full"
             >
-              <Send className="w-4 h-4" />
+              <Send className="h-4 w-4" />
             </Button>
           </div>
         </div>
