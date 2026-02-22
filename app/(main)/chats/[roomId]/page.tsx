@@ -5,9 +5,10 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Bell, BellOff, ChevronDown, ChevronLeft, ImagePlus, Loader2, Package, Plus, RotateCw, Send, Wifi, WifiOff, X } from 'lucide-react'
+import { Bell, BellOff, ChevronDown, ChevronLeft, ChevronRight, ImagePlus, Loader2, Package, Plus, RotateCw, Send, Wifi, WifiOff, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { createClient } from '@/lib/supabase/client'
 import { useMessages, type ChatConnectionStatus } from '@/lib/hooks/useMessages'
 import { useAppointment } from '@/lib/hooks/useAppointment'
@@ -25,6 +26,11 @@ import { toast } from 'sonner'
 import { cleanupUploadedPostImages, createClientId, uploadPostImagesWithRetry } from '@/lib/post-image-upload'
 
 type PostWithImages = { images?: string[] | string | null } | null | undefined
+type ChatImageViewerState = {
+  open: boolean
+  images: string[]
+  index: number
+}
 const urlPattern = /(https?:\/\/[^\s]+)/gi
 const CHAT_MAX_IMAGE_FILES = 5
 
@@ -136,12 +142,18 @@ export default function ChatRoomPage() {
   const [pendingImagePreviewUrls, setPendingImagePreviewUrls] = useState<string[]>([])
   const [isUploadingImages, setIsUploadingImages] = useState(false)
   const [composerHeight, setComposerHeight] = useState(84)
+  const [imageViewer, setImageViewer] = useState<ChatImageViewerState>({
+    open: false,
+    images: [],
+    index: 0,
+  })
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const messageInputRef = useRef<HTMLTextAreaElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const composerRef = useRef<HTMLDivElement>(null)
+  const imageViewerTouchStartXRef = useRef<number | null>(null)
   const previousMessagesMetaRef = useRef<{ firstId: string | null; lastId: string | null; count: number }>({
     firstId: null,
     lastId: null,
@@ -246,6 +258,7 @@ export default function ChatRoomPage() {
     isChatInfoHiddenRef.current = false
     setShowComposerTools(false)
     setPendingImageFiles([])
+    setImageViewer({ open: false, images: [], index: 0 })
     lastMessagesScrollTopRef.current = 0
     previousMessagesMetaRef.current = { firstId: null, lastId: null, count: 0 }
     fetchRoom()
@@ -568,6 +581,81 @@ export default function ChatRoomPage() {
     setPendingImageFiles((prev) => prev.filter((_, index) => index !== indexToRemove))
   }, [])
 
+  const openImageViewer = useCallback((images: string[], startIndex: number) => {
+    if (images.length === 0) return
+    const safeIndex = Math.max(0, Math.min(images.length - 1, startIndex))
+    setImageViewer({
+      open: true,
+      images,
+      index: safeIndex,
+    })
+  }, [])
+
+  const updateImageViewerIndex = useCallback((nextIndex: number) => {
+    setImageViewer((prev) => {
+      if (prev.images.length === 0) return prev
+      const safeIndex = Math.max(0, Math.min(prev.images.length - 1, nextIndex))
+      if (safeIndex === prev.index) return prev
+      return {
+        ...prev,
+        index: safeIndex,
+      }
+    })
+  }, [])
+
+  const moveImageViewerBy = useCallback((delta: number) => {
+    setImageViewer((prev) => {
+      if (prev.images.length === 0) return prev
+      const safeIndex = Math.max(0, Math.min(prev.images.length - 1, prev.index + delta))
+      if (safeIndex === prev.index) return prev
+      return {
+        ...prev,
+        index: safeIndex,
+      }
+    })
+  }, [])
+
+  const closeImageViewer = useCallback(() => {
+    setImageViewer((prev) => ({
+      ...prev,
+      open: false,
+    }))
+  }, [])
+
+  useEffect(() => {
+    if (!imageViewer.open) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft') {
+        moveImageViewerBy(-1)
+      } else if (event.key === 'ArrowRight') {
+        moveImageViewerBy(1)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [imageViewer.open, moveImageViewerBy])
+
+  const handleImageViewerTouchStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    imageViewerTouchStartXRef.current = event.touches[0]?.clientX ?? null
+  }, [])
+
+  const handleImageViewerTouchEnd = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    const startX = imageViewerTouchStartXRef.current
+    imageViewerTouchStartXRef.current = null
+    if (startX === null) return
+    const endX = event.changedTouches[0]?.clientX ?? startX
+    const diffX = endX - startX
+
+    if (Math.abs(diffX) < 48) return
+    if (diffX > 0) {
+      moveImageViewerBy(-1)
+      return
+    }
+    moveImageViewerBy(1)
+  }, [moveImageViewerBy])
+
   const dismissKeyboardIfFocused = useCallback(() => {
     if (!isInputFocused) return
     const activeElement = document.activeElement
@@ -738,6 +826,10 @@ export default function ChatRoomPage() {
   )
   const canSendMessage = (newMessage.trim().length > 0 || pendingImageFiles.length > 0) && !isSending && !isUploadingImages
   const showFloatingAppointment = Boolean(appointment && currentUserId)
+  const imageViewerImageCount = imageViewer.images.length
+  const activeImageViewerUrl = imageViewer.images[imageViewer.index] || null
+  const canMoveImageViewerPrev = imageViewer.index > 0
+  const canMoveImageViewerNext = imageViewer.index < imageViewer.images.length - 1
 
   if (isLoading) {
     return (
@@ -1026,26 +1118,34 @@ export default function ChatRoomPage() {
                             )}
                             {hasMessageImages && (
                               <div
-                                className={`grid gap-1.5 overflow-hidden rounded-2xl border ${
-                                  messageImageUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+                                className={`flex max-w-[70vw] gap-1.5 overflow-x-auto rounded-2xl border border-border/70 bg-muted/20 p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+                                  isOwnMessage ? 'self-end' : 'self-start'
                                 }`}
                               >
                                 {messageImageUrls.map((imageUrl, imageIndex) => (
-                                  <a
+                                  <button
                                     key={`${message.id}-image-${imageIndex}`}
-                                    href={imageUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="block overflow-hidden bg-muted"
+                                    type="button"
+                                    onClick={() => openImageViewer(messageImageUrls, imageIndex)}
+                                    className={`group relative shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted ${
+                                      messageImageUrls.length === 1
+                                        ? 'h-[184px] w-[184px]'
+                                        : messageImageUrls.length >= 5
+                                          ? 'h-[58px] w-[58px]'
+                                          : messageImageUrls.length >= 3
+                                            ? 'h-[70px] w-[70px]'
+                                            : 'h-[88px] w-[88px]'
+                                    }`}
+                                    aria-label={`채팅 이미지 ${imageIndex + 1} 보기`}
                                   >
                                     <img
                                       src={imageUrl}
                                       alt={`채팅 이미지 ${imageIndex + 1}`}
-                                      className="block w-full h-auto max-h-[220px] object-cover"
+                                      className="block h-full w-full object-cover transition-transform duration-150 group-active:scale-95"
                                       loading="lazy"
                                       decoding="async"
                                     />
-                                  </a>
+                                  </button>
                                 ))}
                               </div>
                             )}
@@ -1295,6 +1395,96 @@ export default function ChatRoomPage() {
           </div>
         </div>
       </div>
+
+      <Dialog
+        open={imageViewer.open}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeImageViewer()
+          }
+        }}
+      >
+        <DialogContent
+          hideCloseButton
+          className="h-[100dvh] w-screen max-w-none gap-0 rounded-none border-0 bg-black/95 p-0 text-white"
+        >
+          <div className="flex items-center justify-between px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+            <span className="text-sm font-medium">
+              {imageViewerImageCount > 0 ? `${imageViewer.index + 1} / ${imageViewerImageCount}` : ''}
+            </span>
+            <button
+              type="button"
+              onClick={closeImageViewer}
+              className="rounded-full p-2 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+              aria-label="이미지 뷰어 닫기"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div
+            className="relative flex min-h-0 flex-1 items-center justify-center px-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+            onTouchStart={handleImageViewerTouchStart}
+            onTouchEnd={handleImageViewerTouchEnd}
+          >
+            {activeImageViewerUrl && (
+              <img
+                src={activeImageViewerUrl}
+                alt={`채팅 이미지 크게 보기 ${imageViewer.index + 1}`}
+                className="max-h-full w-auto max-w-full object-contain select-none"
+                draggable={false}
+              />
+            )}
+
+            {imageViewerImageCount > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => moveImageViewerBy(-1)}
+                  disabled={!canMoveImageViewerPrev}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/55 p-2 text-white transition-opacity disabled:cursor-default disabled:opacity-30"
+                  aria-label="이전 이미지"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveImageViewerBy(1)}
+                  disabled={!canMoveImageViewerNext}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/55 p-2 text-white transition-opacity disabled:cursor-default disabled:opacity-30"
+                  aria-label="다음 이미지"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </>
+            )}
+          </div>
+
+          {imageViewerImageCount > 1 && (
+            <div className="flex gap-2 overflow-x-auto px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {imageViewer.images.map((imageUrl, index) => (
+                <button
+                  key={`${imageUrl}-${index}`}
+                  type="button"
+                  onClick={() => updateImageViewerIndex(index)}
+                  className={`h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 transition-colors ${
+                    imageViewer.index === index ? 'border-white' : 'border-white/30'
+                  }`}
+                  aria-label={`${index + 1}번 이미지 보기`}
+                >
+                  <img
+                    src={imageUrl}
+                    alt={`채팅 이미지 썸네일 ${index + 1}`}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Review Modal */}
       {currentUserId && room.post && (
