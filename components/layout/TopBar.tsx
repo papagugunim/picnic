@@ -117,7 +117,7 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
           </DropdownMenu>
         ) : (
           <Link href="/feed">
-            <h1 className="text-lg font-bold hover:opacity-70 transition-opacity cursor-pointer">피크닉</h1>
+            <h1 className="text-lg font-brand font-bold hover:opacity-70 transition-opacity cursor-pointer">picnic</h1>
           </Link>
         )}
 
