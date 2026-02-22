@@ -574,12 +574,7 @@ export default function ProfilePage() {
     return metroStations.find((s) => s.value === stationValue)
   }
 
-  const tabCountLabel = (tab: ProfileTab, count: number) => {
-    if (!loadedSections[tab]) {
-      return '...'
-    }
-    return String(count)
-  }
+  const tabCountLabel = (_tab: ProfileTab, count: number) => String(count)
 
   const averageReviewRating = receivedReviews.length > 0
     ? receivedReviews.reduce((sum, review) => sum + review.rating, 0) / receivedReviews.length
@@ -786,40 +781,40 @@ export default function ProfilePage() {
       {/* 탭 */}
       <div>
         <div className="max-w-4xl mx-auto px-4">
-          <div className="flex gap-4 overflow-x-auto scrollbar-hide">
+          <div className={`grid gap-2 ${isOwnProfile ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <button
               onClick={() => setActiveTab('marketplace')}
-              className={`flex items-center gap-2 px-4 py-3 transition-colors whitespace-nowrap ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-sm transition-colors ${
                 activeTab === 'marketplace'
-                  ? 'text-primary font-semibold'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'border-primary bg-primary/10 text-primary font-semibold'
+                  : 'border-border text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Package className="w-5 h-5" />
-              중고거래 ({tabCountLabel('marketplace', posts.length)})
+              <span>중고거래</span>
+              <span className="text-xs font-medium">({tabCountLabel('marketplace', posts.length)})</span>
             </button>
             <button
               onClick={() => setActiveTab('community')}
-              className={`flex items-center gap-2 px-4 py-3 transition-colors whitespace-nowrap ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-sm transition-colors ${
                 activeTab === 'community'
-                  ? 'text-primary font-semibold'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'border-primary bg-primary/10 text-primary font-semibold'
+                  : 'border-border text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Users className="w-5 h-5" />
-              동네생활 ({tabCountLabel('community', communityPosts.length)})
+              <span>동네생활</span>
+              <span className="text-xs font-medium">({tabCountLabel('community', communityPosts.length)})</span>
             </button>
             {isOwnProfile && (
               <button
                 onClick={() => setActiveTab('interests')}
-                className={`flex items-center gap-2 px-4 py-3 transition-colors whitespace-nowrap ${
+                className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-sm transition-colors ${
                   activeTab === 'interests'
-                    ? 'text-primary font-semibold'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'border-primary bg-primary/10 text-primary font-semibold'
+                    : 'border-border text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <Bookmark className="w-5 h-5" />
-                관심 ({tabCountLabel('interests', interestedPosts.length)})
+                <span>관심</span>
+                <span className="text-xs font-medium">({tabCountLabel('interests', interestedPosts.length)})</span>
               </button>
             )}
           </div>
