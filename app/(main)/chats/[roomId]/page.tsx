@@ -153,8 +153,8 @@ export default function ChatRoomPage() {
   const isLoadingOlderRef = useRef(false)
   const isChatInfoHiddenRef = useRef(false)
   const isAtBottomRef = useRef(true)
+  const isInputFocusedRef = useRef(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
-  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>('unsupported')
   const [isRequestingNotificationPermission, setIsRequestingNotificationPermission] = useState(false)
 
@@ -316,12 +316,12 @@ export default function ChatRoomPage() {
         scrollRafRef.current = null
         const currentScrollTop = container.scrollTop
         const scrollDiff = currentScrollTop - lastMessagesScrollTopRef.current
-        const hasMeaningfulDownScroll = scrollDiff > 10
+        const hasMeaningfulDownScroll = scrollDiff > 6
         const hasMeaningfulUpScroll = scrollDiff < -8
 
         if (currentScrollTop < 20 || hasMeaningfulUpScroll) {
           applyChatInfoHidden(false)
-        } else if (hasMeaningfulDownScroll) {
+        } else if (hasMeaningfulDownScroll || currentScrollTop > 48) {
           applyChatInfoHidden(true)
         }
 
@@ -421,12 +421,11 @@ export default function ChatRoomPage() {
 
       keyboardRafRef.current = requestAnimationFrame(() => {
         const nextViewportHeight = Math.max(visibleHeight, 320)
-        setViewportHeight((prev) => {
-          if (prev !== null && Math.abs(prev - nextViewportHeight) < 1) return prev
-          return nextViewportHeight
-        })
         const keyboardDelta = Math.max(window.innerHeight - nextViewportHeight - offsetTop, 0)
-        const nextKeyboardHeight = keyboardDelta > 50 ? keyboardDelta : 0
+        const nextKeyboardHeight =
+          isInputFocusedRef.current && keyboardDelta > 120
+            ? keyboardDelta
+            : 0
         setKeyboardHeight((prev) => {
           if (Math.abs(prev - nextKeyboardHeight) < 1) return prev
           return nextKeyboardHeight
@@ -454,7 +453,6 @@ export default function ChatRoomPage() {
     }
 
     const handleResizeFallback = () => {
-      setViewportHeight(null)
       setKeyboardHeight(0)
     }
     handleResizeFallback()
@@ -466,6 +464,13 @@ export default function ChatRoomPage() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    isInputFocusedRef.current = isInputFocused
+    if (!isInputFocused) {
+      setKeyboardHeight(0)
+    }
+  }, [isInputFocused])
 
   useEffect(() => {
     const composer = composerRef.current
@@ -526,7 +531,7 @@ export default function ChatRoomPage() {
     if (!textarea) return
 
     textarea.style.height = '0px'
-    const nextHeight = Math.min(Math.max(textarea.scrollHeight, 24), 120)
+    const nextHeight = Math.min(Math.max(textarea.scrollHeight, 34), 120)
     textarea.style.height = `${nextHeight}px`
   }, [])
 
@@ -569,6 +574,8 @@ export default function ChatRoomPage() {
     if (activeElement instanceof HTMLElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
       activeElement.blur()
     }
+    setIsInputFocused(false)
+    setKeyboardHeight(0)
   }, [isInputFocused])
 
   const handleSelectImages = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -754,7 +761,7 @@ export default function ChatRoomPage() {
   }
 
   return (
-    <div className="relative flex h-dvh flex-col overflow-hidden bg-background" style={{ height: viewportHeight ? `${viewportHeight}px` : '100dvh' }}>
+    <div className="fixed inset-0 flex min-h-0 flex-col overflow-hidden bg-background">
       {/* Header / Product info */}
       <div className="z-30 flex-shrink-0 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
         <div
@@ -892,6 +899,7 @@ export default function ChatRoomPage() {
           scrollPaddingBottom: `${composerHeight + 28}px`,
         }}
         onPointerDown={dismissKeyboardIfFocused}
+        onTouchStart={dismissKeyboardIfFocused}
       >
         <div className="max-w-screen-xl mx-auto px-3 py-3">
           <div ref={topSentinelRef} className="h-px" />
@@ -1080,7 +1088,7 @@ export default function ChatRoomPage() {
       {pendingMessageCount > 0 && (
         <div
           className="absolute inset-x-0 z-40 flex justify-center pointer-events-none"
-          style={{ bottom: `calc(${composerHeight + 10}px + env(safe-area-inset-bottom))` }}
+          style={{ bottom: `calc(${composerHeight + keyboardHeight + 10}px + env(safe-area-inset-bottom))` }}
         >
           <Button
             type="button"
@@ -1098,12 +1106,16 @@ export default function ChatRoomPage() {
       <div
         ref={composerRef}
         className="z-30 flex-shrink-0 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85"
+        style={{
+          marginBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+          transition: 'margin-bottom 120ms ease-out',
+        }}
       >
         <div
           className="max-w-screen-xl mx-auto px-3"
           style={{
             paddingTop: keyboardHeight > 0 ? '6px' : '8px',
-            paddingBottom: keyboardHeight > 0 ? 'max(8px, env(safe-area-inset-bottom))' : 'calc(0.5rem + env(safe-area-inset-bottom))',
+            paddingBottom: keyboardHeight > 0 ? '8px' : 'calc(0.5rem + env(safe-area-inset-bottom))',
           }}
         >
           <input
@@ -1222,7 +1234,7 @@ export default function ChatRoomPage() {
           )}
 
           <div
-            className={`flex items-end gap-1.5 rounded-2xl border px-2 py-1.5 transition-colors ${
+            className={`flex items-center gap-1.5 rounded-2xl border px-2 py-1.5 transition-colors ${
               isInputFocused ? 'border-ring ring-1 ring-ring' : 'border-input'
             }`}
           >
@@ -1239,7 +1251,7 @@ export default function ChatRoomPage() {
               <Plus className="h-5 w-5" />
             </Button>
 
-            <div className="min-w-0 flex-1">
+            <div className="flex min-h-[34px] min-w-0 flex-1 items-center">
               <Textarea
                 ref={messageInputRef}
                 placeholder="메시지 보내기"
@@ -1251,9 +1263,12 @@ export default function ChatRoomPage() {
                     scrollToBottom('auto')
                   })
                 }}
-                onBlur={() => setIsInputFocused(false)}
+                onBlur={() => {
+                  setIsInputFocused(false)
+                  setKeyboardHeight(0)
+                }}
                 rows={1}
-                className="min-h-[24px] max-h-[120px] resize-none border-0 bg-transparent px-1 py-1 text-[16px] leading-5 focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="min-h-[34px] max-h-[120px] resize-none border-0 bg-transparent px-1 py-[6px] text-[16px] leading-[22px] placeholder:leading-[22px] focus-visible:ring-0 focus-visible:ring-offset-0"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault()

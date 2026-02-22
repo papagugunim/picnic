@@ -104,7 +104,7 @@ export function AppointmentCard({
   if (compact) {
     return (
       <div className={cn('mx-auto max-w-2xl', className)}>
-        <div className="rounded-md border border-border bg-background/96 px-2 py-1.5 shadow-sm">
+        <div className="overflow-hidden rounded-md border border-border/85 bg-background/97 px-2 py-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.14)] backdrop-blur-md supports-[backdrop-filter]:bg-background/92 dark:shadow-[0_8px_24px_rgba(0,0,0,0.45)]">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -189,11 +189,6 @@ export function AppointmentCard({
             </div>
           )}
 
-          {!isSeller && appointment.status === 'proposed' && (
-            <div className="mt-2 text-[11px] text-muted-foreground">
-              판매자 응답 대기 중
-            </div>
-          )}
         </div>
       </div>
     )
