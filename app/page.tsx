@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
+import PicnicWordmark from "@/components/branding/PicnicWordmark";
 
 export default async function HomePage() {
   // 로그인한 사용자는 feed로 리다이렉트
@@ -14,7 +15,10 @@ export default async function HomePage() {
     <div className="min-h-screen flex items-center justify-center p-8">
       <div className="max-w-2xl w-full text-center space-y-8">
         <div className="space-y-4">
-          <h1 className="text-6xl font-brand font-light home-hero-title">picnic</h1>
+          <h1 className="sr-only">picnic</h1>
+          <div className="flex justify-center">
+            <PicnicWordmark priority className="w-[230px] home-hero-wordmark" />
+          </div>
           <p className="text-xl text-muted-foreground">
             피크닉에 오신 여러분! 환영 합니다.
           </p>

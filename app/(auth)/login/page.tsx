@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import LoginForm from '@/components/auth/LoginForm'
 import SocialLogin from '@/components/auth/SocialLogin'
+import PicnicWordmark from '@/components/branding/PicnicWordmark'
 
 export const metadata = {
   title: '로그인 - picnic',
@@ -13,8 +14,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-3">
-          <Link href="/" className="inline-block">
-            <h1 className="text-5xl font-brand font-light home-hero-title">picnic</h1>
+          <Link href="/" className="inline-flex justify-center">
+            <h1 className="sr-only">picnic</h1>
+            <PicnicWordmark className="w-[180px] home-hero-wordmark" />
           </Link>
         </div>
 

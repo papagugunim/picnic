@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/contexts/UserContext'
 import { useNotificationCount } from '@/lib/hooks/useNotificationCount'
+import PicnicWordmark from '@/components/branding/PicnicWordmark'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -116,8 +117,9 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <Link href="/feed">
-            <h1 className="text-lg font-brand font-light hover:opacity-70 transition-opacity cursor-pointer">picnic</h1>
+          <Link href="/feed" className="inline-flex items-center">
+            <h1 className="sr-only">picnic</h1>
+            <PicnicWordmark className="w-[92px]" />
           </Link>
         )}
 

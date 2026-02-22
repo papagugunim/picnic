@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
+import PicnicWordmark from '@/components/branding/PicnicWordmark'
 
 export default function OnboardingComplete() {
   const router = useRouter()
@@ -55,8 +56,9 @@ export default function OnboardingComplete() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md">
         <div className="text-center space-y-3 mb-8">
-          <Link href="/" className="inline-block">
-            <h1 className="text-5xl font-brand font-light gradient-text">picnic</h1>
+          <Link href="/" className="inline-flex justify-center">
+            <h1 className="sr-only">picnic</h1>
+            <PicnicWordmark className="w-[180px] home-hero-wordmark" />
           </Link>
         </div>
 

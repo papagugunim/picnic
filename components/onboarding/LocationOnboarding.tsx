@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
 import CitySelector from '@/components/location/CitySelector'
 import { createClient } from '@/lib/supabase/client'
+import PicnicWordmark from '@/components/branding/PicnicWordmark'
 
 const locationSchema = z.object({
   city: z.string().min(1, '도시를 선택해주세요'),
@@ -114,7 +115,10 @@ export default function LocationOnboarding({ userId }: LocationOnboardingProps) 
   return (
     <div className="w-full max-w-md space-y-6">
       <div className="text-center space-y-2">
-        <h1 className="text-4xl font-brand font-light gradient-text">picnic</h1>
+        <h1 className="sr-only">picnic</h1>
+        <div className="flex justify-center">
+          <PicnicWordmark className="w-[160px] home-hero-wordmark" />
+        </div>
         <p className="text-muted-foreground">
           거주 지역을 설정하고 시작하세요
         </p>

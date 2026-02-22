@@ -5,6 +5,7 @@ import type { MouseEvent } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmojiBurstLayer, useEmojiBurst } from '@/components/ui/emoji-burst'
+import PicnicWordmark from '@/components/branding/PicnicWordmark'
 
 interface OnboardingLayoutProps {
   currentStep: number
@@ -81,7 +82,10 @@ export default function OnboardingLayout({
       <div className="w-full max-w-md mx-auto">
         {/* 상단 헤더 */}
         <div className="text-center space-y-2 mb-5">
-          <h1 className="text-4xl font-brand font-light home-hero-title">picnic</h1>
+          <h1 className="sr-only">picnic</h1>
+          <div className="flex justify-center">
+            <PicnicWordmark className="w-[160px] home-hero-wordmark" />
+          </div>
 
           {/* 프로그레스 인디케이터 */}
           <div className="flex items-center justify-center gap-2 mb-2">

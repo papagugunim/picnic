@@ -340,6 +340,11 @@
   will-change: background-position, transform;
 }
 
+.home-hero-wordmark {
+  animation: hero-title-float 2.8s ease-in-out infinite;
+  will-change: transform;
+}
+
 @keyframes hero-title-shimmer {
   0%,
   100% {
@@ -361,7 +366,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-hero-title {
+  .home-hero-title,
+  .home-hero-wordmark {
     animation: none;
   }
 }
