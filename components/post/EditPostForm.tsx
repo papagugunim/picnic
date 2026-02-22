@@ -332,6 +332,10 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
                 <div className="flex gap-2 items-center">
                   <Input
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    enterKeyHint="done"
+                    autoComplete="off"
                     placeholder="가격을 입력하세요"
                     value={field.value ? Number(field.value).toLocaleString() : ''}
                     onChange={(e) => {
