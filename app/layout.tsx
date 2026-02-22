@@ -1,27 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Lemonada } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/react";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const lemonada = Lemonada({
-  variable: "--font-lemonada",
-  weight: "300",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "picnic - 해외 한인 커뮤니티",
@@ -58,9 +40,7 @@ export default function RootLayout({
 
   return (
     <html lang="ko" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${lemonada.variable} antialiased`}
-      >
+      <body className="antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
           <Toaster position="top-center" richColors />

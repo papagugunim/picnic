@@ -1,3 +1,4 @@
+@import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 @import "tailwindcss";
 
 @layer theme {
@@ -86,6 +87,18 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+    font-family:
+      "Pretendard Variable",
+      Pretendard,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Apple SD Gothic Neo",
+      "Noto Sans KR",
+      "Malgun Gothic",
+      "Segoe UI",
+      "Helvetica Neue",
+      Arial,
+      sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
     overflow-x: hidden;
     width: 100%;
@@ -98,8 +111,10 @@
   /* 모든 입력 필드가 화면을 넘지 않도록 설정 */
   input,
   textarea,
-  select {
+  select,
+  button {
     max-width: 100%;
+    font: inherit;
   }
 
   /* 모바일 Safe Area 지원 */
@@ -232,7 +247,18 @@
 }
 
 .font-brand {
-  font-family: var(--font-lemonada), var(--font-geist-sans), sans-serif;
+  font-family:
+    "Pretendard Variable",
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Apple SD Gothic Neo",
+    "Noto Sans KR",
+    "Malgun Gothic",
+    "Segoe UI",
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
 }
 
 /* Notion-inspired Card Effects */
