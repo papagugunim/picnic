@@ -231,6 +231,10 @@
   --tw-ring-color: hsl(var(--ring));
 }
 
+.font-brand {
+  font-family: var(--font-lemonada), var(--font-geist-sans), sans-serif;
+}
+
 /* Notion-inspired Card Effects */
 @layer utilities {
   /* 모바일 Safari에서 툴바 축소/확장 시 높이 동기화 */

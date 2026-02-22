@@ -121,7 +121,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-3">
           <Link href="/" className="inline-block">
-            <h1 className="text-5xl font-bold gradient-text">picnic</h1>
+            <h1 className="text-5xl font-brand font-bold gradient-text">picnic</h1>
           </Link>
           <p className="text-muted-foreground text-lg">
             러시아 한인 커뮤니티
