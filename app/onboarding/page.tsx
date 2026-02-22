@@ -7,7 +7,6 @@ import { Sun, Moon, Monitor } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import PicnicWordmark from '@/components/branding/PicnicWordmark'
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -38,9 +37,8 @@ export default function OnboardingPage() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md">
         <div className="text-center space-y-3 mb-8">
-          <Link href="/" className="inline-flex justify-center">
-            <h1 className="sr-only">picnic</h1>
-            <PicnicWordmark className="w-[190px] home-hero-wordmark" />
+          <Link href="/" className="inline-block">
+            <h1 className="text-5xl font-bold home-hero-title">피크닉</h1>
           </Link>
           <p className="text-muted-foreground text-lg">
             피크닉에 오신 것을 환영합니다

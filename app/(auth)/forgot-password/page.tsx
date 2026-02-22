@@ -23,7 +23,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
-import PicnicWordmark from '@/components/branding/PicnicWordmark'
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('올바른 이메일 주소를 입력해주세요'),
@@ -84,9 +83,8 @@ export default function ForgotPasswordPage() {
       <div className="min-h-screen flex items-center justify-center p-4 bg-background">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center space-y-3">
-            <Link href="/" className="inline-flex justify-center">
-              <h1 className="sr-only">picnic</h1>
-              <PicnicWordmark className="w-[180px] home-hero-wordmark" />
+            <Link href="/" className="inline-block">
+              <h1 className="text-5xl font-bold home-hero-title">피크닉</h1>
             </Link>
             <p className="text-muted-foreground text-lg">
               러시아 한인 커뮤니티
@@ -137,9 +135,8 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-3">
-          <Link href="/" className="inline-flex justify-center">
-            <h1 className="sr-only">picnic</h1>
-            <PicnicWordmark className="w-[180px] home-hero-wordmark" />
+          <Link href="/" className="inline-block">
+            <h1 className="text-5xl font-bold home-hero-title">피크닉</h1>
           </Link>
           <p className="text-muted-foreground text-lg">
             러시아 한인 커뮤니티

@@ -24,7 +24,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
-import PicnicWordmark from '@/components/branding/PicnicWordmark'
 
 const resetPasswordSchema = z.object({
   password: z.string().min(6, '비밀번호는 최소 6자 이상이어야 합니다'),
@@ -121,9 +120,8 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-3">
-          <Link href="/" className="inline-flex justify-center">
-            <h1 className="sr-only">picnic</h1>
-            <PicnicWordmark className="w-[180px] home-hero-wordmark" />
+          <Link href="/" className="inline-block">
+            <h1 className="text-5xl font-bold home-hero-title">피크닉</h1>
           </Link>
           <p className="text-muted-foreground text-lg">
             러시아 한인 커뮤니티

@@ -12,7 +12,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
-import PicnicWordmark from '@/components/branding/PicnicWordmark'
 
 function VerifyEmailContent() {
   const router = useRouter()
@@ -76,9 +75,8 @@ function VerifyEmailContent() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-3">
-          <Link href="/" className="inline-flex justify-center">
-            <h1 className="sr-only">picnic</h1>
-            <PicnicWordmark className="w-[180px] home-hero-wordmark" />
+          <Link href="/" className="inline-block">
+            <h1 className="text-5xl font-bold home-hero-title">피크닉</h1>
           </Link>
           <p className="text-muted-foreground text-lg">
             러시아 한인 커뮤니티

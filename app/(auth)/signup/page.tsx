@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import SignupForm from '@/components/auth/SignupForm'
 import SocialLogin from '@/components/auth/SocialLogin'
-import PicnicWordmark from '@/components/branding/PicnicWordmark'
 
 export const metadata = {
   title: '회원가입 - picnic',
@@ -14,9 +13,8 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center p-4 py-12 bg-background">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-3">
-          <Link href="/" className="inline-flex justify-center">
-            <h1 className="sr-only">picnic</h1>
-            <PicnicWordmark className="w-[180px] home-hero-wordmark" />
+          <Link href="/" className="inline-block">
+            <h1 className="text-5xl font-bold home-hero-title">피크닉</h1>
           </Link>
           <p className="text-muted-foreground text-lg">
             피크닉에 오신 것을 환영합니다
