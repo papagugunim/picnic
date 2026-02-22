@@ -37,9 +37,10 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/favicon') ||
+    pathname === '/manifest.webmanifest' ||
     pathname === '/sitemap.xml' ||
     pathname === '/robots.txt' ||
-    pathname.match(/\.(jpg|jpeg|png|gif|ico|svg|webp|js|css|woff|woff2|ttf|xml|txt)$/)
+    pathname.match(/\.(jpg|jpeg|png|gif|ico|svg|webp|js|css|woff|woff2|ttf|xml|txt|webmanifest)$/)
   ) {
     return NextResponse.next()
   }
