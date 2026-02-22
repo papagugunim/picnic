@@ -47,6 +47,23 @@ export interface ProfileViewCachedBreadScoreBreakdown {
   suggestedLevel: number
 }
 
+export interface ProfileViewCachedReceivedReview {
+  id: string
+  post_id: string
+  rating: number
+  comment: string | null
+  created_at: string
+  reviewer: {
+    id: string
+    full_name: string | null
+    avatar_url: string | null
+  } | null
+  post: {
+    id: string
+    title: string
+  } | null
+}
+
 export interface ProfileViewCacheData {
   profile: ProfileViewCachedProfile | null
   posts: ProfileViewCachedPost[]
@@ -54,6 +71,7 @@ export interface ProfileViewCacheData {
   likedPosts: ProfileViewCachedPost[]
   interestedPosts: ProfileViewCachedPost[]
   breadScoreBreakdown: ProfileViewCachedBreadScoreBreakdown | null
+  receivedReviews: ProfileViewCachedReceivedReview[]
   loadedSections: {
     marketplace: boolean
     community: boolean

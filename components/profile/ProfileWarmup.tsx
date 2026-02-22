@@ -74,6 +74,7 @@ export function ProfileWarmup() {
             likedPosts: [],
             interestedPosts: [],
             breadScoreBreakdown: null,
+            receivedReviews: [],
             loadedSections: {
               marketplace: true,
               community: false,

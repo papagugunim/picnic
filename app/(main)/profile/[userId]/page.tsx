@@ -5,21 +5,21 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Package, Users, MessageCircle, Bookmark, Flag } from 'lucide-react'
+import { Package, Users, Bookmark, Star } from 'lucide-react'
 import { useMetroStations } from '@/lib/hooks/useMetroStations'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/contexts/UserContext'
 import Link from 'next/link'
-import { BREAD_SCORE_FACTORS, getBreadDescription, getBreadEmoji, getBreadInfo, getBreadLevelByScore, getBreadScoreRange } from '@/lib/bread'
+import { BREAD_SCORE_FACTORS, getBreadDescription, getBreadEmoji, getBreadInfo, getBreadLevelByScore } from '@/lib/bread'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { getLoadingMessage } from '@/lib/loading-messages'
 import { BreadLevelModal } from '@/components/bread-level-modal'
-import { ReportDialog } from '@/components/admin/ReportDialog'
 import {
   readProfileViewCache,
   writeProfileViewCache,
   type ProfileViewCacheData,
+  type ProfileViewCachedReceivedReview,
 } from '@/lib/profile/profile-view-cache'
 import {
   AlertDialog,
@@ -74,6 +74,53 @@ interface BreadScoreBreakdown {
   suggestedLevel: number
 }
 
+interface ReceivedReview {
+  id: string
+  post_id: string
+  rating: number
+  comment: string | null
+  created_at: string
+  reviewer: {
+    id: string
+    full_name: string | null
+    avatar_url: string | null
+  } | null
+  post: {
+    id: string
+    title: string
+  } | null
+}
+
+interface RawReceivedReview {
+  id: string
+  post_id: string
+  rating: number
+  comment: string | null
+  created_at: string
+  reviewer:
+    | {
+      id: string
+      full_name: string | null
+      avatar_url: string | null
+    }
+    | {
+      id: string
+      full_name: string | null
+      avatar_url: string | null
+    }[]
+    | null
+  post:
+    | {
+      id: string
+      title: string
+    }
+    | {
+      id: string
+      title: string
+    }[]
+    | null
+}
+
 type ProfileTab = 'marketplace' | 'community' | 'interests'
 type ProfileViewCachePatch = Omit<Partial<ProfileViewCacheData>, 'loadedSections'> & {
   loadedSections?: Partial<ProfileViewCacheData['loadedSections']>
@@ -115,6 +162,7 @@ function createEmptyProfileCacheData(): ProfileViewCacheData {
     likedPosts: [],
     interestedPosts: [],
     breadScoreBreakdown: null,
+    receivedReviews: [],
     loadedSections: {
       marketplace: false,
       community: false,
@@ -147,11 +195,10 @@ export default function ProfilePage() {
     community: false,
     interests: false,
   })
-  const [isStartingChat, setIsStartingChat] = useState(false)
   const [isBreadModalOpen, setIsBreadModalOpen] = useState(false)
-  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [breadScoreBreakdown, setBreadScoreBreakdown] = useState<BreadScoreBreakdown | null>(null)
+  const [receivedReviews, setReceivedReviews] = useState<ReceivedReview[]>([])
   const cacheSnapshotRef = useRef<ProfileViewCacheData>(createEmptyProfileCacheData())
   const metroStations = useMetroStations(profile?.city)
 
@@ -288,6 +335,7 @@ export default function ProfilePage() {
           setPosts((cached.posts || []) as Post[])
           setCommunityPosts((cached.communityPosts || []) as CommunityPost[])
           setInterestedPosts((cached.interestedPosts || []) as Post[])
+          setReceivedReviews((cached.receivedReviews || []) as ReceivedReview[])
           setBreadScoreBreakdown((cached.breadScoreBreakdown as BreadScoreBreakdown | null) || null)
           setLoadedSections({
             marketplace: true,
@@ -341,6 +389,7 @@ export default function ProfilePage() {
 
         setProfile(nextProfile)
         setPosts(nextPosts)
+        setReceivedReviews(previousCache.receivedReviews as ReceivedReview[])
         setIsLoading(false)
         updateSectionLoaded('marketplace', true)
         setBreadScoreBreakdown(previousCache.breadScoreBreakdown as BreadScoreBreakdown | null)
@@ -352,6 +401,7 @@ export default function ProfilePage() {
           likedPosts: previousCache.likedPosts,
           interestedPosts: previousCache.interestedPosts,
           breadScoreBreakdown: previousCache.breadScoreBreakdown,
+          receivedReviews: previousCache.receivedReviews,
           loadedSections: {
             marketplace: true,
             community: previousCache.loadedSections.community,
@@ -364,8 +414,25 @@ export default function ProfilePage() {
             const [reviewResult, communityScoreResult] = await Promise.all([
               supabase
                 .from('reviews')
-                .select('rating')
-                .eq('reviewee_id', userId),
+                .select(`
+                  id,
+                  post_id,
+                  rating,
+                  comment,
+                  created_at,
+                  reviewer:reviewer_id (
+                    id,
+                    full_name,
+                    avatar_url
+                  ),
+                  post:post_id (
+                    id,
+                    title
+                  )
+                `)
+                .eq('reviewee_id', userId)
+                .order('created_at', { ascending: false })
+                .limit(30),
               supabase.rpc('calculate_community_score', { p_user_id: userId }),
             ])
 
@@ -379,15 +446,23 @@ export default function ProfilePage() {
               logger.warn('Bread community score fetch error:', communityScoreResult.error)
             }
 
-            const reviewRatings = (reviewResult.data || []).map((review) => Number(review.rating) || 0)
+            const reviewRows = ((reviewResult.data || []) as unknown as RawReceivedReview[])
+            const nextReceivedReviews: ProfileViewCachedReceivedReview[] = reviewRows.map((review) => ({
+              ...review,
+              reviewer: Array.isArray(review.reviewer) ? (review.reviewer[0] || null) : review.reviewer,
+              post: Array.isArray(review.post) ? (review.post[0] || null) : review.post,
+            }))
+            const reviewRatings = nextReceivedReviews.map((review) => Number(review.rating) || 0)
             const communityLikesScore = typeof communityScoreResult.data === 'number'
               ? communityScoreResult.data
               : 0
             const nextBreadScore = createBreadScoreBreakdown(nextPosts, reviewRatings, communityLikesScore)
 
+            setReceivedReviews(nextReceivedReviews)
             setBreadScoreBreakdown(nextBreadScore)
             persistCache({
               breadScoreBreakdown: nextBreadScore,
+              receivedReviews: nextReceivedReviews,
             })
           } catch (scoreError) {
             if (!cancelled) {
@@ -438,38 +513,6 @@ export default function ProfilePage() {
     loadCommunityPosts,
     loadInterestedPosts,
   ])
-
-  async function startChat() {
-    try {
-      setIsStartingChat(true)
-      const supabase = createClient()
-
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/login')
-        return
-      }
-
-      // Call the database function to get or create chat room
-      const { data, error } = await supabase.rpc('get_or_create_chat_room', {
-        p_user1_id: user.id,
-        p_user2_id: userId,
-      })
-
-      if (error) {
-        logger.error('Chat room creation error:', error)
-        return
-      }
-
-      // Navigate to chat room
-      router.push(`/chats/${data}`)
-    } catch (err) {
-      logger.error('Start chat error:', err)
-    } finally {
-      setIsStartingChat(false)
-    }
-  }
 
   function requestLogout() {
     setShowLogoutConfirm(true)
@@ -536,6 +579,20 @@ export default function ProfilePage() {
       return '...'
     }
     return String(count)
+  }
+
+  const averageReviewRating = receivedReviews.length > 0
+    ? receivedReviews.reduce((sum, review) => sum + review.rating, 0) / receivedReviews.length
+    : 0
+
+  const visibleReceivedReviews = receivedReviews.slice(0, 3)
+
+  const formatReviewDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('ko-KR', {
+      month: 'numeric',
+      day: 'numeric',
+    })
   }
 
   return (
@@ -607,9 +664,7 @@ export default function ProfilePage() {
                   )
                 })()}
                 {breadScoreBreakdown && profile.user_role !== 'admin' && profile.user_role !== 'developer' && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    브레드 점수 {breadScoreBreakdown.totalScore.toLocaleString()}점 · 현재 구간 {getBreadScoreRange(profile.bread_level || 1)}
-                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">브레드 등급 시스템 적용 중</p>
                 )}
               </div>
 
@@ -640,31 +695,93 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {/* 채팅하기/신고 버튼 (다른 사람 프로필일 경우만) */}
-              {!isOwnProfile && (
-                <div className="flex gap-2 mt-3">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={startChat}
-                    disabled={isStartingChat}
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span className="text-xs">{isStartingChat ? '로딩중' : '채팅'}</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() => setIsReportDialogOpen(true)}
-                  >
-                    <Flag className="w-3.5 h-3.5" />
-                    <span className="text-xs">신고</span>
-                  </Button>
-                </div>
-              )}
             </div>
+          </div>
+        </div>
+
+        <div className="max-w-4xl mx-auto px-4 mt-4">
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between mb-3 gap-3">
+              <h2 className="text-sm font-semibold">받은 거래 리뷰</h2>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-0.5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-3.5 h-3.5 ${
+                        star <= Math.round(averageReviewRating)
+                          ? 'fill-yellow-400 text-yellow-400'
+                          : 'text-muted-foreground/40'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span>{receivedReviews.length > 0 ? averageReviewRating.toFixed(1) : '0.0'}점</span>
+                <span>·</span>
+                <span>{receivedReviews.length}건</span>
+              </div>
+            </div>
+
+            {visibleReceivedReviews.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                아직 받은 거래 리뷰가 없습니다.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {visibleReceivedReviews.map((review) => (
+                  <div key={review.id} className="rounded-xl border border-border/80 px-3 py-2.5">
+                    <div className="flex items-start justify-between gap-3 mb-1.5">
+                      <div className="min-w-0 flex items-center gap-2">
+                        <UserAvatar
+                          src={review.reviewer?.avatar_url || null}
+                          alt={review.reviewer?.full_name || '리뷰 작성자'}
+                          breadLevel={1}
+                          size="sm"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {review.reviewer?.full_name || '익명 사용자'}
+                          </p>
+                          <div className="flex items-center gap-0.5">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={`${review.id}-${star}`}
+                                className={`w-3.5 h-3.5 ${
+                                  star <= review.rating
+                                    ? 'fill-yellow-400 text-yellow-400'
+                                    : 'text-muted-foreground/30'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                        {formatReviewDate(review.created_at)}
+                      </span>
+                    </div>
+                    {review.comment && (
+                      <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap line-clamp-2">
+                        {review.comment}
+                      </p>
+                    )}
+                    <div className="mt-1.5">
+                      <Link
+                        href={`/post/${review.post_id}`}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors line-clamp-1"
+                      >
+                        거래글: {review.post?.title || '게시글 보기'}
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+                {receivedReviews.length > visibleReceivedReviews.length && (
+                  <p className="text-xs text-muted-foreground">
+                    최근 리뷰 {visibleReceivedReviews.length}건을 표시 중입니다.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -920,14 +1037,6 @@ export default function ProfilePage() {
         currentRole={profile.user_role}
         currentScore={breadScoreBreakdown?.totalScore || 0}
         scoreBreakdown={breadScoreBreakdown}
-      />
-
-      {/* 신고 다이얼로그 */}
-      <ReportDialog
-        open={isReportDialogOpen}
-        onOpenChange={setIsReportDialogOpen}
-        targetType="user"
-        targetId={userId}
       />
 
       {/* 로그아웃 확인 다이얼로그 */}
