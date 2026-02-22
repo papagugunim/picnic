@@ -663,9 +663,6 @@ export default function ProfilePage() {
                     </button>
                   )
                 })()}
-                {breadScoreBreakdown && profile.user_role !== 'admin' && profile.user_role !== 'developer' && (
-                  <p className="mt-1 text-xs text-muted-foreground">브레드 등급 시스템 적용 중</p>
-                )}
               </div>
 
               {/* 지하철역 */}
@@ -700,7 +697,7 @@ export default function ProfilePage() {
         </div>
 
         <div className="max-w-4xl mx-auto px-4 mt-4">
-          <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="rounded-2xl border border-border p-4">
             <div className="flex items-center justify-between mb-3 gap-3">
               <h2 className="text-sm font-semibold">받은 거래 리뷰</h2>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -729,7 +726,7 @@ export default function ProfilePage() {
             ) : (
               <div className="space-y-3">
                 {visibleReceivedReviews.map((review) => (
-                  <div key={review.id} className="rounded-xl border border-border/80 px-3 py-2.5">
+                  <div key={review.id} className="rounded-xl border border-border px-3 py-2.5 bg-transparent">
                     <div className="flex items-start justify-between gap-3 mb-1.5">
                       <div className="min-w-0 flex items-center gap-2">
                         <UserAvatar
