@@ -14,7 +14,7 @@ export default async function HomePage() {
     <div className="min-h-screen flex items-center justify-center p-8">
       <div className="max-w-2xl w-full text-center space-y-8">
         <div className="space-y-4">
-          <h1 className="text-6xl font-brand font-bold home-hero-title">picnic</h1>
+          <h1 className="text-6xl font-brand font-light home-hero-title">picnic</h1>
           <p className="text-xl text-muted-foreground">
             피크닉에 오신 여러분! 환영 합니다.
           </p>

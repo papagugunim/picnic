@@ -81,7 +81,7 @@ export default function OnboardingLayout({
       <div className="w-full max-w-md mx-auto">
         {/* 상단 헤더 */}
         <div className="text-center space-y-2 mb-5">
-          <h1 className="text-4xl font-brand font-bold home-hero-title">picnic</h1>
+          <h1 className="text-4xl font-brand font-light home-hero-title">picnic</h1>
 
           {/* 프로그레스 인디케이터 */}
           <div className="flex items-center justify-center gap-2 mb-2">

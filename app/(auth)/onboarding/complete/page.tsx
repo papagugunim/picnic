@@ -56,7 +56,7 @@ export default function OnboardingComplete() {
       <div className="w-full max-w-md">
         <div className="text-center space-y-3 mb-8">
           <Link href="/" className="inline-block">
-            <h1 className="text-5xl font-brand font-bold gradient-text">picnic</h1>
+            <h1 className="text-5xl font-brand font-light gradient-text">picnic</h1>
           </Link>
         </div>
 

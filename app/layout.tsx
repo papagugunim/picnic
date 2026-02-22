@@ -18,6 +18,7 @@ const geistMono = Geist_Mono({
 
 const lemonada = Lemonada({
   variable: "--font-lemonada",
+  weight: "300",
   subsets: ["latin"],
   display: "swap",
 });

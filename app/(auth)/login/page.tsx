@@ -14,7 +14,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-3">
           <Link href="/" className="inline-block">
-            <h1 className="text-5xl font-brand font-bold home-hero-title">picnic</h1>
+            <h1 className="text-5xl font-brand font-light home-hero-title">picnic</h1>
           </Link>
         </div>
 

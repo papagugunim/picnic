@@ -114,7 +114,7 @@ export default function LocationOnboarding({ userId }: LocationOnboardingProps) 
   return (
     <div className="w-full max-w-md space-y-6">
       <div className="text-center space-y-2">
-        <h1 className="text-4xl font-brand font-bold gradient-text">picnic</h1>
+        <h1 className="text-4xl font-brand font-light gradient-text">picnic</h1>
         <p className="text-muted-foreground">
           거주 지역을 설정하고 시작하세요
         </p>
