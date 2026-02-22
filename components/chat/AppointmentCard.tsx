@@ -104,7 +104,7 @@ export function AppointmentCard({
   if (compact) {
     return (
       <div className={cn('mx-auto max-w-2xl', className)}>
-        <div className="overflow-hidden rounded-md border border-border/85 bg-background/97 px-2 py-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.14)] backdrop-blur-md supports-[backdrop-filter]:bg-background/92 dark:shadow-[0_8px_24px_rgba(0,0,0,0.45)]">
+        <div className="overflow-hidden rounded-md border border-border/85 bg-background/97 px-2 py-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.04)] backdrop-blur-md supports-[backdrop-filter]:bg-background/92 dark:shadow-[0_8px_24px_rgba(0,0,0,0.14)]">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
