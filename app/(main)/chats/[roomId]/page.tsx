@@ -15,7 +15,7 @@ import { useSale } from '@/lib/hooks/useSale'
 import Link from 'next/link'
 import type { ChatRoomWithProfile } from '@/types/chat'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
-import { getBreadInfo, getBreadEmoji } from '@/lib/bread'
+import { getBreadEmoji } from '@/lib/bread'
 import { AppointmentProposalForm } from '@/components/chat/AppointmentProposalForm'
 import { AppointmentCard } from '@/components/chat/AppointmentCard'
 import { CompleteSaleButton } from '@/components/chat/CompleteSaleButton'
@@ -792,9 +792,6 @@ export default function ChatRoomPage() {
                       {getBreadEmoji(room.other_user.bread_level || 1, room.other_user.user_role || undefined)}
                     </span>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {getBreadInfo(room.other_user.bread_level || 1, room.other_user.user_role || undefined).name}
-                  </div>
                 </div>
               </Link>
 
@@ -905,7 +902,13 @@ export default function ChatRoomPage() {
           <div ref={topSentinelRef} className="h-px" />
 
           {showFloatingAppointment && appointment && currentUserId && (
-            <div className="sticky top-2 z-20 mb-3">
+            <div
+              className={`sticky top-2 z-20 overflow-hidden transition-[max-height,opacity,transform,margin] duration-200 ease-out ${
+                isChatInfoHidden
+                  ? 'pointer-events-none -translate-y-1 max-h-0 opacity-0 mb-0'
+                  : 'translate-y-0 max-h-[180px] opacity-100 mb-3'
+              }`}
+            >
               <AppointmentCard
                 appointment={appointment}
                 currentUserId={currentUserId}
