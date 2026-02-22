@@ -135,12 +135,13 @@ export default function ChatRoomPage() {
   const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([])
   const [pendingImagePreviewUrls, setPendingImagePreviewUrls] = useState<string[]>([])
   const [isUploadingImages, setIsUploadingImages] = useState(false)
+  const [composerHeight, setComposerHeight] = useState(84)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const messageInputRef = useRef<HTMLTextAreaElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const composerRef = useRef<HTMLDivElement>(null)
   const previousMessagesMetaRef = useRef<{ firstId: string | null; lastId: string | null; count: number }>({
     firstId: null,
     lastId: null,
@@ -148,7 +149,6 @@ export default function ChatRoomPage() {
   })
   const keyboardRafRef = useRef<number | null>(null)
   const scrollRafRef = useRef<number | null>(null)
-  const scrollIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastMessagesScrollTopRef = useRef(0)
   const isLoadingOlderRef = useRef(false)
   const isChatInfoHiddenRef = useRef(false)
@@ -316,10 +316,10 @@ export default function ChatRoomPage() {
         scrollRafRef.current = null
         const currentScrollTop = container.scrollTop
         const scrollDiff = currentScrollTop - lastMessagesScrollTopRef.current
-        const hasMeaningfulDownScroll = scrollDiff > 8
-        const hasMeaningfulUpScroll = scrollDiff < -5
+        const hasMeaningfulDownScroll = scrollDiff > 10
+        const hasMeaningfulUpScroll = scrollDiff < -8
 
-        if (currentScrollTop < 16 || hasMeaningfulUpScroll) {
+        if (currentScrollTop < 20 || hasMeaningfulUpScroll) {
           applyChatInfoHidden(false)
         } else if (hasMeaningfulDownScroll) {
           applyChatInfoHidden(true)
@@ -332,13 +332,6 @@ export default function ChatRoomPage() {
         if (nearBottom) {
           setPendingMessageCount((count) => (count === 0 ? count : 0))
         }
-
-        if (scrollIdleTimerRef.current) {
-          clearTimeout(scrollIdleTimerRef.current)
-        }
-        scrollIdleTimerRef.current = setTimeout(() => {
-          applyChatInfoHidden(false)
-        }, 280)
       })
     }
 
@@ -349,9 +342,6 @@ export default function ChatRoomPage() {
       container.removeEventListener('scroll', handleScroll)
       if (scrollRafRef.current !== null) {
         cancelAnimationFrame(scrollRafRef.current)
-      }
-      if (scrollIdleTimerRef.current) {
-        clearTimeout(scrollIdleTimerRef.current)
       }
     }
   }, [roomId, isNearBottom])
@@ -419,25 +409,23 @@ export default function ChatRoomPage() {
     previousMessagesMetaRef.current = { firstId, lastId, count: messages.length }
   }, [messages, isAtBottom, isInitialLoad, scrollToBottom])
 
-  // iOS 키보드 대응 - visualViewport 높이 기반으로 실제 보이는 영역을 사용
+  // iOS 키보드 대응 - visualViewport 높이 기준 + fallback
   useEffect(() => {
     if (typeof window === 'undefined') return
 
     const viewport = window.visualViewport
-    if (!viewport) return
-
-    const handleViewportChange = () => {
+    const syncViewport = (visibleHeight: number, offsetTop = 0) => {
       if (keyboardRafRef.current !== null) {
         cancelAnimationFrame(keyboardRafRef.current)
       }
 
       keyboardRafRef.current = requestAnimationFrame(() => {
-        const visibleHeight = Math.max(viewport.height, 320)
+        const nextViewportHeight = Math.max(visibleHeight, 320)
         setViewportHeight((prev) => {
-          if (prev !== null && Math.abs(prev - visibleHeight) < 1) return prev
-          return visibleHeight
+          if (prev !== null && Math.abs(prev - nextViewportHeight) < 1) return prev
+          return nextViewportHeight
         })
-        const keyboardDelta = Math.max(window.innerHeight - viewport.height - viewport.offsetTop, 0)
+        const keyboardDelta = Math.max(window.innerHeight - nextViewportHeight - offsetTop, 0)
         const nextKeyboardHeight = keyboardDelta > 50 ? keyboardDelta : 0
         setKeyboardHeight((prev) => {
           if (Math.abs(prev - nextKeyboardHeight) < 1) return prev
@@ -446,15 +434,58 @@ export default function ChatRoomPage() {
       })
     }
 
-    handleViewportChange()
-    viewport.addEventListener('resize', handleViewportChange)
+    if (viewport) {
+      const handleViewportChange = () => {
+        syncViewport(viewport.height, viewport.offsetTop)
+      }
+      handleViewportChange()
+      viewport.addEventListener('resize', handleViewportChange)
+      viewport.addEventListener('scroll', handleViewportChange)
+      window.addEventListener('orientationchange', handleViewportChange)
 
+      return () => {
+        viewport.removeEventListener('resize', handleViewportChange)
+        viewport.removeEventListener('scroll', handleViewportChange)
+        window.removeEventListener('orientationchange', handleViewportChange)
+        if (keyboardRafRef.current !== null) {
+          cancelAnimationFrame(keyboardRafRef.current)
+        }
+      }
+    }
+
+    const handleResizeFallback = () => {
+      setViewportHeight(null)
+      setKeyboardHeight(0)
+    }
+    handleResizeFallback()
+    window.addEventListener('resize', handleResizeFallback)
     return () => {
-      viewport.removeEventListener('resize', handleViewportChange)
+      window.removeEventListener('resize', handleResizeFallback)
       if (keyboardRafRef.current !== null) {
         cancelAnimationFrame(keyboardRafRef.current)
       }
     }
+  }, [])
+
+  useEffect(() => {
+    const composer = composerRef.current
+    if (!composer) return
+
+    const syncComposerHeight = () => {
+      const nextHeight = Math.max(composer.getBoundingClientRect().height, 64)
+      setComposerHeight((prev) => (Math.abs(prev - nextHeight) < 1 ? prev : nextHeight))
+    }
+
+    syncComposerHeight()
+
+    if (typeof ResizeObserver === 'undefined') return
+
+    const observer = new ResizeObserver(() => {
+      syncComposerHeight()
+    })
+    observer.observe(composer)
+
+    return () => observer.disconnect()
   }, [])
 
   useEffect(() => {
@@ -531,6 +562,14 @@ export default function ChatRoomPage() {
   const removePendingImage = useCallback((indexToRemove: number) => {
     setPendingImageFiles((prev) => prev.filter((_, index) => index !== indexToRemove))
   }, [])
+
+  const dismissKeyboardIfFocused = useCallback(() => {
+    if (!isInputFocused) return
+    const activeElement = document.activeElement
+    if (activeElement instanceof HTMLElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
+      activeElement.blur()
+    }
+  }, [isInputFocused])
 
   const handleSelectImages = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files ?? [])
@@ -715,18 +754,14 @@ export default function ChatRoomPage() {
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="flex flex-col bg-background"
-      style={{ height: viewportHeight ? `${viewportHeight}px` : '100dvh' }}
-    >
+    <div className="relative flex h-dvh flex-col overflow-hidden bg-background" style={{ height: viewportHeight ? `${viewportHeight}px` : '100dvh' }}>
       {/* Header / Product info */}
-      <div className="flex-shrink-0 border-b border-border bg-background">
+      <div className="z-30 flex-shrink-0 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
         <div
-          className={`overflow-hidden transition-[max-height,opacity] duration-250 ease-out ${
+          className={`overflow-hidden transition-all duration-200 ease-out ${
             isChatInfoHidden
-              ? 'max-h-0 opacity-0 pointer-events-none'
-              : 'max-h-[120px] opacity-100'
+              ? 'pointer-events-none max-h-0 -translate-y-2 opacity-0'
+              : 'max-h-[120px] translate-y-0 opacity-100'
           }`}
         >
           <div className="max-w-screen-xl mx-auto">
@@ -848,29 +883,30 @@ export default function ChatRoomPage() {
       </div>
 
       {/* Messages - inner scroll */}
-      <div className="relative flex-1">
-        {appointment && currentUserId && (
-          <div className="pointer-events-none absolute inset-x-3 top-1.5 z-20">
-            <AppointmentCard
-              appointment={appointment}
-              currentUserId={currentUserId}
-              onRespond={respondToAppointment}
-              compact
-              className="pointer-events-auto"
-            />
-          </div>
-        )}
+      <div
+        ref={messagesContainerRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehaviorY: 'contain',
+          scrollPaddingBottom: `${composerHeight + 28}px`,
+        }}
+        onPointerDown={dismissKeyboardIfFocused}
+      >
+        <div className="max-w-screen-xl mx-auto px-3 py-3">
+          <div ref={topSentinelRef} className="h-px" />
 
-        <div
-          ref={messagesContainerRef}
-          className="h-full overflow-y-auto overscroll-none [scrollbar-gutter:stable]"
-          style={{
-            WebkitOverflowScrolling: 'touch',
-            overscrollBehaviorY: 'contain',
-          }}
-        >
-          <div className={`max-w-screen-xl mx-auto p-4 ${showFloatingAppointment ? 'pt-20' : ''}`}>
-            <div ref={topSentinelRef} className="h-px" />
+          {showFloatingAppointment && appointment && currentUserId && (
+            <div className="sticky top-2 z-20 mb-3">
+              <AppointmentCard
+                appointment={appointment}
+                currentUserId={currentUserId}
+                onRespond={respondToAppointment}
+                compact
+                className="mx-0"
+              />
+            </div>
+          )}
 
             {isLoadingOlder && (
               <div className="flex items-center justify-center py-2 text-muted-foreground">
@@ -903,7 +939,7 @@ export default function ChatRoomPage() {
             ) : (
               <div className="space-y-0">
                 {connectionStatus !== 'live' && (
-                  <div className="sticky top-2 z-10 flex justify-center mb-3">
+                  <div className="mb-3 flex justify-start">
                     <div className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${connectionStatusMeta.textClassName} ${connectionStatusMeta.bgClassName}`}>
                       <ConnectionStatusIcon className={connectionStatusMeta.iconClassName} />
                       {connectionStatusMeta.label}
@@ -1035,29 +1071,34 @@ export default function ChatRoomPage() {
                     </div>
                   )
                 })}
-                <div ref={messagesEndRef} />
+                <div ref={messagesEndRef} className="h-px" />
               </div>
             )}
           </div>
         </div>
 
-        {pendingMessageCount > 0 && (
-          <div className="absolute inset-x-0 bottom-4 flex justify-center pointer-events-none">
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => scrollToBottom('smooth')}
-              className="pointer-events-auto rounded-full shadow-md h-9 px-4"
-            >
-              새 메시지 {pendingMessageCount}개
-              <ChevronDown className="w-4 h-4 ml-1" />
-            </Button>
-          </div>
-        )}
-      </div>
+      {pendingMessageCount > 0 && (
+        <div
+          className="absolute inset-x-0 z-40 flex justify-center pointer-events-none"
+          style={{ bottom: `calc(${composerHeight + 10}px + env(safe-area-inset-bottom))` }}
+        >
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => scrollToBottom('smooth')}
+            className="pointer-events-auto rounded-full shadow-md h-9 px-4"
+          >
+            새 메시지 {pendingMessageCount}개
+            <ChevronDown className="w-4 h-4 ml-1" />
+          </Button>
+        </div>
+      )}
 
       {/* Message Input - 모바일 키보드/안전영역 대응 */}
-      <div className="flex-shrink-0 bg-background border-t border-border">
+      <div
+        ref={composerRef}
+        className="z-30 flex-shrink-0 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85"
+      >
         <div
           className="max-w-screen-xl mx-auto px-3"
           style={{
@@ -1207,7 +1248,7 @@ export default function ChatRoomPage() {
                 onFocus={() => {
                   setIsInputFocused(true)
                   requestAnimationFrame(() => {
-                    scrollToBottom('smooth')
+                    scrollToBottom('auto')
                   })
                 }}
                 onBlur={() => setIsInputFocused(false)}

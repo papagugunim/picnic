@@ -104,20 +104,20 @@ export function AppointmentCard({
   if (compact) {
     return (
       <div className={cn('mx-auto max-w-2xl', className)}>
-        <div className="rounded-lg border border-border bg-background/95 px-2.5 py-2 shadow-sm">
+        <div className="rounded-md border border-border bg-background/96 px-2 py-1.5 shadow-sm">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                 <Calendar className="h-3.5 w-3.5 text-blue-500" />
                 <span>구매약속</span>
               </div>
-              <p className="mt-1 truncate text-sm font-medium">
+              <p className="mt-0.5 truncate text-[13px] font-semibold">
                 {formatDate(appointmentDate, 'M월 D일 (ddd) HH:mm')}
               </p>
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                 {appointment.location || '장소 협의 중'}
               </p>
-              <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+              <p className="mt-0.5 line-clamp-1 text-[10px] text-muted-foreground">
                 {statusMeta.helper}
               </p>
             </div>
@@ -127,7 +127,7 @@ export function AppointmentCard({
           </div>
 
           {appointment.memo && (
-            <div className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">
+            <div className="mt-0.5 line-clamp-1 text-[10px] text-muted-foreground">
               {appointment.memo}
             </div>
           )}
@@ -139,7 +139,7 @@ export function AppointmentCard({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 flex-1 text-xs"
+                    className="h-[30px] flex-1 text-[11px]"
                     disabled={isResponding}
                   >
                     거절하기
@@ -165,7 +165,7 @@ export function AppointmentCard({
                 <AlertDialogTrigger asChild>
                   <Button
                     size="sm"
-                    className="h-7 flex-1 bg-green-600 text-xs text-white hover:bg-green-700"
+                    className="h-[30px] flex-1 bg-green-600 text-[11px] text-white hover:bg-green-700"
                     disabled={isResponding}
                   >
                     약속하기
