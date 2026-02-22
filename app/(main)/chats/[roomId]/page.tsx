@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Bell, BellOff, ChevronDown, ChevronLeft, ChevronRight, ImagePlus, Loader2, Package, Plus, RotateCw, Send, Wifi, WifiOff, X } from 'lucide-react'
+import { Bell, BellOff, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ImagePlus, Loader2, Package, Plus, RotateCw, Send, Wifi, WifiOff, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
@@ -19,7 +19,6 @@ import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadEmoji } from '@/lib/bread'
 import { AppointmentProposalForm } from '@/components/chat/AppointmentProposalForm'
 import { AppointmentCard } from '@/components/chat/AppointmentCard'
-import { CompleteSaleButton } from '@/components/chat/CompleteSaleButton'
 import { ReviewModal } from '@/components/review/ReviewModal'
 import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
 import { toast } from 'sonner'
@@ -135,6 +134,7 @@ export default function ChatRoomPage() {
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [isChatInfoHidden, setIsChatInfoHidden] = useState(false)
+  const [isAppointmentCardHidden, setIsAppointmentCardHidden] = useState(false)
   const [pendingMessageCount, setPendingMessageCount] = useState(0)
   const [showComposerTools, setShowComposerTools] = useState(false)
   const [isInputFocused, setIsInputFocused] = useState(false)
@@ -164,6 +164,7 @@ export default function ChatRoomPage() {
   const lastMessagesScrollTopRef = useRef(0)
   const isLoadingOlderRef = useRef(false)
   const isChatInfoHiddenRef = useRef(false)
+  const isAppointmentCardHiddenRef = useRef(false)
   const isAtBottomRef = useRef(true)
   const isInputFocusedRef = useRef(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
@@ -256,6 +257,8 @@ export default function ChatRoomPage() {
     isAtBottomRef.current = true
     setIsChatInfoHidden(false)
     isChatInfoHiddenRef.current = false
+    setIsAppointmentCardHidden(false)
+    isAppointmentCardHiddenRef.current = false
     setShowComposerTools(false)
     setPendingImageFiles([])
     setImageViewer({ open: false, images: [], index: 0 })
@@ -316,6 +319,12 @@ export default function ChatRoomPage() {
       setIsChatInfoHidden(nextHidden)
     }
 
+    const applyAppointmentCardHidden = (nextHidden: boolean) => {
+      if (isAppointmentCardHiddenRef.current === nextHidden) return
+      isAppointmentCardHiddenRef.current = nextHidden
+      setIsAppointmentCardHidden(nextHidden)
+    }
+
     const applyAtBottom = (nextAtBottom: boolean) => {
       if (isAtBottomRef.current === nextAtBottom) return
       isAtBottomRef.current = nextAtBottom
@@ -336,6 +345,14 @@ export default function ChatRoomPage() {
           applyChatInfoHidden(false)
         } else if (hasMeaningfulDownScroll || currentScrollTop > 48) {
           applyChatInfoHidden(true)
+        }
+
+        if (currentScrollTop < 24) {
+          applyAppointmentCardHidden(false)
+        } else if (scrollDiff > 5) {
+          applyAppointmentCardHidden(true)
+        } else if (scrollDiff < -5) {
+          applyAppointmentCardHidden(false)
         }
 
         lastMessagesScrollTopRef.current = currentScrollTop
@@ -854,127 +871,115 @@ export default function ChatRoomPage() {
 
   return (
     <div className="fixed inset-0 flex min-h-0 flex-col overflow-hidden bg-background">
-      {/* Header / Product info */}
+      {/* Header */}
       <div className="z-30 flex-shrink-0 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
-        <div
-          className={`overflow-hidden transition-all duration-200 ease-out ${
-            isChatInfoHidden
-              ? 'pointer-events-none max-h-0 -translate-y-2 opacity-0'
-              : 'max-h-[120px] translate-y-0 opacity-100'
-          }`}
-        >
-          <div className="max-w-screen-xl mx-auto">
-            <div className="flex items-center gap-2 px-4 py-2.5">
-              <Link href={`/profile/${room.other_user.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-                {room.other_user.avatar_url ? (
-                  <img
-                    src={room.other_user.avatar_url}
-                    alt={room.other_user.full_name || '사용자'}
-                    className="w-9 h-9 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                    {room.other_user.full_name?.charAt(0).toUpperCase() || '?'}
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <div className="font-semibold flex items-center gap-1">
-                    <span className="truncate">{room.other_user.full_name || '익명'}</span>
-                    <span className="text-base">
-                      {getBreadEmoji(room.other_user.bread_level || 1, room.other_user.user_role || undefined)}
-                    </span>
-                  </div>
-                </div>
-              </Link>
+        <div className="mx-auto flex max-w-screen-xl items-center gap-2 px-3 py-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.back()}
+            className="h-8 w-8 shrink-0"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
 
-              <div className="flex items-center gap-1.5">
-                <div
-                  className={`hidden sm:flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium ${connectionStatusMeta.textClassName} ${connectionStatusMeta.bgClassName}`}
-                >
-                  <ConnectionStatusIcon className={connectionStatusMeta.iconClassName} />
-                  <span>{connectionStatusMeta.label}</span>
-                </div>
-
-                {showEnableNotificationButton && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground"
-                    onClick={handleRequestBrowserNotifications}
-                    disabled={isRequestingNotificationPermission}
-                  >
-                    {notificationPermission === 'denied' ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
-                  </Button>
-                )}
-              </div>
-
-              {isSeller && isAppointmentConfirmed && !isSold && currentUserId && room.post && (
-                <CompleteSaleButton onReviewRequest={() => setShowReviewModal(true)} />
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="max-w-screen-xl mx-auto">
           {room.post ? (
-            <div className="flex items-center gap-2 border-t border-border/60 px-3 py-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => router.back()}
-                className="h-8 w-8 shrink-0"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </Button>
-
-              <Link
-                href={`/post/${room.post.id}`}
-                className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1.5 py-1 hover:bg-muted transition-colors"
-              >
-                {postThumbnailUrl ? (
-                  <img
-                    src={postThumbnailUrl}
-                    alt={room.post.title}
-                    className="w-10 h-10 rounded-md object-cover flex-shrink-0"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-md bg-secondary flex items-center justify-center flex-shrink-0">
-                    <Package className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium truncate">{room.post.title}</div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-2">
-                    <span>
-                      {room.post.price === 0 || room.post.price === null
-                        ? '무료나눔'
-                        : `${room.post.price.toLocaleString()}₽`}
-                    </span>
-                    {room.post.status && (
-                      <span className={`px-1.5 py-0.5 rounded-full ${getPostStatusInfo(room.post.status as PostStatus).bgColor} ${getPostStatusInfo(room.post.status as PostStatus).textColor} font-medium`}>
-                        {getPostStatusInfo(room.post.status as PostStatus).label}
-                      </span>
-                    )}
-                  </div>
+            <Link
+              href={`/post/${room.post.id}`}
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 transition-colors hover:bg-muted/70"
+            >
+              {postThumbnailUrl ? (
+                <img
+                  src={postThumbnailUrl}
+                  alt={room.post.title}
+                  className="h-9 w-9 shrink-0 rounded-md object-cover"
+                />
+              ) : (
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-secondary">
+                  <Package className="h-4 w-4 text-muted-foreground" />
                 </div>
-              </Link>
-            </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{room.post.title}</p>
+                <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span className="truncate">
+                    {room.post.price === 0 || room.post.price === null
+                      ? '무료나눔'
+                      : `${room.post.price.toLocaleString()}₽`}
+                  </span>
+                  {room.post.status && (
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 font-medium ${getPostStatusInfo(room.post.status as PostStatus).bgColor} ${getPostStatusInfo(room.post.status as PostStatus).textColor}`}
+                    >
+                      {getPostStatusInfo(room.post.status as PostStatus).label}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Link>
           ) : (
-            <div className="flex items-center gap-2 px-3 py-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => router.back()}
-                className="h-8 w-8 shrink-0"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </Button>
-              <span className="text-sm font-medium truncate">
-                {room.other_user.full_name || '익명'}
-              </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">채팅</p>
             </div>
           )}
+
+          <div
+            className={`flex shrink-0 items-center gap-1 overflow-hidden transition-[max-width,opacity,transform] duration-200 ease-out ${
+              isChatInfoHidden
+                ? 'pointer-events-none max-w-0 translate-x-2 opacity-0'
+                : 'max-w-[164px] translate-x-0 opacity-100'
+            }`}
+          >
+            <Link href={`/profile/${room.other_user.id}`} className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-1 hover:bg-muted/70">
+              {room.other_user.avatar_url ? (
+                <img
+                  src={room.other_user.avatar_url}
+                  alt={room.other_user.full_name || '사용자'}
+                  className="h-8 w-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-purple-500 text-xs font-bold text-white">
+                  {room.other_user.full_name?.charAt(0).toUpperCase() || '?'}
+                </div>
+              )}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1 text-sm font-semibold leading-none">
+                  <span className="max-w-[74px] truncate">{room.other_user.full_name || '익명'}</span>
+                  <span className="text-sm leading-none">
+                    {getBreadEmoji(room.other_user.bread_level || 1, room.other_user.user_role || undefined)}
+                  </span>
+                </div>
+              </div>
+            </Link>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
+            {showEnableNotificationButton && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground"
+                onClick={handleRequestBrowserNotifications}
+                disabled={isRequestingNotificationPermission}
+              >
+                {notificationPermission === 'denied' ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+              </Button>
+            )}
+
+            {isSeller && isAppointmentConfirmed && !isSold && currentUserId && room.post && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-emerald-600"
+                onClick={() => setShowReviewModal(true)}
+                aria-label="거래 완료 및 리뷰 작성"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -996,7 +1001,7 @@ export default function ChatRoomPage() {
           {showFloatingAppointment && appointment && currentUserId && (
             <div
               className={`sticky top-2 z-20 overflow-hidden transition-[max-height,opacity,transform,margin] duration-200 ease-out ${
-                isChatInfoHidden
+                isAppointmentCardHidden
                   ? 'pointer-events-none -translate-y-1 max-h-0 opacity-0 mb-0'
                   : 'translate-y-0 max-h-[180px] opacity-100 mb-3'
               }`}
@@ -1299,12 +1304,17 @@ export default function ChatRoomPage() {
                   </div>
                 ))}
               </div>
+              {isUploadingImages && (
+                <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span className="inline-block animate-bounce">🚀</span>
+                  <span>사진 전송 중입니다. 잠시만 기다려주세요.</span>
+                </div>
+              )}
             </div>
           )}
 
           {showComposerTools && keyboardHeight === 0 && (
             <div className="mb-2 rounded-2xl border border-border bg-muted/40 p-2.5">
-              <p className="mb-2 text-[11px] font-medium text-muted-foreground">빠른 도구</p>
               <div className="mb-2 flex flex-wrap gap-2">
                 <Button
                   type="button"
@@ -1318,7 +1328,6 @@ export default function ChatRoomPage() {
                   사진 추가
                 </Button>
               </div>
-              <p className="mb-2 text-[11px] font-medium text-muted-foreground">빠른 메시지</p>
               <div className="flex flex-wrap gap-2">
                 {quickMessageTemplates.map((template) => (
                   <Button
@@ -1390,7 +1399,7 @@ export default function ChatRoomPage() {
               size="icon"
               className="h-9 w-9 flex-shrink-0 rounded-full"
             >
-              {isUploadingImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {isUploadingImages ? <span className="inline-block animate-pulse text-base leading-none">🚀</span> : <Send className="h-4 w-4" />}
             </Button>
           </div>
         </div>
