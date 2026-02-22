@@ -19,6 +19,20 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "picnic - 해외 한인 커뮤니티",
   description: "러시아 거주 한인을 위한 중고거래 및 커뮤니티 플랫폼",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
+      { url: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
+      { url: "/android-chrome-192x192.png", type: "image/png", sizes: "192x192" },
+      { url: "/android-chrome-512x512.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" },
+    ],
+    shortcut: [{ url: "/favicon.ico" }],
+  },
 };
 
 export const viewport = {
