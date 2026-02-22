@@ -151,6 +151,8 @@ export default function ChatRoomPage() {
   const scrollIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastMessagesScrollTopRef = useRef(0)
   const isLoadingOlderRef = useRef(false)
+  const isChatInfoHiddenRef = useRef(false)
+  const isAtBottomRef = useRef(true)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [viewportHeight, setViewportHeight] = useState<number | null>(null)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>('unsupported')
@@ -239,7 +241,9 @@ export default function ChatRoomPage() {
     setIsInitialLoad(true)
     setPendingMessageCount(0)
     setIsAtBottom(true)
+    isAtBottomRef.current = true
     setIsChatInfoHidden(false)
+    isChatInfoHiddenRef.current = false
     setShowComposerTools(false)
     setPendingImageFiles([])
     lastMessagesScrollTopRef.current = 0
@@ -257,8 +261,11 @@ export default function ChatRoomPage() {
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' })
-    setPendingMessageCount(0)
-    setIsAtBottom(true)
+    setPendingMessageCount((count) => (count === 0 ? count : 0))
+    if (!isAtBottomRef.current) {
+      isAtBottomRef.current = true
+      setIsAtBottom(true)
+    }
   }, [])
 
   const handleLoadOlderMessages = useCallback(async () => {
@@ -290,6 +297,18 @@ export default function ChatRoomPage() {
     const container = messagesContainerRef.current
     if (!container) return
 
+    const applyChatInfoHidden = (nextHidden: boolean) => {
+      if (isChatInfoHiddenRef.current === nextHidden) return
+      isChatInfoHiddenRef.current = nextHidden
+      setIsChatInfoHidden(nextHidden)
+    }
+
+    const applyAtBottom = (nextAtBottom: boolean) => {
+      if (isAtBottomRef.current === nextAtBottom) return
+      isAtBottomRef.current = nextAtBottom
+      setIsAtBottom(nextAtBottom)
+    }
+
     const handleScroll = () => {
       if (scrollRafRef.current !== null) return
 
@@ -301,25 +320,25 @@ export default function ChatRoomPage() {
         const hasMeaningfulUpScroll = scrollDiff < -5
 
         if (currentScrollTop < 16 || hasMeaningfulUpScroll) {
-          setIsChatInfoHidden(false)
+          applyChatInfoHidden(false)
         } else if (hasMeaningfulDownScroll) {
-          setIsChatInfoHidden(true)
+          applyChatInfoHidden(true)
         }
 
         lastMessagesScrollTopRef.current = currentScrollTop
         const nearBottom = isNearBottom()
-        setIsAtBottom(nearBottom)
+        applyAtBottom(nearBottom)
 
         if (nearBottom) {
-          setPendingMessageCount(0)
+          setPendingMessageCount((count) => (count === 0 ? count : 0))
         }
 
         if (scrollIdleTimerRef.current) {
           clearTimeout(scrollIdleTimerRef.current)
         }
         scrollIdleTimerRef.current = setTimeout(() => {
-          setIsChatInfoHidden(false)
-        }, 180)
+          applyChatInfoHidden(false)
+        }, 280)
       })
     }
 
@@ -414,24 +433,35 @@ export default function ChatRoomPage() {
 
       keyboardRafRef.current = requestAnimationFrame(() => {
         const visibleHeight = Math.max(viewport.height, 320)
-        setViewportHeight(visibleHeight)
+        setViewportHeight((prev) => {
+          if (prev !== null && Math.abs(prev - visibleHeight) < 1) return prev
+          return visibleHeight
+        })
         const keyboardDelta = Math.max(window.innerHeight - viewport.height - viewport.offsetTop, 0)
-        setKeyboardHeight(keyboardDelta > 50 ? keyboardDelta : 0)
+        const nextKeyboardHeight = keyboardDelta > 50 ? keyboardDelta : 0
+        setKeyboardHeight((prev) => {
+          if (Math.abs(prev - nextKeyboardHeight) < 1) return prev
+          return nextKeyboardHeight
+        })
       })
     }
 
     handleViewportChange()
     viewport.addEventListener('resize', handleViewportChange)
-    viewport.addEventListener('scroll', handleViewportChange)
 
     return () => {
       viewport.removeEventListener('resize', handleViewportChange)
-      viewport.removeEventListener('scroll', handleViewportChange)
       if (keyboardRafRef.current !== null) {
         cancelAnimationFrame(keyboardRafRef.current)
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (keyboardHeight > 0 || isInputFocused) {
+      setShowComposerTools(false)
+    }
+  }, [keyboardHeight, isInputFocused])
 
   useEffect(() => {
     if (!isInputFocused) return
@@ -693,10 +723,10 @@ export default function ChatRoomPage() {
       {/* Header / Product info */}
       <div className="flex-shrink-0 border-b border-border bg-background">
         <div
-          className={`overflow-hidden transition-[max-height,opacity,transform] duration-300 ease-out ${
+          className={`overflow-hidden transition-[max-height,opacity] duration-250 ease-out ${
             isChatInfoHidden
-              ? 'max-h-0 opacity-0 -translate-y-1 pointer-events-none'
-              : 'max-h-[120px] opacity-100 translate-y-0'
+              ? 'max-h-0 opacity-0 pointer-events-none'
+              : 'max-h-[120px] opacity-100'
           }`}
         >
           <div className="max-w-screen-xl mx-auto">
@@ -820,7 +850,7 @@ export default function ChatRoomPage() {
       {/* Messages - inner scroll */}
       <div className="relative flex-1">
         {appointment && currentUserId && (
-          <div className="pointer-events-none absolute inset-x-3 top-2 z-20">
+          <div className="pointer-events-none absolute inset-x-3 top-1.5 z-20">
             <AppointmentCard
               appointment={appointment}
               currentUserId={currentUserId}
@@ -831,8 +861,15 @@ export default function ChatRoomPage() {
           </div>
         )}
 
-        <div ref={messagesContainerRef} className="h-full overflow-y-auto overscroll-none">
-          <div className={`max-w-screen-xl mx-auto p-4 ${showFloatingAppointment ? 'pt-24' : ''}`}>
+        <div
+          ref={messagesContainerRef}
+          className="h-full overflow-y-auto overscroll-none [scrollbar-gutter:stable]"
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehaviorY: 'contain',
+          }}
+        >
+          <div className={`max-w-screen-xl mx-auto p-4 ${showFloatingAppointment ? 'pt-20' : ''}`}>
             <div ref={topSentinelRef} className="h-px" />
 
             {isLoadingOlder && (
@@ -900,13 +937,7 @@ export default function ChatRoomPage() {
                   const showTextContent = message.content.trim().length > 0
 
                   return (
-                    <div
-                      key={message.id}
-                      style={{
-                        contentVisibility: 'auto',
-                        containIntrinsicSize: '120px',
-                      }}
-                    >
+                    <div key={message.id}>
                       {showDate && (
                         <div className="text-center my-4">
                           <span className="text-xs text-muted-foreground bg-secondary px-3 py-1 rounded-full">
@@ -1028,9 +1059,10 @@ export default function ChatRoomPage() {
       {/* Message Input - 모바일 키보드/안전영역 대응 */}
       <div className="flex-shrink-0 bg-background border-t border-border">
         <div
-          className="max-w-screen-xl mx-auto px-3 pt-2"
+          className="max-w-screen-xl mx-auto px-3"
           style={{
-            paddingBottom: keyboardHeight > 0 ? '8px' : 'calc(0.5rem + env(safe-area-inset-bottom))',
+            paddingTop: keyboardHeight > 0 ? '6px' : '8px',
+            paddingBottom: keyboardHeight > 0 ? 'max(8px, env(safe-area-inset-bottom))' : 'calc(0.5rem + env(safe-area-inset-bottom))',
           }}
         >
           <input
@@ -1042,7 +1074,7 @@ export default function ChatRoomPage() {
             onChange={handleSelectImages}
           />
 
-          {canProposeAppointment && room?.post && currentUserId && (
+          {canProposeAppointment && room?.post && currentUserId && !isInputFocused && keyboardHeight === 0 && (
             <div className="mb-2 flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <AppointmentProposalForm
                 roomId={roomId}
@@ -1114,7 +1146,7 @@ export default function ChatRoomPage() {
             </div>
           )}
 
-          {showComposerTools && (
+          {showComposerTools && keyboardHeight === 0 && (
             <div className="mb-2 rounded-2xl border border-border bg-muted/40 p-2.5">
               <p className="mb-2 text-[11px] font-medium text-muted-foreground">빠른 도구</p>
               <div className="mb-2 flex flex-wrap gap-2">
