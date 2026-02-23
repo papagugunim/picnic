@@ -27,7 +27,6 @@ const signupSchema = z.object({
   email: z.string().email('올바른 이메일 주소를 입력해주세요'),
   password: z.string().min(6, '비밀번호는 최소 6자 이상이어야 합니다'),
   confirmPassword: z.string(),
-  fullName: z.string().min(2, '닉네임은 최소 2자 이상이어야 합니다'),
   city: z.string().min(1, '내가 사는 도시를 선택해주세요'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: '비밀번호가 일치하지 않습니다',
@@ -48,21 +47,18 @@ export default function SignupForm() {
       email: '',
       password: '',
       confirmPassword: '',
-      fullName: '',
       city: '',
     },
   })
 
   // 각 필드의 값 감시
   const email = form.watch('email')
-  const fullName = form.watch('fullName')
   const password = form.watch('password')
   const confirmPassword = form.watch('confirmPassword')
   const city = form.watch('city')
 
   // 각 단계별 유효성 체크
   const isEmailValid = email && !form.formState.errors.email
-  const isFullNameValid = fullName && !form.formState.errors.fullName
   const isPasswordValid = password && confirmPassword && !form.formState.errors.password && !form.formState.errors.confirmPassword
   const isCityValid = city && !form.formState.errors.city
 
@@ -79,7 +75,6 @@ export default function SignupForm() {
         password: values.password,
         options: {
           data: {
-            full_name: values.fullName,
             city: values.city,
           },
         },
@@ -150,32 +145,8 @@ export default function SignupForm() {
           )}
         />
 
-        {/* Step 2: 닉네임 (이메일이 유효할 때만 표시) */}
+        {/* Step 2: 비밀번호 (이메일이 유효할 때만 표시) */}
         {isEmailValid && (
-          <FormField
-            control={form.control}
-            name="fullName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>닉네임</FormLabel>
-                <FormControl>
-                  <Input
-                    type="text"
-                    placeholder="예: 피크닉러버"
-                    autoComplete="name"
-                    {...field}
-                    disabled={isLoading}
-                    className="glass"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-
-        {/* Step 3: 비밀번호 (닉네임이 유효할 때만 표시) */}
-        {isEmailValid && isFullNameValid && (
           <>
             <FormField
               control={form.control}
@@ -221,8 +192,8 @@ export default function SignupForm() {
           </>
         )}
 
-        {/* Step 4: 도시 선택 (비밀번호가 유효할 때만 표시) */}
-        {isEmailValid && isFullNameValid && isPasswordValid && (
+        {/* Step 3: 도시 선택 (비밀번호가 유효할 때만 표시) */}
+        {isEmailValid && isPasswordValid && (
           <FormField
             control={form.control}
             name="city"
@@ -284,7 +255,7 @@ export default function SignupForm() {
         )}
 
         {/* 회원가입 버튼 (모든 단계 완료 시 표시) */}
-        {isEmailValid && isFullNameValid && isPasswordValid && isCityValid && (
+        {isEmailValid && isPasswordValid && isCityValid && (
           <Button
             type="submit"
             className="w-full"

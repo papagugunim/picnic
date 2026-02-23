@@ -164,7 +164,7 @@ export default function NotificationsPage() {
   return (
     <div className="bg-background">
       {/* 헤더 */}
-      <div className="bg-background border-b border-border sticky top-0 z-20">
+      <div className="liquid-glass-topbar sticky top-0 z-20">
         <div className="flex items-center justify-between h-14 px-4 max-w-screen-xl mx-auto">
           <h1 className="text-lg font-bold">알림</h1>
           {unreadCount > 0 && (

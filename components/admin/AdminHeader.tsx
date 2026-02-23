@@ -13,7 +13,7 @@ interface AdminHeaderProps {
 
 export function AdminHeader({ userName, userRole, avatarUrl }: AdminHeaderProps) {
   return (
-    <header className="sticky top-0 z-50 border-b bg-background">
+    <header className="sticky top-0 z-50 liquid-glass-topbar">
       <div className="flex h-12 md:h-14 items-center justify-between px-3 md:px-4">
         <div className="flex items-center gap-2 md:gap-4">
           <Link

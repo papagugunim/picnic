@@ -78,7 +78,7 @@ export function AdminNav({ userRole }: AdminNavProps) {
       </nav>
 
       {/* 모바일 하단 탭바 */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 liquid-glass-bottom-nav">
         <ul className="flex">
           {filteredItems.map((item) => {
             const isActive = pathname === item.href

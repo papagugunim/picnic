@@ -424,7 +424,7 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
   return (
     <div className="bg-background min-h-screen">
       {/* Sticky Header */}
-      <div className="sticky top-0 z-40 bg-background border-b border-border">
+      <div className="sticky top-0 z-40 liquid-glass-topbar">
         <div className="flex items-center justify-between px-4 py-3 max-w-4xl mx-auto">
             <Button
               variant="ghost"

@@ -83,7 +83,7 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
   }
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-40 bg-background transition-transform duration-300 ease-in-out ${scrollHidden ? '-translate-y-full' : 'translate-y-0'}`}>
+    <header className={`fixed top-0 left-0 right-0 z-40 liquid-glass-topbar transition-transform duration-300 ease-in-out ${scrollHidden ? '-translate-y-full' : 'translate-y-0'}`}>
       <div className="flex items-center justify-between h-14 px-4 max-w-screen-xl mx-auto">
         {/* 왼쪽: 지역 선택 */}
         {showLocationDropdown ? (

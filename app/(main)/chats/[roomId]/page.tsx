@@ -872,7 +872,7 @@ export default function ChatRoomPage() {
   return (
     <div className="fixed inset-0 flex min-h-0 flex-col overflow-hidden bg-background">
       {/* Header */}
-      <div className="z-30 flex-shrink-0 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+      <div className="z-30 flex-shrink-0 liquid-glass-topbar">
         <div className="mx-auto flex max-w-screen-xl items-center gap-2 px-3 py-2">
           <Button
             variant="ghost"
