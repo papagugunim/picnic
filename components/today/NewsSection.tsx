@@ -43,10 +43,27 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
     return normalized.length > maxLength ? `${normalized.slice(0, maxLength)}…` : normalized
   }, [])
 
+  const openNewsModal = useCallback(
+    (newsId?: string | null) => {
+      if (newsList.length === 0) return
+
+      const fallbackNewsId = newsList[0]?.id ?? null
+      const requestedNewsId = newsId ?? fallbackNewsId
+      const exists = requestedNewsId ? newsList.some((news) => news.id === requestedNewsId) : false
+
+      setSelectedNewsId(exists ? requestedNewsId : fallbackNewsId)
+      setShowNewsModal(true)
+    },
+    [newsList]
+  )
+
   const handleNewsClick = useCallback((news: NewsItem) => {
-    setSelectedNewsId(news.id)
-    setShowNewsModal(true)
-  }, [])
+    openNewsModal(news.id)
+  }, [openNewsModal])
+
+  const handleOpenNewsOverview = useCallback(() => {
+    openNewsModal(selectedNewsId)
+  }, [openNewsModal, selectedNewsId])
 
   const handleEditNews = useCallback((news: NewsItem) => {
     setEditingNews(news)
@@ -79,8 +96,17 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
 
       if (error) throw error
 
-      setShowNewsModal(false)
-      setSelectedNewsId(null)
+      const remainingNews = newsList.filter((news) => news.id !== deleteTargetId)
+      const nextSelectedId = remainingNews[0]?.id ?? null
+
+      if (nextSelectedId) {
+        setSelectedNewsId(nextSelectedId)
+        setShowNewsModal(true)
+      } else {
+        setShowNewsModal(false)
+        setSelectedNewsId(null)
+      }
+
       await onRefreshNews(true)
       toast.success('공지 사항이 삭제되었습니다')
     } catch (error) {
@@ -90,7 +116,7 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
     } finally {
       setDeleteTargetId(null)
     }
-  }, [deleteTargetId, canManageNotices, onRefreshNews])
+  }, [deleteTargetId, canManageNotices, newsList, onRefreshNews])
 
   const selectedNews = selectedNewsId
     ? newsList.find((news) => news.id === selectedNewsId) ?? null
@@ -164,15 +190,26 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
             <Newspaper className="w-4 h-4 text-orange-600 dark:text-orange-400" />
             <h2 className="font-bold text-sm">공지 사항</h2>
           </div>
-          {canManageNotices && (
-            <button
-              onClick={handleOpenNewForm}
-              className="p-1.5 hover:bg-muted/50 rounded-lg transition-colors"
-              aria-label="공지 사항 추가"
-            >
-              <Plus className="w-4 h-4 text-muted-foreground" />
-            </button>
-          )}
+          <div className="flex items-center gap-1.5">
+            {newsList.length > 0 && (
+              <button
+                type="button"
+                onClick={handleOpenNewsOverview}
+                className="text-xs text-primary font-medium px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
+              >
+                전체보기
+              </button>
+            )}
+            {canManageNotices && (
+              <button
+                onClick={handleOpenNewForm}
+                className="p-1.5 hover:bg-muted/50 rounded-lg transition-colors"
+                aria-label="공지 사항 추가"
+              >
+                <Plus className="w-4 h-4 text-muted-foreground" />
+              </button>
+            )}
+          </div>
         </div>
 
         <NewsAutoSlide
