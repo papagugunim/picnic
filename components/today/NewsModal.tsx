@@ -107,106 +107,13 @@ function NewsModalComponent({
     day: 'numeric',
   })
 
-  if (canManageNotices) {
-    return (
-      <div className="fixed inset-0 z-50 bg-background text-foreground flex flex-col">
-        <div className="sticky top-0 z-20 border-b border-border/60 bg-background/95 backdrop-blur">
-          <div className="mx-auto max-w-3xl px-4 py-3 flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">공지 사항 {currentIndex + 1} / {newsList.length}</p>
-              <h2 className="text-sm font-semibold truncate">전체 공지 보기</h2>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => onEdit(currentNews)}
-                className="p-2 hover:bg-muted rounded-lg transition-colors"
-                aria-label="공지 사항 수정"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => onDelete(currentNews.id)}
-                className="p-2 hover:bg-muted rounded-lg transition-colors text-destructive"
-                aria-label="공지 사항 삭제"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-muted rounded-lg transition-colors"
-                aria-label="닫기"
-              >
-                <X className="w-5 h-5 text-muted-foreground" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div
-          className="flex-1 overflow-y-auto"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        >
-          <div className="mx-auto max-w-3xl px-4 pt-6 pb-24">
-            <h3 className="text-2xl font-bold leading-tight mb-2">{currentNews.title}</h3>
-            <p className="text-xs text-muted-foreground mb-6">{formattedDate}</p>
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <p className="whitespace-pre-wrap text-base leading-7">{currentNews.content}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="sticky bottom-0 border-t border-border/60 bg-background/95 backdrop-blur">
-          <div className="mx-auto max-w-3xl px-4 py-3 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handlePrev}
-              disabled={!hasMultiple}
-              className="h-10 w-10 flex items-center justify-center rounded-full border border-border bg-muted/40 disabled:opacity-40"
-              aria-label="이전 공지"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-
-            <div className="flex-1 flex justify-center gap-1.5">
-              {newsList.map((item, index) => (
-                <button
-                  key={item.id}
-                  onClick={() => setCurrentIndex(index)}
-                  className={`h-2.5 rounded-full transition-all ${
-                    index === currentIndex
-                      ? 'w-5 bg-primary'
-                      : 'w-2.5 bg-muted-foreground/30 hover:bg-muted-foreground/50'
-                  }`}
-                  aria-label={`공지 사항 ${index + 1} 보기`}
-                >
-                </button>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={handleNext}
-              disabled={!hasMultiple}
-              className="h-10 w-10 flex items-center justify-center rounded-full border border-border bg-muted/40 disabled:opacity-40"
-              aria-label="다음 공지"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div
       className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg max-h-[82vh] rounded-2xl border border-border/60 bg-background text-foreground shadow-xl flex flex-col overflow-hidden"
+        className="w-full max-w-lg h-[min(78dvh,680px)] min-h-[440px] rounded-2xl border border-border/60 bg-background text-foreground shadow-xl flex flex-col overflow-hidden"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="border-b border-border/60 px-4 py-3 flex items-center justify-between gap-2">
@@ -214,13 +121,33 @@ function NewsModalComponent({
             <p className="text-xs text-muted-foreground">공지 사항 {currentIndex + 1} / {newsList.length}</p>
             <h2 className="text-sm font-semibold truncate">공지 사항 보기</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-muted rounded-lg transition-colors"
-            aria-label="닫기"
-          >
-            <X className="w-5 h-5 text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-1">
+            {canManageNotices && (
+              <>
+                <button
+                  onClick={() => onEdit(currentNews)}
+                  className="p-2 hover:bg-muted rounded-lg transition-colors"
+                  aria-label="공지 사항 수정"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onDelete(currentNews.id)}
+                  className="p-2 hover:bg-muted rounded-lg transition-colors text-destructive"
+                  aria-label="공지 사항 삭제"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-muted rounded-lg transition-colors"
+              aria-label="닫기"
+            >
+              <X className="w-5 h-5 text-muted-foreground" />
+            </button>
+          </div>
         </div>
 
         <div
