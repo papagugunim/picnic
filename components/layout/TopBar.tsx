@@ -22,8 +22,9 @@ interface TopBarProps {
 export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const isFullscreenPage = pathname?.match(/^\/chats\/[^/]+$/) || pathname?.match(/^\/post\/[^/]+$/) || pathname?.match(/^\/community\/[^/]+$/) || pathname === '/settings'
   const { profile, refreshProfile } = useUser()
-  const { unreadCount } = useNotificationCount()
+  const { unreadCount } = useNotificationCount(!isFullscreenPage)
 
   // 스크롤 방향 감지 - 직접 구현
   const [scrollHidden, setScrollHidden] = useState(false)
@@ -54,7 +55,6 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
   }, [])
 
   // 채팅방, 게시글 상세 페이지에서는 TopBar 숨기기
-  const isFullscreenPage = pathname?.match(/^\/chats\/[^/]+$/) || pathname?.match(/^\/post\/[^/]+$/) || pathname?.match(/^\/community\/[^/]+$/) || pathname === '/settings'
   if (isFullscreenPage) {
     return null
   }

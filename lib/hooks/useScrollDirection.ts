@@ -7,6 +7,8 @@ interface UseScrollDirectionOptions {
   threshold?: number
   /** 페이지 상단 근처에서는 항상 보이게 할 영역 (px) */
   topOffset?: number
+  /** 숨김 페이지 등에서 스크롤 감지 비활성화 */
+  enabled?: boolean
 }
 
 /**
@@ -18,11 +20,17 @@ interface UseScrollDirectionOptions {
 export function useScrollDirection({
   threshold = 5,
   topOffset = 100,
+  enabled = true,
 }: UseScrollDirectionOptions = {}) {
   const [hidden, setHidden] = useState(false)
   const lastScrollY = useRef(0)
 
   useEffect(() => {
+    if (!enabled) {
+      setHidden(false)
+      return
+    }
+
     lastScrollY.current = window.scrollY
 
     const handleScroll = () => {
@@ -46,7 +54,7 @@ export function useScrollDirection({
 
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [threshold, topOffset])
+  }, [enabled, threshold, topOffset])
 
   return hidden
 }

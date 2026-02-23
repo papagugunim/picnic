@@ -6,6 +6,34 @@ const logger = createNamespacedLogger('UseUnreadCount')
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/contexts/UserContext'
+import type { RealtimeChannel } from '@supabase/supabase-js'
+
+const STORAGE_KEY_PREFIX = 'cache_unread_chat_count'
+
+function getStorageKey(userId: string) {
+  return `${STORAGE_KEY_PREFIX}:${userId}`
+}
+
+function readCachedCount(userId: string): number | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(getStorageKey(userId))
+    if (!raw) return null
+    const parsed = Number(raw)
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function writeCachedCount(userId: string, count: number): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(getStorageKey(userId), String(Math.max(0, count)))
+  } catch {
+    // ignore storage errors
+  }
+}
 
 type ChatMessageRealtimeRow = {
   room_id?: string
@@ -21,32 +49,47 @@ type ChatRoomRealtimeRow = {
 /**
  * 읽지 않은 메시지 총 개수를 실시간으로 가져오는 훅
  */
-export function useUnreadCount() {
+export function useUnreadCount(enabled: boolean = true) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const { user, loading: userLoading } = useUser()
+  const userId = user?.id ?? null
   const roomIdsRef = useRef<Set<string>>(new Set())
   const fetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isFetchingRef = useRef(false)
   const hasQueuedFetchRef = useRef(false)
 
   useEffect(() => {
+    let isCancelled = false
+
     if (userLoading) return
 
+    if (!enabled) {
+      setIsLoading(false)
+      return
+    }
+
     const supabase = createClient()
-    let subscription: any = null
-    let isCancelled = false
+    let subscription: RealtimeChannel | null = null
+    let initTimer: ReturnType<typeof setTimeout> | null = null
+    let idleHandle: number | null = null
 
     roomIdsRef.current = new Set()
     isFetchingRef.current = false
     hasQueuedFetchRef.current = false
 
-    if (!user) {
+    if (!userId) {
       setUnreadCount(0)
       setIsLoading(false)
       return
     }
-    const userId = user.id
+    const currentUserId = userId
+
+    const cached = readCachedCount(currentUserId)
+    if (cached !== null) {
+      setUnreadCount(cached)
+      setIsLoading(false)
+    }
 
     async function fetchUnreadCount() {
       if (isFetchingRef.current) {
@@ -58,6 +101,7 @@ export function useUnreadCount() {
       if (roomIds.length === 0) {
         if (!isCancelled) {
           setUnreadCount(0)
+          writeCachedCount(currentUserId, 0)
           setIsLoading(false)
         }
         return
@@ -70,16 +114,15 @@ export function useUnreadCount() {
           .select('*', { count: 'exact', head: true })
           .in('room_id', roomIds)
           .eq('is_read', false)
-          .neq('sender_id', userId)
+          .neq('sender_id', currentUserId)
 
         if (!isCancelled) {
-          setUnreadCount(count || 0)
+          const nextCount = count || 0
+          setUnreadCount(nextCount)
+          writeCachedCount(currentUserId, nextCount)
         }
       } catch (error) {
         logger.error('Error fetching unread count:', error)
-        if (!isCancelled) {
-          setUnreadCount(0)
-        }
       } finally {
         isFetchingRef.current = false
         if (!isCancelled) {
@@ -120,7 +163,7 @@ export function useUnreadCount() {
           (payload) => {
             const message = payload.new as ChatMessageRealtimeRow | null
             if (!message?.room_id) return
-            if (message.sender_id === userId) return
+            if (message.sender_id === currentUserId) return
             if (!roomIdsRef.current.has(message.room_id)) return
             scheduleFetch(80)
           }
@@ -149,7 +192,7 @@ export function useUnreadCount() {
           (payload) => {
             const room = payload.new as ChatRoomRealtimeRow | null
             if (!room?.id) return
-            if (room.user1_id !== userId && room.user2_id !== userId) return
+            if (room.user1_id !== currentUserId && room.user2_id !== currentUserId) return
             roomIdsRef.current.add(room.id)
             scheduleFetch(0)
           }
@@ -181,7 +224,7 @@ export function useUnreadCount() {
         const { data: rooms, error: roomsError } = await supabase
           .from('chat_rooms')
           .select('id')
-          .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
+          .or(`user1_id.eq.${currentUserId},user2_id.eq.${currentUserId}`)
 
         if (roomsError) {
           throw roomsError
@@ -206,10 +249,24 @@ export function useUnreadCount() {
       await setupRealtimeSubscription()
     }
 
-    void initialize()
+    const startInitialize = () => {
+      void initialize()
+    }
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleHandle = window.requestIdleCallback(startInitialize, { timeout: 1500 })
+    } else {
+      initTimer = setTimeout(startInitialize, 420)
+    }
 
     return () => {
       isCancelled = true
+      if (initTimer) {
+        clearTimeout(initTimer)
+      }
+      if (typeof window !== 'undefined' && idleHandle !== null && 'cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleHandle)
+      }
       if (fetchTimerRef.current) {
         clearTimeout(fetchTimerRef.current)
       }
@@ -217,7 +274,7 @@ export function useUnreadCount() {
         supabase.removeChannel(subscription)
       }
     }
-  }, [user?.id, userLoading])
+  }, [enabled, userId, userLoading])
 
   return { unreadCount, isLoading }
 }

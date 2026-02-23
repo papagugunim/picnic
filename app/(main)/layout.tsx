@@ -1,10 +1,17 @@
+import dynamic from 'next/dynamic'
+
 import TopBar from '@/components/layout/TopBar'
 import BottomNav from '@/components/layout/BottomNav'
 import MainContent from '@/components/layout/MainContent'
-import NotificationBridge from '@/components/notifications/NotificationBridge'
-import { ProfileWarmup } from '@/components/profile/ProfileWarmup'
-import { RussiaNewsWarmup } from '@/components/today/RussiaNewsWarmup'
 import { UserProvider } from '@/lib/contexts/UserContext'
+
+const NotificationBridge = dynamic(() => import('@/components/notifications/NotificationBridge'))
+const ProfileWarmup = dynamic(
+  () => import('@/components/profile/ProfileWarmup').then((module) => module.ProfileWarmup)
+)
+const RussiaNewsWarmup = dynamic(
+  () => import('@/components/today/RussiaNewsWarmup').then((module) => module.RussiaNewsWarmup)
+)
 
 export default function MainLayout({
   children,
