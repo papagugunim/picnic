@@ -27,7 +27,6 @@ const signupSchema = z.object({
   email: z.string().email('올바른 이메일 주소를 입력해주세요'),
   password: z.string().min(6, '비밀번호는 최소 6자 이상이어야 합니다'),
   confirmPassword: z.string(),
-  city: z.string().min(1, '내가 사는 도시를 선택해주세요'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: '비밀번호가 일치하지 않습니다',
   path: ['confirmPassword'],
@@ -47,7 +46,6 @@ export default function SignupForm() {
       email: '',
       password: '',
       confirmPassword: '',
-      city: '',
     },
   })
 
@@ -55,12 +53,10 @@ export default function SignupForm() {
   const email = form.watch('email')
   const password = form.watch('password')
   const confirmPassword = form.watch('confirmPassword')
-  const city = form.watch('city')
 
   // 각 단계별 유효성 체크
   const isEmailValid = email && !form.formState.errors.email
   const isPasswordValid = password && confirmPassword && !form.formState.errors.password && !form.formState.errors.confirmPassword
-  const isCityValid = city && !form.formState.errors.city
 
   async function onSubmit(values: SignupFormValues) {
     try {
@@ -73,11 +69,6 @@ export default function SignupForm() {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
-        options: {
-          data: {
-            city: values.city,
-          },
-        },
       })
 
       if (authError) {
@@ -94,7 +85,7 @@ export default function SignupForm() {
         return
       }
 
-      // 프로필은 트리거가 자동으로 생성 (city, metro_station 포함)
+      // 프로필은 트리거가 자동으로 생성
       // 별도 작업 불필요
 
       // 회원가입 성공 메시지
@@ -192,70 +183,14 @@ export default function SignupForm() {
           </>
         )}
 
-        {/* Step 3: 도시 선택 (비밀번호가 유효할 때만 표시) */}
-        {isEmailValid && isPasswordValid && (
-          <FormField
-            control={form.control}
-            name="city"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>내가 사는 도시</FormLabel>
-                <FormControl>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      className={`h-auto py-6 px-4 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
-                        field.value === 'moscow'
-                          ? 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/50'
-                          : 'border-border hover:border-primary/50 hover:bg-primary/5'
-                      }`}
-                      onClick={() => field.onChange('moscow')}
-                      disabled={isLoading}
-                    >
-                      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m5 0h1M9 13h1m5 0h1M9 17h1m5 0h1" />
-                      </svg>
-                      <div className="text-center">
-                        <div className="font-semibold">Moscow</div>
-                        <div className={`text-xs ${field.value === 'moscow' ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>모스크바</div>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={`h-auto py-6 px-4 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
-                        field.value === 'saint_petersburg'
-                          ? 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/50'
-                          : 'border-border hover:border-primary/50 hover:bg-primary/5'
-                      }`}
-                      onClick={() => field.onChange('saint_petersburg')}
-                      disabled={isLoading}
-                    >
-                      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3C6.5 3 2 6.58 2 11c0 3.07 2.87 5.67 6.84 6.65.3.06.38.13.38.29v1.73c0 .14.11.25.25.25h5.06c.14 0 .25-.11.25-.25v-1.73c0-.16.08-.23.38-.29C17.13 16.67 20 14.07 20 11c0-4.42-4.5-8-10-8z" />
-                        <circle cx="12" cy="11" r="2" />
-                      </svg>
-                      <div className="text-center">
-                        <div className="font-semibold">Saint Petersburg</div>
-                        <div className={`text-xs ${field.value === 'saint_petersburg' ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>상트페테르부르크</div>
-                      </div>
-                    </button>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-
         {error && (
           <div className="text-sm text-destructive text-center p-3 glass-strong rounded-lg">
             {error}
           </div>
         )}
 
-        {/* 회원가입 버튼 (모든 단계 완료 시 표시) */}
-        {isEmailValid && isPasswordValid && isCityValid && (
+        {/* 회원가입 버튼 (이메일/비밀번호 유효 시 표시) */}
+        {isEmailValid && isPasswordValid && (
           <Button
             type="submit"
             className="w-full"
