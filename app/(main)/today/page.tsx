@@ -89,12 +89,16 @@ export default function TodayPage() {
   }, [])
 
   // 뉴스 데이터 가져오기 함수
-  const fetchNews = useCallback(async () => {
+  const fetchNews = useCallback(async (forceRefresh: boolean = false) => {
     try {
-      const cached = getCache<NewsItem[]>(CACHE_KEYS.TODAY_NOTICES, 10 * 60 * 1000)
-      if (cached && cached.length > 0) {
-        setNewsList(cached)
-        return
+      if (forceRefresh) {
+        clearCache(CACHE_KEYS.TODAY_NOTICES)
+      } else {
+        const cached = getCache<NewsItem[]>(CACHE_KEYS.TODAY_NOTICES, 10 * 60 * 1000)
+        if (cached && cached.length > 0) {
+          setNewsList(cached)
+          return
+        }
       }
 
       const supabase = createClient()

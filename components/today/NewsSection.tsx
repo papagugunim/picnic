@@ -24,7 +24,7 @@ const logger = createNamespacedLogger('NewsSection')
 interface NewsSectionProps {
   newsList: NewsItem[]
   canManageNotices: boolean
-  onRefreshNews: () => void
+  onRefreshNews: (forceRefresh?: boolean) => Promise<void> | void
 }
 
 export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsSectionProps) {
@@ -32,9 +32,16 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
   const [showNewsModal, setShowNewsModal] = useState(false)
   const [showNewsForm, setShowNewsForm] = useState(false)
   const [editingNews, setEditingNews] = useState<NewsItem | null>(null)
-  const [newsFormData, setNewsFormData] = useState({ title: '', content: '', summary: '' })
+  const [newsFormData, setNewsFormData] = useState({ content: '', summary: '' })
   const [isSavingNews, setIsSavingNews] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+
+  const buildTitleFromContent = useCallback((content: string) => {
+    const normalized = content.replace(/\s+/g, ' ').trim()
+    if (!normalized) return '공지 사항'
+    const maxLength = 32
+    return normalized.length > maxLength ? `${normalized.slice(0, maxLength)}…` : normalized
+  }, [])
 
   const handleNewsClick = useCallback((news: NewsItem) => {
     setSelectedNewsId(news.id)
@@ -44,7 +51,6 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
   const handleEditNews = useCallback((news: NewsItem) => {
     setEditingNews(news)
     setNewsFormData({
-      title: news.title,
       content: news.content,
       summary: news.summary || '',
     })
@@ -58,6 +64,11 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
 
   const confirmDeleteNews = useCallback(async () => {
     if (!deleteTargetId) return
+    if (!canManageNotices) {
+      toast.error('공지 사항 삭제 권한이 없습니다')
+      setDeleteTargetId(null)
+      return
+    }
 
     try {
       const supabase = createClient()
@@ -70,21 +81,27 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
 
       setShowNewsModal(false)
       setSelectedNewsId(null)
-      onRefreshNews()
+      await onRefreshNews(true)
+      toast.success('공지 사항이 삭제되었습니다')
     } catch (error) {
       logger.error('뉴스 삭제 실패:', error)
-      toast.error('삭제에 실패했습니다')
+      const message = error instanceof Error ? error.message : '삭제에 실패했습니다'
+      toast.error(message)
     } finally {
       setDeleteTargetId(null)
     }
-  }, [deleteTargetId, onRefreshNews])
+  }, [deleteTargetId, canManageNotices, onRefreshNews])
 
   const selectedNews = selectedNewsId
     ? newsList.find((news) => news.id === selectedNewsId) ?? null
     : null
 
   const handleSaveNews = async () => {
-    if (!newsFormData.title.trim() || !newsFormData.content.trim()) return
+    if (!newsFormData.content.trim()) return
+    if (!canManageNotices) {
+      toast.error('공지 사항 저장 권한이 없습니다')
+      return
+    }
 
     setIsSavingNews(true)
     try {
@@ -96,10 +113,12 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
         return
       }
 
+      const normalizedContent = newsFormData.content.trim()
+      const normalizedSummary = newsFormData.summary.trim()
       const newsData = {
-        title: newsFormData.title.trim(),
-        content: newsFormData.content.trim(),
-        summary: newsFormData.summary.trim() || newsFormData.content.slice(0, 100) + '...',
+        title: buildTitleFromContent(normalizedContent),
+        content: normalizedContent,
+        summary: normalizedSummary || normalizedContent.slice(0, 100) + '...',
         author_id: user.id,
         is_published: true,
       }
@@ -117,13 +136,15 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
         if (error) throw error
       }
 
-      setNewsFormData({ title: '', content: '', summary: '' })
+      setNewsFormData({ content: '', summary: '' })
       setEditingNews(null)
       setShowNewsForm(false)
-      onRefreshNews()
+      await onRefreshNews(true)
+      toast.success(editingNews ? '공지 사항이 수정되었습니다' : '공지 사항이 등록되었습니다')
     } catch (error) {
       logger.error('뉴스 저장 실패:', error)
-      toast.error('저장에 실패했습니다')
+      const message = error instanceof Error ? error.message : '저장에 실패했습니다'
+      toast.error(message)
     } finally {
       setIsSavingNews(false)
     }
@@ -131,7 +152,7 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
 
   const handleOpenNewForm = useCallback(() => {
     setEditingNews(null)
-    setNewsFormData({ title: '', content: '', summary: '' })
+    setNewsFormData({ content: '', summary: '' })
     setShowNewsForm(true)
   }, [])
 
@@ -198,17 +219,6 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-1 block">제목</label>
-                <input
-                  type="text"
-                  value={newsFormData.title}
-                  onChange={(e) => setNewsFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="공지 사항 제목"
-                  className="w-full p-3 bg-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-
-              <div>
                 <label className="text-sm font-medium mb-1 block">내용</label>
                 <textarea
                   value={newsFormData.content}
@@ -232,7 +242,7 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
 
               <button
                 onClick={handleSaveNews}
-                disabled={isSavingNews || !newsFormData.title.trim() || !newsFormData.content.trim()}
+                disabled={isSavingNews || !newsFormData.content.trim()}
                 className="w-full py-3 bg-primary text-primary-foreground rounded-lg font-medium disabled:opacity-50 transition-colors"
               >
                 {isSavingNews ? '저장 중...' : (editingNews ? '수정하기' : '등록하기')}
