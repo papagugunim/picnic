@@ -3,7 +3,7 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('UseMessages')
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ChatMessageWithProfile, PollMessagesResponse } from '@/types/chat'
 
@@ -61,6 +61,8 @@ export function useMessages(roomId: string) {
   const loadedCountRef = useRef(0)
   const latestMessageIdRef = useRef<string | null>(null)
   const latestMessageAtRef = useRef<string | null>(null)
+  const senderProfileCacheRef = useRef<Map<string, RawProfileRow>>(new Map())
+  const supabase = useMemo(() => createClient(), [])
 
   // Long Polling 상태 관리
   const pollingRef = useRef<{
@@ -74,6 +76,10 @@ export function useMessages(roomId: string) {
       const senderProfile = Array.isArray(message.profiles)
         ? message.profiles[0]
         : message.profiles
+
+      if (senderProfile?.id) {
+        senderProfileCacheRef.current.set(senderProfile.id, senderProfile)
+      }
 
       return {
         id: message.id,
@@ -98,7 +104,6 @@ export function useMessages(roomId: string) {
     try {
       setIsLoading(true)
       setError(null)
-      const supabase = createClient()
 
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
@@ -143,14 +148,13 @@ export function useMessages(roomId: string) {
     } finally {
       setIsLoading(false)
     }
-  }, [roomId, formatMessages])
+  }, [roomId, formatMessages, supabase])
 
   const loadOlderMessages = useCallback(async () => {
     if (!roomId || isLoadingOlder || !hasOlderMessages) return
 
     try {
       setIsLoadingOlder(true)
-      const supabase = createClient()
       const start = loadedCountRef.current
       const end = start + MESSAGES_PAGE_SIZE - 1
 
@@ -203,7 +207,7 @@ export function useMessages(roomId: string) {
     } finally {
       setIsLoadingOlder(false)
     }
-  }, [roomId, isLoadingOlder, hasOlderMessages, formatMessages])
+  }, [roomId, isLoadingOlder, hasOlderMessages, formatMessages, supabase])
 
   // Long Polling 읽음 처리 함수
   const markMessagesAsReadAPI = useCallback(async () => {
@@ -334,8 +338,8 @@ export function useMessages(roomId: string) {
     loadedCountRef.current = 0
     latestMessageIdRef.current = null
     latestMessageAtRef.current = null
+    senderProfileCacheRef.current = new Map()
 
-    const supabase = createClient()
     const currentPollingRef = pollingRef.current
     let subscription: ReturnType<typeof supabase.channel> | null = null
     let reconnectTimer: NodeJS.Timeout | null = null
@@ -422,12 +426,18 @@ export function useMessages(roomId: string) {
                 return
               }
 
-              // 프로필 정보 가져오기
-              const { data: profileData } = await supabase
-                .from('profiles')
-                .select('id, full_name, avatar_url')
-                .eq('id', newMessage.sender_id)
-                .single()
+              let profileData = senderProfileCacheRef.current.get(newMessage.sender_id) || null
+              if (!profileData) {
+                const { data } = await supabase
+                  .from('profiles')
+                  .select('id, full_name, avatar_url')
+                  .eq('id', newMessage.sender_id)
+                  .single()
+                profileData = data
+                if (profileData?.id) {
+                  senderProfileCacheRef.current.set(profileData.id, profileData)
+                }
+              }
 
               const messageWithProfile = {
                 ...newMessage,
@@ -553,7 +563,7 @@ export function useMessages(roomId: string) {
       }
       setConnectionStatus('offline')
     }
-  }, [roomId, fetchMessages, startPolling])
+  }, [roomId, fetchMessages, startPolling, supabase])
 
   const sendMessage = useCallback(
     async ({ senderId, content, imageUrls }: SendMessageInput) => {
@@ -578,13 +588,19 @@ export function useMessages(roomId: string) {
         logger.log(`[Send] Mode: ${USE_LONG_POLLING ? 'Long Polling' : 'Realtime'}`)
         logger.log(`[Send] Room: ${roomId}, Sender: ${senderId}`)
 
-        // 발신자 프로필 정보 가져오기
-        const supabase = createClient()
-        const { data: senderProfile } = await supabase
-          .from('profiles')
-          .select('id, full_name, avatar_url')
-          .eq('id', senderId)
-          .single()
+        // 발신자 프로필 정보 캐시 사용 (없으면 1회 조회)
+        let senderProfile = senderProfileCacheRef.current.get(senderId) || null
+        if (!senderProfile) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .eq('id', senderId)
+            .single()
+          senderProfile = data
+          if (senderProfile?.id) {
+            senderProfileCacheRef.current.set(senderProfile.id, senderProfile)
+          }
+        }
 
         // 낙관적 업데이트: 즉시 UI에 메시지 추가
         const optimisticMessage: ChatMessageWithProfile = {
@@ -701,7 +717,7 @@ export function useMessages(roomId: string) {
         setIsSending(false)
       }
     },
-    [roomId]
+    [roomId, supabase]
   )
 
   return {

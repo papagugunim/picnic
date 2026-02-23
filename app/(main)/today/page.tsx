@@ -3,10 +3,11 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('Page')
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCache, setCache, clearCache, CACHE_KEYS } from '@/lib/cache'
+import { usePageVisibility } from '@/lib/hooks/usePageVisibility'
 import { WeatherSection } from '@/components/today/WeatherSection'
 import { ExchangeSection } from '@/components/today/ExchangeSection'
 import { NewsSection } from '@/components/today/NewsSection'
@@ -15,6 +16,8 @@ import { WEATHER_ICONS, CITY_COORDS, USEFUL_LINKS } from '@/components/today/con
 import type { WeatherData, WeatherCondition, ExchangeRates, OHLCData, NewsItem } from '@/components/today/types'
 
 export default function TodayPage() {
+  const isPageVisible = usePageVisibility(true)
+  const wasPageVisibleRef = useRef<boolean>(isPageVisible)
   const [userCity, setUserCity] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [weather, setWeather] = useState<WeatherData | null>(null)
@@ -228,7 +231,7 @@ export default function TodayPage() {
   }, [fetchWeatherData, fetchExchangeRates, fetchNews])
 
   useEffect(() => {
-    if (!userCity) return
+    if (!userCity || !isPageVisible) return
 
     const weatherInterval = setInterval(() => {
       logger.log('자동 날씨 업데이트 실행')
@@ -238,9 +241,11 @@ export default function TodayPage() {
     return () => {
       clearInterval(weatherInterval)
     }
-  }, [userCity, fetchWeatherData])
+  }, [userCity, fetchWeatherData, isPageVisible])
 
   useEffect(() => {
+    if (!isPageVisible) return
+
     const exchangeRatesInterval = setInterval(() => {
       logger.log('자동 환율 업데이트 실행')
       fetchExchangeRates(true)
@@ -249,7 +254,18 @@ export default function TodayPage() {
     return () => {
       clearInterval(exchangeRatesInterval)
     }
-  }, [fetchExchangeRates])
+  }, [fetchExchangeRates, isPageVisible])
+
+  useEffect(() => {
+    const wasVisible = wasPageVisibleRef.current
+    wasPageVisibleRef.current = isPageVisible
+
+    if (!isPageVisible || wasVisible) return
+    if (userCity) {
+      void fetchWeatherData(userCity)
+    }
+    void fetchExchangeRates()
+  }, [isPageVisible, userCity, fetchWeatherData, fetchExchangeRates])
 
   // 수동 날씨 새로고침
   const handleRefreshWeather = async () => {

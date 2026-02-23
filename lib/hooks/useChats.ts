@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ChatRoomWithProfile } from '@/types/chat'
 import { getCache, setCache } from '@/lib/cache'
@@ -32,7 +32,7 @@ export function useChats() {
   const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const offsetRef = useRef(0)
 
   const buildRoomsWithDetails = useCallback(
