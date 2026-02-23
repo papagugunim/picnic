@@ -64,6 +64,12 @@ export async function middleware(request: NextRequest) {
 
   // 4. Supabase 세션 갱신 및 인증 검증 (비공개 경로만)
   let supabaseResponse = NextResponse.next({ request })
+  const applySupabaseCookies = (response: NextResponse) => {
+    supabaseResponse.cookies.getAll().forEach(cookie => {
+      response.cookies.set(cookie.name, cookie.value)
+    })
+    return response
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -91,15 +97,30 @@ export async function middleware(request: NextRequest) {
   if (!user) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
-    const redirectResponse = NextResponse.redirect(loginUrl)
-    // 쿠키 복사 (세션 갱신 반영)
-    supabaseResponse.cookies.getAll().forEach(cookie => {
-      redirectResponse.cookies.set(cookie.name, cookie.value)
-    })
-    return redirectResponse
+    return applySupabaseCookies(NextResponse.redirect(loginUrl))
   }
 
-  // 6. 보안 헤더 추가
+  // 6. 온보딩 가드
+  const isOnboardingPath = pathname.startsWith('/onboarding')
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('onboarding_completed')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const onboardingCompleted = !!profile?.onboarding_completed
+
+  if (!onboardingCompleted && !isOnboardingPath) {
+    const onboardingUrl = new URL('/onboarding/step/1', request.url)
+    return applySupabaseCookies(NextResponse.redirect(onboardingUrl))
+  }
+
+  if (onboardingCompleted && isOnboardingPath) {
+    const feedUrl = new URL('/feed', request.url)
+    return applySupabaseCookies(NextResponse.redirect(feedUrl))
+  }
+
+  // 7. 보안 헤더 추가
   const headers = new Headers(supabaseResponse.headers)
   headers.set('X-Frame-Options', 'DENY')
   headers.set('X-Content-Type-Options', 'nosniff')

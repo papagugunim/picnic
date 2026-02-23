@@ -5,30 +5,93 @@ const logger = createNamespacedLogger('Route')
 import { createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-// 세션 쿠키를 포함한 리다이렉트 응답 생성
-function createRedirectWithCookies(url: string, session: any | null) {
-  const response = NextResponse.redirect(url)
+type ProfileSnapshot = {
+  full_name: string | null
+  city: string | null
+  onboarding_completed: boolean | null
+}
 
-  if (session) {
-    // 세션 쿠키 설정
-    response.cookies.set('sb-access-token', session.access_token, {
-      path: '/',
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    })
+const ONBOARDING_START_PATH = '/onboarding/step/1'
 
-    response.cookies.set('sb-refresh-token', session.refresh_token, {
-      path: '/',
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-    })
+function createRedirect(url: string) {
+  return NextResponse.redirect(url)
+}
+
+function getSafeNextPath(nextParam: string | null): string | null {
+  if (!nextParam) return null
+  if (!nextParam.startsWith('/') || nextParam.startsWith('//')) return null
+  return nextParam
+}
+
+function needsOnboarding(profile: ProfileSnapshot | null): boolean {
+  return !profile?.onboarding_completed || !profile?.full_name || !profile?.city
+}
+
+async function fetchProfile(supabase: any, userId: string): Promise<ProfileSnapshot | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('full_name, city, onboarding_completed')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (error) {
+    logger.error('Profile fetch error:', error)
+    return null
   }
 
-  return response
+  return data ?? null
+}
+
+async function ensureProfile(supabase: any, user: any): Promise<ProfileSnapshot | null> {
+  const existingProfile = await fetchProfile(supabase, user.id)
+  if (existingProfile) {
+    return existingProfile
+  }
+
+  logger.warn('Profile not found, creating fallback profile')
+
+  const fallbackName =
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    user.email?.split('@')[0] ||
+    '새사용자'
+
+  const { error: upsertError } = await supabase
+    .from('profiles')
+    .upsert(
+      {
+        id: user.id,
+        email: user.email,
+        full_name: fallbackName,
+        avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture,
+      },
+      { onConflict: 'id' }
+    )
+
+  if (upsertError) {
+    logger.error('Fallback profile creation failed:', upsertError)
+    return null
+  }
+
+  return fetchProfile(supabase, user.id)
+}
+
+function resolvePostAuthRedirect(origin: string, safeNextPath: string | null, profile: ProfileSnapshot | null) {
+  const onboardingRequired = needsOnboarding(profile)
+
+  if (safeNextPath) {
+    if (safeNextPath.startsWith('/reset-password')) {
+      return `${origin}${safeNextPath}`
+    }
+
+    if (!onboardingRequired || safeNextPath.startsWith('/onboarding')) {
+      return `${origin}${safeNextPath}`
+    }
+
+    logger.log('Ignoring next path because onboarding is required:', safeNextPath)
+  }
+
+  return onboardingRequired ? `${origin}${ONBOARDING_START_PATH}` : `${origin}/feed`
 }
 
 export async function GET(request: Request) {
@@ -50,54 +113,21 @@ export async function GET(request: Request) {
 
     if (error) {
       logger.error('Email verification error:', error)
-      return NextResponse.redirect(`${origin}/login?message=이메일 인증에 실패했습니다`)
+      return createRedirect(`${origin}/login?message=이메일 인증에 실패했습니다`)
     }
 
-    // 이메일 확인 성공
-    logger.log('Email verification success:', data)
-
-    // verifyOtp의 응답에서 사용자 정보 확인
     const user = data?.user
     if (!user) {
       logger.error('No user in verification response')
-      return NextResponse.redirect(`${origin}/login?message=사용자 정보를 찾을 수 없습니다`)
+      return createRedirect(`${origin}/login?message=사용자 정보를 찾을 수 없습니다`)
     }
 
-    logger.log('User verified:', user.id)
+    const profile = await ensureProfile(supabase, user)
+    const safeNextPath = getSafeNextPath(next)
+    const redirectUrl = resolvePostAuthRedirect(origin, safeNextPath, profile)
 
-    // 프로필 생성 시간 확인하여 신규 회원인지 판단
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('created_at, full_name, city')
-      .eq('id', user.id)
-      .single()
-
-    if (profileError) {
-      logger.error('Profile fetch error:', profileError)
-      // 프로필이 없으면 회원가입 페이지로
-      return NextResponse.redirect(`${origin}/signup?message=프로필을 생성해주세요`)
-    }
-
-    logger.log('Profile found:', profile)
-
-    // 신규 회원 판단: 프로필 생성 후 30분 이내면 신규 회원으로 간주
-    const createdAt = new Date(profile.created_at)
-    const now = new Date()
-    const diffInMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60)
-
-    logger.log(`Profile age: ${diffInMinutes} minutes`)
-
-    // 세션 정보 가져오기
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (diffInMinutes < 30) {
-      logger.log('New user detected, redirecting to step/1')
-      return createRedirectWithCookies(`${origin}/onboarding/step/1`, session)
-    }
-
-    // 기존 회원은 피드 페이지로 직접 이동
-    logger.log('Existing user, redirecting to feed')
-    return createRedirectWithCookies(`${origin}/feed`, session)
+    logger.log('Email verification redirect:', redirectUrl)
+    return createRedirect(redirectUrl)
   }
 
   // OAuth 플로우 (code) - 이메일 인증도 code로 올 수 있음
@@ -106,84 +136,23 @@ export async function GET(request: Request) {
 
     if (error) {
       logger.error('Auth callback error:', error)
-      return NextResponse.redirect(`${origin}/login?message=인증에 실패했습니다`)
+      return createRedirect(`${origin}/login?message=인증에 실패했습니다`)
     }
 
-    // 세션 정보 확인
     const user = data?.user
-    const session = data?.session
-
-    if (user) {
-      logger.log('User authenticated via code:', user.id)
-
-      // 프로필 조회 (created_at 포함)
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('created_at, city, full_name')
-        .eq('id', user.id)
-        .single()
-
-      // 프로필이 없는 경우 (트리거 실패 시 Fallback)
-      if (profileError || !profile) {
-        logger.warn('Profile not found, attempting to create:', profileError)
-
-        // 프로필 직접 생성 시도
-        const { error: createError } = await supabase
-          .from('profiles')
-          .insert({
-            id: user.id,
-            email: user.email,
-            full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0],
-            avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture,
-          })
-
-        if (createError) {
-          logger.error('Profile creation failed:', createError)
-          return NextResponse.redirect(`${origin}/login?message=프로필 생성에 실패했습니다`)
-        }
-
-        // 신규 OAuth 사용자는 닉네임 설정부터 시작 (step/1)
-        logger.log('New OAuth user created, redirecting to step/1')
-        return createRedirectWithCookies(`${origin}/onboarding/step/1`, session)
-      }
-
-      // 프로필은 있지만 필수 정보가 없는 경우
-      if (!profile.city) {
-        logger.log('Profile incomplete (no city), redirecting to step/1')
-        return createRedirectWithCookies(`${origin}/onboarding/step/1`, session)
-      }
-
-      if (!profile.full_name) {
-        logger.log('Profile incomplete (no full_name), redirecting to step/1')
-        return createRedirectWithCookies(`${origin}/onboarding/step/1`, session)
-      }
-
-      logger.log('Profile found:', profile)
-
-      // 신규 회원 판단: 프로필 생성 후 30분 이내면 신규 회원으로 간주
-      const createdAt = new Date(profile.created_at)
-      const now = new Date()
-      const diffInMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60)
-
-      logger.log(`Profile age: ${diffInMinutes} minutes`)
-
-      // next 파라미터가 있으면 우선
-      if (next) {
-        return createRedirectWithCookies(`${origin}${next}`, session)
-      }
-
-      // 신규 회원이면 온보딩으로 (step/1)
-      if (diffInMinutes < 30) {
-        logger.log('New user detected (code flow), redirecting to step/1')
-        return createRedirectWithCookies(`${origin}/onboarding/step/1`, session)
-      }
-
-      // 기존 회원은 피드 페이지로 직접 이동
-      logger.log('Existing user (code flow), redirecting to feed')
-      return createRedirectWithCookies(`${origin}/feed`, session)
+    if (!user) {
+      logger.error('No user in auth code response')
+      return createRedirect(`${origin}/login?message=사용자 정보를 찾을 수 없습니다`)
     }
+
+    const profile = await ensureProfile(supabase, user)
+    const safeNextPath = getSafeNextPath(next)
+    const redirectUrl = resolvePostAuthRedirect(origin, safeNextPath, profile)
+
+    logger.log('Code flow redirect:', redirectUrl)
+    return createRedirect(redirectUrl)
   }
 
   // token_hash나 code가 없는 경우 로그인 페이지로
-  return NextResponse.redirect(`${origin}/login?message=인증 정보가 유효하지 않습니다`)
+  return createRedirect(`${origin}/login?message=인증 정보가 유효하지 않습니다`)
 }
