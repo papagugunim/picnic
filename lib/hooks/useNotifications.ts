@@ -1,12 +1,11 @@
 'use client'
 
-import { createNamespacedLogger } from '@/lib/logger'
-
-const logger = createNamespacedLogger('UseNotifications')
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { Notification } from '@/types/notification'
 import { useUser } from '@/lib/contexts/UserContext'
+import { createNamespacedLogger } from '@/lib/logger'
+import type { Notification } from '@/types/notification'
+const logger = createNamespacedLogger('UseNotifications')
 
 interface UseNotificationsReturn {
   notifications: Notification[]
@@ -18,6 +17,48 @@ interface UseNotificationsReturn {
   refetch: () => Promise<void>
 }
 
+interface ActorProfileRow {
+  id: string
+  full_name: string | null
+  avatar_url: string | null
+}
+
+interface MarketPostRow {
+  id: string
+  title: string
+  images: string[] | null
+}
+
+interface CommunityPostRow {
+  id: string
+  title: string
+  images: string[] | null
+}
+
+interface ChatRoomRow {
+  id: string
+  post_id: string | null
+}
+
+const extractIdFromLink = (
+  link: string | null,
+  prefix: '/post/' | '/community/' | '/chats/'
+): string | null => {
+  if (!link || !link.startsWith(prefix)) return null
+
+  const id = link
+    .slice(prefix.length)
+    .split(/[/?#]/)[0]
+    ?.trim()
+
+  return id || null
+}
+
+const getFirstImageUrl = (images: string[] | null | undefined): string | null => {
+  if (!Array.isArray(images) || images.length === 0) return null
+  return images[0] || null
+}
+
 export function useNotifications(): UseNotificationsReturn {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -26,6 +67,185 @@ export function useNotifications(): UseNotificationsReturn {
   const { user } = useUser()
 
   const supabase = createClient()
+
+  const hydrateNotifications = useCallback(async (rows: Notification[]): Promise<Notification[]> => {
+    if (rows.length === 0) return rows
+
+    const actorIds = new Set<string>()
+    const marketPostIds = new Set<string>()
+    const communityPostIds = new Set<string>()
+    const roomIds = new Set<string>()
+
+    rows.forEach((notification) => {
+      if (notification.actor_id) actorIds.add(notification.actor_id)
+      if (notification.related_post_id) marketPostIds.add(notification.related_post_id)
+      if (notification.related_room_id) roomIds.add(notification.related_room_id)
+
+      const postIdFromLink = extractIdFromLink(notification.link, '/post/')
+      if (postIdFromLink) marketPostIds.add(postIdFromLink)
+
+      const communityPostIdFromLink = extractIdFromLink(notification.link, '/community/')
+      if (communityPostIdFromLink) communityPostIds.add(communityPostIdFromLink)
+
+      const roomIdFromLink = extractIdFromLink(notification.link, '/chats/')
+      if (roomIdFromLink) roomIds.add(roomIdFromLink)
+    })
+
+    const actorsMap = new Map<string, ActorProfileRow>()
+    const marketPostsMap = new Map<string, MarketPostRow>()
+    const communityPostsMap = new Map<string, CommunityPostRow>()
+    const roomsMap = new Map<string, ChatRoomRow>()
+
+    const actorIdsArray = Array.from(actorIds)
+    if (actorIdsArray.length > 0) {
+      const { data: actorsData, error: actorsError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', actorIdsArray)
+
+      if (actorsError) {
+        logger.warn('Failed to fetch actor profiles:', actorsError)
+      } else {
+        const actorRows = (actorsData || []) as ActorProfileRow[]
+        actorRows.forEach((actor) => {
+          actorsMap.set(actor.id, actor)
+        })
+      }
+    }
+
+    const marketPostIdsArray = Array.from(marketPostIds)
+    if (marketPostIdsArray.length > 0) {
+      const { data: marketPostsData, error: marketPostsError } = await supabase
+        .from('posts')
+        .select('id, title, images')
+        .in('id', marketPostIdsArray)
+
+      if (marketPostsError) {
+        logger.warn('Failed to fetch market post contexts:', marketPostsError)
+      } else {
+        const marketPostRows = (marketPostsData || []) as MarketPostRow[]
+        marketPostRows.forEach((post) => {
+          marketPostsMap.set(post.id, post)
+        })
+      }
+    }
+
+    const communityPostIdsArray = Array.from(communityPostIds)
+    if (communityPostIdsArray.length > 0) {
+      const { data: communityPostsData, error: communityPostsError } = await supabase
+        .from('community_posts')
+        .select('id, title, images')
+        .in('id', communityPostIdsArray)
+
+      if (communityPostsError) {
+        logger.warn('Failed to fetch community post contexts:', communityPostsError)
+      } else {
+        const communityPostRows = (communityPostsData || []) as CommunityPostRow[]
+        communityPostRows.forEach((post) => {
+          communityPostsMap.set(post.id, post)
+        })
+      }
+    }
+
+    const roomIdsArray = Array.from(roomIds)
+    if (roomIdsArray.length > 0) {
+      const { data: roomsData, error: roomsError } = await supabase
+        .from('chat_rooms')
+        .select('id, post_id')
+        .in('id', roomIdsArray)
+
+      if (roomsError) {
+        logger.warn('Failed to fetch chat room contexts:', roomsError)
+      } else {
+        const roomRows = (roomsData || []) as ChatRoomRow[]
+        roomRows.forEach((room) => {
+          roomsMap.set(room.id, room)
+        })
+
+        const roomPostIds = Array.from(
+          new Set(
+            roomRows
+              .map((room) => room.post_id)
+              .filter((postId): postId is string => !!postId && !marketPostsMap.has(postId))
+          )
+        )
+
+        if (roomPostIds.length > 0) {
+          const { data: roomPostsData, error: roomPostsError } = await supabase
+            .from('posts')
+            .select('id, title, images')
+            .in('id', roomPostIds)
+
+          if (roomPostsError) {
+            logger.warn('Failed to fetch post context for chat rooms:', roomPostsError)
+          } else {
+            const roomPostRows = (roomPostsData || []) as MarketPostRow[]
+            roomPostRows.forEach((post) => {
+              marketPostsMap.set(post.id, post)
+            })
+          }
+        }
+      }
+    }
+
+    return rows.map((notification) => {
+      const postIdFromLink = extractIdFromLink(notification.link, '/post/')
+      const communityPostIdFromLink = extractIdFromLink(notification.link, '/community/')
+      const roomIdFromLink = extractIdFromLink(notification.link, '/chats/')
+      const resolvedRoomId = notification.related_room_id ?? roomIdFromLink
+      const resolvedPostId = notification.related_post_id ?? postIdFromLink
+
+      let context: Notification['context'] = null
+
+      if (communityPostIdFromLink) {
+        const communityPost = communityPostsMap.get(communityPostIdFromLink)
+        context = {
+          kind: 'community_post',
+          id: communityPostIdFromLink,
+          label: '동네생활 글',
+          title: communityPost?.title ?? null,
+          image_url: getFirstImageUrl(communityPost?.images),
+        }
+      } else if (resolvedRoomId) {
+        const room = roomsMap.get(resolvedRoomId)
+        const roomPostId = room?.post_id ?? resolvedPostId
+        const roomPost = roomPostId ? marketPostsMap.get(roomPostId) : undefined
+
+        context = {
+          kind: 'chat_room',
+          id: resolvedRoomId,
+          label: roomPost?.title ? '채팅 상품' : '채팅방',
+          title: roomPost?.title ?? null,
+          image_url: getFirstImageUrl(roomPost?.images),
+        }
+      } else if (resolvedPostId) {
+        const marketPost = marketPostsMap.get(resolvedPostId)
+        context = {
+          kind: 'market_post',
+          id: resolvedPostId,
+          label: '중고거래 글',
+          title: marketPost?.title ?? null,
+          image_url: getFirstImageUrl(marketPost?.images),
+        }
+      } else if (notification.link) {
+        context = {
+          kind: 'unknown',
+          id: null,
+          label: '알림 상세',
+          title: null,
+          image_url: null,
+        }
+      }
+
+      const actor = notification.actor_id ? actorsMap.get(notification.actor_id) : undefined
+
+      return {
+        ...notification,
+        ...(actor ? { actor } : {}),
+        context,
+      }
+    })
+  }, [supabase])
 
   // 알림 조회
   const fetchNotifications = useCallback(async () => {
@@ -49,42 +269,17 @@ export function useNotifications(): UseNotificationsReturn {
 
       if (fetchError) throw fetchError
 
-      // actor 정보를 배치 쿼리로 조회 (N+1 문제 해결)
-      const actorIds = [...new Set(
-        (data || [])
-          .map(n => n.actor_id)
-          .filter((id): id is string => !!id)
-      )]
+      const hydrated = await hydrateNotifications((data || []) as Notification[])
 
-      let actorsMap = new Map<string, { id: string; full_name: string; avatar_url: string }>()
-
-      if (actorIds.length > 0) {
-        const { data: actorsData } = await supabase
-          .from('profiles')
-          .select('id, full_name, avatar_url')
-          .in('id', actorIds)
-
-        if (actorsData) {
-          actorsMap = new Map(actorsData.map(a => [a.id, a]))
-        }
-      }
-
-      const notificationsWithActor = (data || []).map(notification => {
-        if (notification.actor_id && actorsMap.has(notification.actor_id)) {
-          return { ...notification, actor: actorsMap.get(notification.actor_id) }
-        }
-        return notification
-      })
-
-      setNotifications(notificationsWithActor)
-      setUnreadCount((data || []).filter(n => !n.is_read).length)
+      setNotifications(hydrated)
+      setUnreadCount(hydrated.filter((notification) => !notification.is_read).length)
     } catch (err) {
       setError(err instanceof Error ? err : new Error('알림을 불러오는데 실패했습니다'))
       logger.error('Failed to fetch notifications:', err)
     } finally {
       setIsLoading(false)
     }
-  }, [supabase, user])
+  }, [hydrateNotifications, supabase, user])
 
   // 개별 알림 읽음 처리
   const markAsRead = useCallback(async (notificationId: string) => {
@@ -149,26 +344,11 @@ export function useNotifications(): UseNotificationsReturn {
         async (payload) => {
           if (payload.new.user_id !== user.id) return
 
-          // actor 정보 가져오기
-          let newNotification = payload.new as Notification
-
-          if (payload.new.actor_id) {
-            const { data: actorData } = await supabase
-              .from('profiles')
-              .select('id, full_name, avatar_url')
-              .eq('id', payload.new.actor_id)
-              .single()
-
-            if (actorData) {
-              newNotification = {
-                ...newNotification,
-                actor: actorData
-              }
-            }
-          }
+          const [newNotification] = await hydrateNotifications([payload.new as Notification])
+          if (!newNotification) return
 
           // 새 알림을 목록 맨 앞에 추가
-          setNotifications(prev => [newNotification, ...prev])
+          setNotifications(prev => [newNotification, ...prev].slice(0, 50))
           setUnreadCount(prev => prev + 1)
         }
       )
@@ -178,7 +358,7 @@ export function useNotifications(): UseNotificationsReturn {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [fetchNotifications, supabase, user])
+  }, [fetchNotifications, hydrateNotifications, supabase, user])
 
   return {
     notifications,

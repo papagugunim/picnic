@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { fromNow } from '@/lib/utils/date'
-import { Bell, CheckCheck } from 'lucide-react'
+import { Bell, CheckCheck, ChevronRight } from 'lucide-react'
 import { useNotifications } from '@/lib/hooks/useNotifications'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -89,6 +89,50 @@ export default function NotificationsPage() {
         return '시스템'
       default:
         return '알림'
+    }
+  }
+
+  const getNotificationContextEmoji = (notification: Notification) => {
+    switch (notification.context?.kind) {
+      case 'market_post':
+        return '🛍️'
+      case 'community_post':
+        return '🏘️'
+      case 'chat_room':
+        return '💬'
+      default:
+        return '📌'
+    }
+  }
+
+  const getNotificationContextText = (notification: Notification) => {
+    const context = notification.context
+
+    if (context?.title) {
+      return `${context.label} · ${context.title}`
+    }
+    if (context?.label) {
+      return context.label
+    }
+
+    switch (notification.type) {
+      case 'new_message':
+      case 'appointment_proposal':
+      case 'appointment_confirmed':
+      case 'appointment_cancelled':
+        return '채팅방에서 확인'
+      case 'community_comment':
+      case 'community_like':
+        return '동네생활 글에서 확인'
+      case 'post_like':
+      case 'post_interest':
+      case 'sale_completed':
+      case 'review_request':
+        return '중고거래 글에서 확인'
+      case 'content_reported':
+        return '신고된 콘텐츠 확인'
+      default:
+        return '알림 상세 보기'
     }
   }
 
@@ -259,6 +303,26 @@ export default function NotificationsPage() {
                   <p className="text-xs text-muted-foreground leading-tight truncate mt-0.5">
                     {notification.message}
                   </p>
+                  <div className="mt-1.5 flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2 py-1">
+                    {notification.context?.image_url ? (
+                      <img
+                        src={notification.context.image_url}
+                        alt=""
+                        loading="lazy"
+                        className="h-6 w-6 rounded object-cover flex-shrink-0 border border-border/60"
+                      />
+                    ) : (
+                      <span className="text-xs leading-none flex-shrink-0">
+                        {getNotificationContextEmoji(notification)}
+                      </span>
+                    )}
+                    <p className="text-[11px] text-foreground/80 truncate">
+                      {getNotificationContextText(notification)}
+                    </p>
+                    {notification.link && (
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                    )}
+                  </div>
                 </div>
 
                 {/* 읽음 표시 */}

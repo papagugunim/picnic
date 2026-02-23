@@ -11,6 +11,16 @@ export type NotificationType =
   | 'community_like'
   | 'content_reported'
 
+export type NotificationContextKind = 'market_post' | 'community_post' | 'chat_room' | 'unknown'
+
+export interface NotificationContext {
+  kind: NotificationContextKind
+  id: string | null
+  label: string
+  title: string | null
+  image_url: string | null
+}
+
 export interface Notification {
   id: string
   user_id: string
@@ -28,6 +38,7 @@ export interface Notification {
     full_name: string | null
     avatar_url: string | null
   }
+  context?: NotificationContext | null
 }
 
 export interface NotificationWithActor extends Notification {

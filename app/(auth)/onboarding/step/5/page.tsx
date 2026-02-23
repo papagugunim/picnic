@@ -56,11 +56,6 @@ export default function OnboardingStep5() {
     { emoji: '🥯', name: '베이글' },
   ]
 
-  const specialLevels = [
-    { emoji: '🥪', name: '샌드위치', role: '관리자' },
-    { emoji: '🍔', name: '햄버거', role: '개발자' },
-  ]
-
   return (
     <OnboardingLayout
       currentStep={5}
@@ -79,14 +74,14 @@ export default function OnboardingStep5() {
               <h2 className="text-lg font-bold">
                 모든 준비가 완료됐어요
               </h2>
-              <p className="text-xs text-muted-foreground">
-                시작 등급은 <span className="font-semibold text-primary">식빵(🍞)</span> 입니다
+              <p className="text-base font-bold text-primary leading-tight">
+                시작 등급은 식빵(🍞) 입니다
               </p>
             </div>
 
             <div className="rounded-lg bg-primary/5 border border-primary/15 p-3">
-              <p className="text-[11px] text-muted-foreground mb-2">
-                일반 등급 성장 순서
+              <p className="text-sm font-semibold text-primary mb-2">
+                브레드 등급
               </p>
               <div className="grid grid-cols-5 gap-1.5">
                 {regularLevels.map((level) => (
@@ -96,26 +91,6 @@ export default function OnboardingStep5() {
                   >
                     <div className="text-base leading-none">{level.emoji}</div>
                     <div className="text-[10px] mt-1 truncate">{level.name}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-lg bg-muted/50 p-3">
-              <p className="text-[11px] text-muted-foreground mb-2">
-                특별 등급
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {specialLevels.map((level) => (
-                  <div
-                    key={level.name}
-                    className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-2 py-1.5"
-                  >
-                    <div className="text-lg leading-none">{level.emoji}</div>
-                    <div className="min-w-0">
-                      <div className="text-xs font-semibold leading-tight">{level.name}</div>
-                      <div className="text-[10px] text-primary leading-tight">{level.role}</div>
-                    </div>
                   </div>
                 ))}
               </div>

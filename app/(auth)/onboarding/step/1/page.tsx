@@ -127,7 +127,9 @@ export default function OnboardingStep1() {
       }
 
       // 랜덤 닉네임 제안
-      await generateUniqueNickname()
+      const initialSuggestion = await generateUniqueNickname()
+      setSuggestedNickname(initialSuggestion)
+      setNickname((prev) => (prev.trim().length > 0 ? prev : initialSuggestion))
     }
 
     loadCurrentProfile()
@@ -152,7 +154,7 @@ export default function OnboardingStep1() {
     return (data?.length ?? 0) > 0
   }
 
-  const generateUniqueNickname = async () => {
+  const generateUniqueNickname = async (): Promise<string> => {
     const supabase = createClient()
     const maxAttempts = 40
 
@@ -161,9 +163,7 @@ export default function OnboardingStep1() {
       const taken = await isNicknameTaken(supabase, candidate)
 
       if (!taken) {
-        setSuggestedNickname(candidate)
-        setNickname((prev) => (prev.trim().length > 0 ? prev : candidate))
-        return
+        return candidate
       }
     }
 
@@ -176,16 +176,13 @@ export default function OnboardingStep1() {
       const taken = await isNicknameTaken(supabase, fallback)
 
       if (!taken) {
-        setSuggestedNickname(fallback)
-        setNickname((prev) => (prev.trim().length > 0 ? prev : fallback))
-        return
+        return fallback
       }
     }
 
     // 최후 예비값 (충돌 가능성 매우 낮음)
     const emergency = `피크닉${Math.floor(10000 + Math.random() * 90000)}`
-    setSuggestedNickname(emergency)
-    setNickname((prev) => (prev.trim().length > 0 ? prev : emergency))
+    return emergency
   }
 
   const handleUseSuggested = () => {
@@ -194,9 +191,15 @@ export default function OnboardingStep1() {
   }
 
   const handleRefreshSuggestion = async () => {
-    setIsCheckingDuplicate(true)
-    await generateUniqueNickname()
-    setIsCheckingDuplicate(false)
+    try {
+      setIsCheckingDuplicate(true)
+      const nextSuggestion = await generateUniqueNickname()
+      setSuggestedNickname(nextSuggestion)
+      setNickname(nextSuggestion)
+      setError(null)
+    } finally {
+      setIsCheckingDuplicate(false)
+    }
   }
 
   const handleNext = async () => {
