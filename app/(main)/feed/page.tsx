@@ -1,6 +1,19 @@
 import { createServerClient } from '@/lib/supabase/server'
 import FeedClient from '@/components/feed/FeedClient'
 import type { Metadata } from 'next'
+import type { ComponentProps } from 'react'
+
+type InitialPost = ComponentProps<typeof FeedClient>['initialPosts'][number]
+type RawPost = Omit<InitialPost, 'likes_count' | 'interests_count' | 'user_liked' | 'user_interested' | 'profiles'> & {
+  profiles: { full_name: string | null } | Array<{ full_name: string | null }> | null
+}
+
+function normalizeAuthorProfile(profileRow: RawPost['profiles']): { full_name: string | null } {
+  const normalized = Array.isArray(profileRow) ? profileRow[0] : profileRow
+  return {
+    full_name: normalized?.full_name ?? null,
+  }
+}
 
 export const metadata: Metadata = {
   title: '피드 | Picnic',
@@ -15,7 +28,7 @@ export default async function FeedPage() {
   const userId = user?.id || null
 
   // 서버에서 초기 게시글 목록 가져오기
-  let initialPosts: any[] = []
+  let initialPosts: InitialPost[] = []
   let initialCursor: string | null = null
   let initialCity: string | null = null
 
@@ -23,10 +36,11 @@ export default async function FeedPage() {
     // 사용자 프로필에서 city 가져오기
     const { data: profile } = await supabase
       .from('profiles')
-      .select('city')
+      .select('city, user_role')
       .eq('id', userId)
       .single()
     initialCity = profile?.city || null
+    const isAdminOrDeveloper = profile?.user_role === 'admin' || profile?.user_role === 'developer'
 
     let query = supabase
       .from('posts')
@@ -46,9 +60,14 @@ export default async function FeedPage() {
           full_name
         )
       `)
-      .eq('status', 'active')
       .order('created_at', { ascending: false })
       .limit(20)
+
+    if (isAdminOrDeveloper) {
+      query = query.in('status', ['active', 'hidden'])
+    } else {
+      query = query.or(`status.eq.active,and(status.eq.hidden,author_id.eq.${userId})`)
+    }
 
     if (profile?.city) {
       query = query.eq('city', profile.city)
@@ -57,7 +76,12 @@ export default async function FeedPage() {
     const { data: postsData } = await query
 
     if (postsData && postsData.length > 0) {
-      const postIds = postsData.map((p: any) => p.id)
+      const normalizedPostsData = (postsData as RawPost[]).map((post) => ({
+        ...post,
+        profiles: normalizeAuthorProfile(post.profiles),
+      }))
+
+      const postIds = normalizedPostsData.map((post) => post.id)
 
       const [likesResult, interestsResult] = await Promise.all([
         supabase
@@ -92,7 +116,7 @@ export default async function FeedPage() {
         }
       })
 
-      initialPosts = postsData.map((post: any) => ({
+      initialPosts = normalizedPostsData.map((post) => ({
         ...post,
         likes_count: likesCountMap.get(post.id) || 0,
         interests_count: interestsCountMap.get(post.id) || 0,
@@ -100,8 +124,8 @@ export default async function FeedPage() {
         user_interested: userInterestsSet.has(post.id),
       }))
 
-      if (postsData.length === 20) {
-        initialCursor = postsData[postsData.length - 1].created_at
+      if (normalizedPostsData.length === 20) {
+        initialCursor = normalizedPostsData[normalizedPostsData.length - 1].created_at
       }
     }
   }

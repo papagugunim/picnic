@@ -38,6 +38,21 @@ interface Post {
   user_interested: boolean
 }
 
+type RawProfileRow = {
+  full_name: string | null
+}
+
+type RawPost = Omit<Post, 'likes_count' | 'interests_count' | 'user_liked' | 'user_interested' | 'profiles'> & {
+  profiles: RawProfileRow | RawProfileRow[] | null
+}
+
+function normalizeAuthorProfile(profileRow: RawProfileRow | RawProfileRow[] | null): { full_name: string | null } {
+  const normalized = Array.isArray(profileRow) ? profileRow[0] : profileRow
+  return {
+    full_name: normalized?.full_name ?? null,
+  }
+}
+
 interface FeedPostItemProps {
   post: Post
   isDeveloper: boolean
@@ -53,6 +68,7 @@ function FeedPostItem({
   onInterestToggle,
   onView,
 }: FeedPostItemProps) {
+  const isHiddenPost = post.status === 'hidden'
   const linkRef = useRef<HTMLAnchorElement>(null)
   const viewedRef = useRef(false)
 
@@ -105,8 +121,9 @@ function FeedPostItem({
       {/* Content */}
       <div className="flex-1 flex flex-col justify-between min-w-0">
         <div>
-          <h3 className="text-base font-normal line-clamp-2 mb-0.5">
+          <h3 className={`text-base font-normal line-clamp-2 mb-0.5 ${isHiddenPost ? 'text-muted-foreground' : ''}`}>
             {post.title}
+            {isHiddenPost && <span className="ml-1 text-xs font-medium">(숨김처리)</span>}
           </h3>
           <div className="text-xs text-muted-foreground mb-0.5">
             <span>{getCityNameInKorean(post.city)}</span>
@@ -119,7 +136,7 @@ function FeedPostItem({
                 ? '무료나눔'
                 : `${post.price.toLocaleString()}₽`}
             </p>
-            {post.status && post.status !== 'active' && (
+            {post.status && post.status !== 'active' && post.status !== 'hidden' && (
               <span className={`text-xs px-2 py-0.5 rounded-full ${getPostStatusInfo(post.status as PostStatus).bgColor} ${getPostStatusInfo(post.status as PostStatus).textColor} font-medium`}>
                 {getPostStatusInfo(post.status as PostStatus).label}
               </span>
@@ -194,7 +211,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
   const { user, profile, loading: userLoading } = useUser()
 
   const userCity = profile?.city || null
-  const userStations = profile?.preferred_metro_stations || []
+  const userStations = useMemo(() => profile?.preferred_metro_stations ?? [], [profile?.preferred_metro_stations])
   const isInitialized = !userLoading
   const viewedPostIds = useRef(new Set<string>())
 
@@ -204,6 +221,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
     }
 
     const supabase = createClient()
+    const isAdminOrDeveloper = profile?.user_role === 'admin' || profile?.user_role === 'developer'
 
     let query = supabase
       .from('posts')
@@ -223,9 +241,14 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
           full_name
         )
       `)
-      .eq('status', 'active')
       .order('created_at', { ascending: false })
       .limit(PAGE_SIZE)
+
+    if (isAdminOrDeveloper) {
+      query = query.in('status', ['active', 'hidden'])
+    } else {
+      query = query.or(`status.eq.active,and(status.eq.hidden,author_id.eq.${user.id})`)
+    }
 
     if (userCity) {
       query = query.eq('city', userCity)
@@ -242,7 +265,12 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
       return { data: [], nextCursor: null, hasMore: false }
     }
 
-    const postIds = postsData.map((p: any) => p.id)
+    const normalizedPostsData = (postsData as RawPost[]).map((post) => ({
+      ...post,
+      profiles: normalizeAuthorProfile(post.profiles),
+    }))
+
+    const postIds = normalizedPostsData.map((post) => post.id)
 
     if (postIds.length === 0) {
       return { data: [], nextCursor: null, hasMore: false }
@@ -281,7 +309,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
       }
     })
 
-    const postsWithReactions = postsData.map((post: any) => ({
+    const postsWithReactions = normalizedPostsData.map((post) => ({
       ...post,
       likes_count: likesCountMap.get(post.id) || 0,
       interests_count: interestsCountMap.get(post.id) || 0,
@@ -289,16 +317,16 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
       user_interested: userInterestsSet.has(post.id),
     })) as Post[]
 
-    const nextCursor = postsData.length === PAGE_SIZE
-      ? postsData[postsData.length - 1].created_at
+    const nextCursor = normalizedPostsData.length === PAGE_SIZE
+      ? normalizedPostsData[normalizedPostsData.length - 1].created_at
       : null
 
     return {
       data: postsWithReactions,
       nextCursor,
-      hasMore: postsData.length === PAGE_SIZE,
+      hasMore: normalizedPostsData.length === PAGE_SIZE,
     }
-  }, [userCity, user])
+  }, [userCity, user, profile?.user_role])
 
   const {
     data: allPosts,
@@ -307,7 +335,6 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
     isRefreshing,
     hasMore,
     sentinelRef,
-    refresh,
     updateItem,
     reset,
   } = useInfiniteScroll<Post>({
