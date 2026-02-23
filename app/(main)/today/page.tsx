@@ -67,7 +67,14 @@ export default function TodayPage() {
       setCache(CACHE_KEYS.EXCHANGE_RATES, rates, 15 * 60 * 1000)
       setExchangeRates(rates)
 
-      logger.log('환율 출처:', data.source === 'naver' ? '네이버 금융' : data.source === 'api' ? 'ExchangeRate API' : '대체 API')
+      logger.log(
+        '환율 출처:',
+        data.source === 'naver'
+          ? '네이버 금융'
+          : data.source === 'api' || data.source === 'exchangerate-api'
+          ? 'ExchangeRate API'
+          : '대체 API'
+      )
     } catch (error) {
       logger.error('환율 정보 가져오기 실패:', error)
       setExchangeRates({
@@ -81,6 +88,12 @@ export default function TodayPage() {
   // 뉴스 데이터 가져오기 함수
   const fetchNews = useCallback(async () => {
     try {
+      const cached = getCache<NewsItem[]>(CACHE_KEYS.TODAY_NOTICES, 10 * 60 * 1000)
+      if (cached && cached.length > 0) {
+        setNewsList(cached)
+        return
+      }
+
       const supabase = createClient()
       const { data, error } = await supabase
         .from('news')
@@ -90,7 +103,11 @@ export default function TodayPage() {
         .limit(10)
 
       if (error) throw error
-      setNewsList(data || [])
+      const next = data || []
+      setNewsList(next)
+      if (next.length > 0) {
+        setCache(CACHE_KEYS.TODAY_NOTICES, next, 10 * 60 * 1000)
+      }
     } catch (error) {
       logger.error('뉴스 가져오기 실패:', error)
     }

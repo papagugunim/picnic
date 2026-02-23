@@ -102,6 +102,7 @@ export const CACHE_KEYS = {
   WEATHER: (city: string) => `cache_weather_${city}`,
   EXCHANGE_RATES: 'cache_exchange_rates',
   EXCHANGE_HISTORY: (currency: string) => `cache_exchange_history_${currency}`,
+  TODAY_NOTICES: 'cache_today_notices',
   POSTS: (page: number) => `cache_posts_page_${page}`,
   USER_PROFILE: (userId: string) => `cache_user_profile_${userId}`,
 } as const

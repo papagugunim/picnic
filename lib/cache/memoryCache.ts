@@ -14,17 +14,7 @@ interface CacheEntry<T> {
 
 class MemoryCache {
   private cache = new Map<string, CacheEntry<any>>()
-  private cleanupInterval: NodeJS.Timeout | null = null
-
-  constructor() {
-    // 5분마다 만료된 항목 정리
-    if (typeof window === 'undefined') {
-      // 서버 사이드에서만 실행
-      this.cleanupInterval = setInterval(() => {
-        this.cleanup()
-      }, 5 * 60 * 1000)
-    }
-  }
+  private readonly MAX_ENTRIES = 1000
 
   /**
    * 캐시에 값 저장
@@ -32,6 +22,11 @@ class MemoryCache {
   set<T>(key: string, value: T, ttlSeconds: number = 300): void {
     const expiresAt = Date.now() + ttlSeconds * 1000
     this.cache.set(key, { value, expiresAt })
+
+    // 서버리스 환경에서 타이머 대신 lazy cleanup으로 관리
+    if (this.cache.size > this.MAX_ENTRIES) {
+      this.cleanup()
+    }
   }
 
   /**
@@ -117,15 +112,13 @@ class MemoryCache {
    * 정리 타이머 종료
    */
   destroy(): void {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval)
-    }
     this.cache.clear()
   }
 }
 
 // 싱글톤 인스턴스
 export const cache = new MemoryCache()
+const inFlightFetches = new Map<string, Promise<unknown>>()
 
 /**
  * 캐시 헬퍼 함수: 캐시가 없으면 함수 실행 후 캐시
@@ -142,12 +135,25 @@ export async function getCachedOrFetch<T>(
     return cached
   }
 
+  const existing = inFlightFetches.get(key)
+  if (existing) {
+    logger.log(`[Cache] INFLIGHT-HIT: ${key}`)
+    return existing as Promise<T>
+  }
+
   // 캐시 미스 - 데이터 fetch
   logger.log(`[Cache] MISS: ${key}`)
-  const data = await fetchFn()
+  const pending = fetchFn()
+    .then((data) => {
+      cache.set(key, data, ttlSeconds)
+      return data
+    })
+    .finally(() => {
+      if (inFlightFetches.get(key) === pending) {
+        inFlightFetches.delete(key)
+      }
+    })
 
-  // 캐시 저장
-  cache.set(key, data, ttlSeconds)
-
-  return data
+  inFlightFetches.set(key, pending)
+  return pending
 }

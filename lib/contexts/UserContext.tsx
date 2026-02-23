@@ -90,11 +90,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
           if (storageProfile) {
             setProfile(storageProfile)
             setLoading(false) // 즉시 로딩 완료
-
-            // 백그라운드에서 업데이트 체크
-            setTimeout(() => {
-              fetchUserAndProfile(true)
-            }, 2000)
             return
           }
         }
