@@ -30,6 +30,7 @@ interface NewsSectionProps {
 export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsSectionProps) {
   const [selectedNewsId, setSelectedNewsId] = useState<string | null>(null)
   const [showNewsModal, setShowNewsModal] = useState(false)
+  const [showManageModal, setShowManageModal] = useState(false)
   const [showNewsForm, setShowNewsForm] = useState(false)
   const [editingNews, setEditingNews] = useState<NewsItem | null>(null)
   const [newsFormData, setNewsFormData] = useState({ content: '', summary: '' })
@@ -64,6 +65,11 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
   const handleOpenNewsOverview = useCallback(() => {
     openNewsModal(selectedNewsId)
   }, [openNewsModal, selectedNewsId])
+
+  const handleOpenManageModal = useCallback(() => {
+    if (!canManageNotices) return
+    setShowManageModal(true)
+  }, [canManageNotices])
 
   const handleEditNews = useCallback((news: NewsItem) => {
     setEditingNews(news)
@@ -191,7 +197,7 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
             <h2 className="font-bold text-sm">공지 사항</h2>
           </div>
           <div className="flex items-center gap-1.5">
-            {newsList.length > 0 && (
+            {!canManageNotices && newsList.length > 0 && (
               <button
                 type="button"
                 onClick={handleOpenNewsOverview}
@@ -202,11 +208,12 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
             )}
             {canManageNotices && (
               <button
-                onClick={handleOpenNewForm}
-                className="p-1.5 hover:bg-muted/50 rounded-lg transition-colors"
-                aria-label="공지 사항 추가"
+                type="button"
+                onClick={handleOpenManageModal}
+                className="text-xs text-primary font-medium px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
+                aria-label="공지 사항 관리"
               >
-                <Plus className="w-4 h-4 text-muted-foreground" />
+                관리
               </button>
             )}
           </div>
@@ -229,6 +236,98 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
           onEdit={handleEditNews}
           onDelete={handleDeleteNews}
         />
+      )}
+
+      {/* 공지 사항 관리 모달 (관리자/개발자 전용) */}
+      {showManageModal && canManageNotices && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setShowManageModal(false)}
+        >
+          <div
+            className="glass-strong rounded-xl max-w-2xl w-full max-h-[82vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
+              <h2 className="text-base font-bold">공지 사항 관리</h2>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleOpenNewForm}
+                  className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-muted/50 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  공지 추가
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowManageModal(false)}
+                  className="p-1.5 hover:bg-muted/50 rounded-lg transition-colors"
+                  aria-label="관리 모달 닫기"
+                >
+                  <X className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-y-auto px-3 py-2">
+              {newsList.length === 0 ? (
+                <div className="py-12 text-center">
+                  <p className="text-sm text-muted-foreground mb-3">등록된 공지 사항이 없습니다</p>
+                  <button
+                    type="button"
+                    onClick={handleOpenNewForm}
+                    className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    첫 공지 등록
+                  </button>
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {newsList.map((news) => (
+                    <li
+                      key={news.id}
+                      className="rounded-lg border border-border/60 bg-background/70 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <button
+                          type="button"
+                          onClick={() => openNewsModal(news.id)}
+                          className="min-w-0 flex-1 text-left hover:opacity-80 transition-opacity"
+                        >
+                          <p className="text-sm font-semibold line-clamp-1">{news.title}</p>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            {news.summary || news.content}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground mt-2">
+                            {new Date(news.created_at).toLocaleDateString('ko-KR')}
+                          </p>
+                        </button>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleEditNews(news)}
+                            className="rounded-md border border-border/60 px-2 py-1 text-xs hover:bg-muted/50 transition-colors"
+                          >
+                            수정
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteNews(news.id)}
+                            className="rounded-md border border-destructive/40 px-2 py-1 text-xs text-destructive hover:bg-destructive/10 transition-colors"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 뉴스 작성/수정 모달 */}
