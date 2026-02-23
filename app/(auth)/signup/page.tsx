@@ -16,6 +16,9 @@ export default function SignupPage() {
           <Link href="/" className="inline-block">
             <h1 className="text-5xl font-bold home-hero-title">피크닉</h1>
           </Link>
+          <p className="text-sm font-medium text-primary">
+            해외 거주 도시 기반 한국인 교민 플랫폼
+          </p>
           <p className="text-muted-foreground text-lg">
             피크닉에 오신 것을 환영합니다
           </p>
