@@ -133,28 +133,37 @@
       return card;
     }
 
+    async function fetchJson(url) {
+      const res = await fetch(url.toString());
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
     async function loadToday() {
       todayLoader.style.display = 'block';
       todayLoader.textContent = '불러오는 중...';
+      try {
+        const url = new URL('/api/today-news', window.location.origin);
+        url.searchParams.set('limit', '20');
+        if (activeTopic) url.searchParams.set('topic', activeTopic);
 
-      const url = new URL('/api/today-news', window.location.origin);
-      url.searchParams.set('limit', '20');
-      if (activeTopic) url.searchParams.set('topic', activeTopic);
+        const data = await fetchJson(url);
+        const items = data.items || [];
 
-      const res = await fetch(url.toString());
-      const data = await res.json();
-      const items = data.items || [];
+        todayFeedEl.innerHTML = '';
+        if (items.length === 0) {
+          todayLoader.textContent = '표시할 뉴스가 없습니다.';
+          archiveCursor = null;
+          return;
+        }
 
-      todayFeedEl.innerHTML = '';
-      if (items.length === 0) {
-        todayLoader.textContent = '표시할 뉴스가 없습니다.';
+        items.forEach(item => todayFeedEl.appendChild(renderCard(item)));
+        todayLoader.style.display = 'none';
+        archiveCursor = items[items.length - 1].published_at;
+      } catch (error) {
+        todayLoader.textContent = `뉴스 로드 실패: ${error.message}`;
         archiveCursor = null;
-        return;
       }
-
-      items.forEach(item => todayFeedEl.appendChild(renderCard(item)));
-      todayLoader.style.display = 'none';
-      archiveCursor = items[items.length - 1].published_at;
     }
 
     async function loadArchive() {
@@ -162,31 +171,33 @@
       archiveLoading = true;
       archiveLoader.style.display = 'block';
       archiveLoader.textContent = '지난 뉴스 불러오는 중...';
+      try {
+        const url = new URL('/api/archive', window.location.origin);
+        url.searchParams.set('limit', '20');
+        if (archiveCursor) url.searchParams.set('cursor', archiveCursor);
+        if (activeTopic) url.searchParams.set('topic', activeTopic);
 
-      const url = new URL('/api/archive', window.location.origin);
-      url.searchParams.set('limit', '20');
-      if (archiveCursor) url.searchParams.set('cursor', archiveCursor);
-      if (activeTopic) url.searchParams.set('topic', activeTopic);
+        const data = await fetchJson(url);
+        const items = data.items || [];
 
-      const res = await fetch(url.toString());
-      const data = await res.json();
-      const items = data.items || [];
-
-      if (items.length === 0) {
-        archiveHasMore = false;
-        if (archiveFeedEl.children.length === 0) {
-          archiveLoader.textContent = '지난 뉴스가 없습니다.';
-        } else {
-          archiveLoader.textContent = '더 이상 지난 뉴스가 없습니다.';
+        if (items.length === 0) {
+          archiveHasMore = false;
+          if (archiveFeedEl.children.length === 0) {
+            archiveLoader.textContent = '지난 뉴스가 없습니다.';
+          } else {
+            archiveLoader.textContent = '더 이상 지난 뉴스가 없습니다.';
+          }
+          return;
         }
-        archiveLoading = false;
-        return;
-      }
 
-      items.forEach(item => archiveFeedEl.appendChild(renderCard(item)));
-      archiveCursor = items[items.length - 1].published_at;
-      archiveLoader.style.display = 'none';
-      archiveLoading = false;
+        items.forEach(item => archiveFeedEl.appendChild(renderCard(item)));
+        archiveCursor = items[items.length - 1].published_at;
+        archiveLoader.style.display = 'none';
+      } catch (error) {
+        archiveLoader.textContent = `아카이브 로드 실패: ${error.message}`;
+      } finally {
+        archiveLoading = false;
+      }
     }
 
     async function resetAndLoadAll() {

@@ -58,37 +58,56 @@
     const loader = document.getElementById('loader');
     let cursor = null;
     let loading = false;
-    const query = "{{ query }}";
+    const query = {{ query | tojson }};
+
+    function escapeHtml(raw = '') {
+      return String(raw)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
 
     async function loadMore() {
       if (loading || !query) return;
       loading = true;
       loader.style.display = 'block';
-      const url = new URL('/api/search', window.location.origin);
-      url.searchParams.set('q', query);
-      if (cursor) url.searchParams.set('cursor', cursor);
-      const res = await fetch(url.toString());
-      const data = await res.json();
+      try {
+        const url = new URL('/api/search', window.location.origin);
+        url.searchParams.set('q', query);
+        if (cursor) url.searchParams.set('cursor', cursor);
+        const res = await fetch(url.toString());
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        const items = data.items || [];
 
-      if (data.items.length === 0) {
-        loader.textContent = '더 이상 결과가 없습니다.';
-        return;
+        if (items.length === 0) {
+          loader.textContent = '더 이상 결과가 없습니다.';
+          loading = false;
+          return;
+        }
+
+        items.forEach(item => {
+          const card = document.createElement('article');
+          card.className = 'card';
+          const badge = item.category ? `<span class="badge">${escapeHtml(item.category)}</span>` : '';
+          const publishedAt = item.published_at ? new Date(item.published_at).toLocaleString() : '';
+          card.innerHTML = `
+            <div class="meta">${badge}${escapeHtml(publishedAt)}</div>
+            <h3 class="title">${escapeHtml(item.title || '')}</h3>
+            ${item.summary ? `<p class="summary">${escapeHtml(item.summary)}</p>` : ''}
+            <a class="link" href="${escapeHtml(item.link || '#')}" target="_blank" rel="noopener">원문 보기</a>
+          `;
+          feedEl.appendChild(card);
+        });
+        cursor = items[items.length - 1].published_at;
+        loader.style.display = 'none';
+      } catch (error) {
+        loader.textContent = `검색 결과를 불러오지 못했습니다: ${error.message}`;
       }
-
-      data.items.forEach(item => {
-        const card = document.createElement('article');
-        card.className = 'card';
-        const badge = item.category ? `<span class="badge">${item.category}</span>` : '';
-        card.innerHTML = `
-          <div class="meta">${badge}${new Date(item.published_at).toLocaleString()}</div>
-          <h3 class="title">${item.title}</h3>
-          ${item.summary ? `<p class="summary">${item.summary}</p>` : ''}
-          <a class="link" href="${item.link}" target="_blank" rel="noopener">원문 보기</a>
-        `;
-        feedEl.appendChild(card);
-      });
-      cursor = data.items[data.items.length - 1].published_at;
-      loader.style.display = 'none';
       loading = false;
     }
 

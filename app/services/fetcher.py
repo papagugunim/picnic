@@ -4,10 +4,11 @@ import logging
 import math
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 from html import unescape
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import feedparser
 import httpx
@@ -100,6 +101,7 @@ ENABLE_VC_SOURCE = os.environ.get("ENABLE_VC_SOURCE", "0").strip().lower() in {
     "on",
 }
 VC_ENTRY_LIMIT = int(os.environ.get("VC_ENTRY_LIMIT", "8"))
+FETCH_WORKERS = max(1, int(os.environ.get("NEWS_FETCH_WORKERS", "3")))
 logger = logging.getLogger(__name__)
 
 POLITICS_KEYWORDS = [
@@ -290,6 +292,31 @@ VC_PATH_TOPIC_HINTS = {
     "culture": "문화",
     "weather": "날씨",
 }
+
+
+def _new_translation_stats(limit: int = INLINE_TRANSLATION_LIMIT) -> Dict[str, int]:
+    return {
+        "attempted": 0,
+        "success": 0,
+        "failed": 0,
+        "skipped": 0,
+        "limit": max(0, int(limit)),
+    }
+
+
+def _merge_translation_stats(total: Dict[str, Any], part: Dict[str, Any]) -> None:
+    for key in ("attempted", "success", "failed", "skipped"):
+        total[key] = int(total.get(key) or 0) + int(part.get(key) or 0)
+
+
+def _split_translation_budget(job_count: int, total_limit: int) -> List[int]:
+    if job_count <= 0:
+        return []
+    if total_limit <= 0:
+        return [0] * job_count
+    base = total_limit // job_count
+    remain = total_limit % job_count
+    return [base + (1 if idx < remain else 0) for idx in range(job_count)]
 
 
 def _strip_html(text: Optional[str]) -> str:
@@ -487,7 +514,8 @@ def _translate_with_stats(
     if bool(stats.get("disable_inline_translation")):
         stats["skipped"] = int(stats.get("skipped") or 0) + 1
         return text
-    if stats["attempted"] >= INLINE_TRANSLATION_LIMIT:
+    translate_limit = max(0, int(stats.get("limit") if stats.get("limit") is not None else INLINE_TRANSLATION_LIMIT))
+    if stats["attempted"] >= translate_limit:
         stats["skipped"] += 1
         return text
     translated, ok = translate_text_with_meta(text, source_lang=source_lang)
@@ -687,10 +715,11 @@ def _extract_telegram_items(
 def fetch_and_store(fast_mode: bool = False) -> List[int]:
     stored_ids: List[int] = []
     candidates: List[Dict[str, Any]] = []
-    translation_stats: Dict[str, Any] = {"attempted": 0, "success": 0, "failed": 0, "skipped": 0}
+    translation_stats: Dict[str, Any] = _new_translation_stats(INLINE_TRANSLATION_LIMIT)
     rss_entry_limit = min(RSS_ENTRY_LIMIT, 4) if fast_mode else RSS_ENTRY_LIMIT
     rss_timeout = FAST_FETCH_TIMEOUT if fast_mode else None
 
+    jobs: List[Dict[str, Any]] = []
     rss_sources = list(RSS_SOURCES)
     if ENABLE_VC_SOURCE:
         rss_sources.append(VC_RSS_SOURCE)
@@ -699,26 +728,68 @@ def fetch_and_store(fast_mode: bool = False) -> List[int]:
         per_feed_limit = rss_entry_limit
         if feed.get("name") == "VC.RU":
             per_feed_limit = min(per_feed_limit, VC_ENTRY_LIMIT)
-        candidates.extend(
-            _extract_rss_items(
-                feed,
-                translation_stats,
-                entry_limit=per_feed_limit,
-                timeout=rss_timeout,
-                translate_summary=not fast_mode,
-            )
+        jobs.append(
+            {
+                "kind": "rss",
+                "name": feed.get("name"),
+                "feed": feed,
+                "entry_limit": per_feed_limit,
+                "timeout": rss_timeout,
+                "translate_summary": not fast_mode,
+            }
         )
 
     if ENABLE_TELEGRAM_SOURCE:
         for source in TELEGRAM_SOURCES:
-            candidates.extend(
-                _extract_telegram_items(
-                    source,
-                    translation_stats,
-                    entry_limit=min(TELEGRAM_ENTRY_LIMIT, 8) if fast_mode else TELEGRAM_ENTRY_LIMIT,
-                    timeout=FAST_FETCH_TIMEOUT if fast_mode else None,
-                )
+            jobs.append(
+                {
+                    "kind": "telegram",
+                    "name": source.get("name"),
+                    "source": source,
+                    "entry_limit": min(TELEGRAM_ENTRY_LIMIT, 8) if fast_mode else TELEGRAM_ENTRY_LIMIT,
+                    "timeout": FAST_FETCH_TIMEOUT if fast_mode else None,
+                }
             )
+
+    budgets = _split_translation_budget(len(jobs), INLINE_TRANSLATION_LIMIT)
+    max_workers = min(FETCH_WORKERS, max(1, len(jobs)))
+    if jobs:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_map: Dict[Any, Tuple[Dict[str, Any], Dict[str, Any]]] = {}
+            for index, job in enumerate(jobs):
+                stats = _new_translation_stats(budgets[index] if index < len(budgets) else 0)
+                if job["kind"] == "rss":
+                    future = executor.submit(
+                        _extract_rss_items,
+                        job["feed"],
+                        stats,
+                        entry_limit=job["entry_limit"],
+                        timeout=job["timeout"],
+                        translate_summary=job["translate_summary"],
+                    )
+                else:
+                    future = executor.submit(
+                        _extract_telegram_items,
+                        job["source"],
+                        stats,
+                        entry_limit=job["entry_limit"],
+                        timeout=job["timeout"],
+                    )
+                future_map[future] = (stats, job)
+
+            for future in as_completed(future_map):
+                stats, job = future_map[future]
+                try:
+                    items = future.result()
+                except Exception:
+                    logger.exception(
+                        "source extraction failed: kind=%s name=%s",
+                        job.get("kind"),
+                        job.get("name"),
+                    )
+                    continue
+                candidates.extend(items)
+                _merge_translation_stats(translation_stats, stats)
 
     for item in candidates:
         inserted = insert_item(item)

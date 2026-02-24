@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import os
+import time
 from threading import Lock, Thread
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Dict, Optional, Tuple
 
 from fastapi import FastAPI, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -26,6 +27,9 @@ from app.services.retranslate import retranslate_missing, retranslate_until_stab
 APP_TITLE = "Picnic Today - RU Live News"
 ADMIN_PANEL_KEY = os.environ.get("ADMIN_PANEL_KEY", "").strip()
 _warmup_lock = Lock()
+_cache_lock = Lock()
+API_CACHE_TTL_SECONDS = max(5, int(os.environ.get("API_CACHE_TTL_SECONDS", "45")))
+_api_cache: Dict[Tuple[str, str, str, str, int], Tuple[float, list[dict[str, Any]]]] = {}
 
 app = FastAPI(title=APP_TITLE)
 
@@ -57,6 +61,39 @@ def _run_warmup_once() -> None:
     if not _warmup_lock.acquire(blocking=False):
         return
     _run_warmup_cycle()
+
+
+def _cache_headers() -> Dict[str, str]:
+    return {
+        "Cache-Control": f"public, max-age={API_CACHE_TTL_SECONDS}, stale-while-revalidate=120",
+    }
+
+
+def _cache_key(route: str, cursor: Optional[str], topic: Optional[str], query: Optional[str], limit: int) -> Tuple[str, str, str, str, int]:
+    return (route, cursor or "", topic or "", query or "", limit)
+
+
+def _get_cached_items(key: Tuple[str, str, str, str, int]) -> Optional[list[dict[str, Any]]]:
+    now = time.monotonic()
+    with _cache_lock:
+        entry = _api_cache.get(key)
+        if not entry:
+            return None
+        expires_at, items = entry
+        if expires_at < now:
+            _api_cache.pop(key, None)
+            return None
+        return items
+
+
+def _set_cached_items(key: Tuple[str, str, str, str, int], items: list[dict[str, Any]]) -> None:
+    with _cache_lock:
+        _api_cache[key] = (time.monotonic() + API_CACHE_TTL_SECONDS, items)
+
+
+def _clear_cache() -> None:
+    with _cache_lock:
+        _api_cache.clear()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -118,6 +155,12 @@ def api_feed(
     cursor: Optional[str] = Query(default=None),
     limit: int = Query(default=20, ge=1, le=50),
 ) -> JSONResponse:
+    key = _cache_key("feed", cursor=cursor, topic=None, query=None, limit=limit)
+    if cursor is None:
+        cached = _get_cached_items(key)
+        if cached is not None:
+            return JSONResponse({"items": cached}, headers=_cache_headers())
+
     items = get_today_items(cursor=cursor, limit=limit)
     if not items and cursor is None and os.environ.get("VERCEL") == "1":
         _run_warmup_once()
@@ -126,6 +169,9 @@ def api_feed(
         items = get_items(cursor=cursor, limit=limit, only_batched=False, source_kind="rss")
     if not items:
         items = get_archive_items(cursor=cursor, limit=limit)
+    if cursor is None:
+        _set_cached_items(key, items)
+        return JSONResponse({"items": items}, headers=_cache_headers())
     return JSONResponse({"items": items})
 
 
@@ -135,12 +181,21 @@ def api_today_news(
     topic: Optional[str] = Query(default=None),
     limit: int = Query(default=20, ge=1, le=50),
 ) -> JSONResponse:
+    key = _cache_key("today-news", cursor=cursor, topic=topic, query=None, limit=limit)
+    if cursor is None:
+        cached = _get_cached_items(key)
+        if cached is not None:
+            return JSONResponse({"items": cached}, headers=_cache_headers())
+
     items = get_today_items(cursor=cursor, limit=limit, topic=topic)
     if not items and cursor is None and os.environ.get("VERCEL") == "1":
         _run_warmup_once()
         items = get_today_items(cursor=cursor, limit=limit, topic=topic)
     if not items:
         items = get_archive_items(cursor=cursor, limit=limit, topic=topic)
+    if cursor is None:
+        _set_cached_items(key, items)
+        return JSONResponse({"items": items}, headers=_cache_headers())
     return JSONResponse({"items": items})
 
 
@@ -150,7 +205,16 @@ def api_archive(
     topic: Optional[str] = Query(default=None),
     limit: int = Query(default=20, ge=1, le=50),
 ) -> JSONResponse:
+    key = _cache_key("archive", cursor=cursor, topic=topic, query=None, limit=limit)
+    if cursor is None:
+        cached = _get_cached_items(key)
+        if cached is not None:
+            return JSONResponse({"items": cached}, headers=_cache_headers())
+
     items = get_archive_items(cursor=cursor, limit=limit, topic=topic)
+    if cursor is None:
+        _set_cached_items(key, items)
+        return JSONResponse({"items": items}, headers=_cache_headers())
     return JSONResponse({"items": items})
 
 
@@ -160,7 +224,16 @@ def api_search(
     cursor: Optional[str] = Query(default=None),
     limit: int = Query(default=20, ge=1, le=50),
 ) -> JSONResponse:
+    key = _cache_key("search", cursor=cursor, topic=None, query=q, limit=limit)
+    if cursor is None:
+        cached = _get_cached_items(key)
+        if cached is not None:
+            return JSONResponse({"items": cached}, headers=_cache_headers())
+
     items = search_items(query=q, cursor=cursor, limit=limit)
+    if cursor is None:
+        _set_cached_items(key, items)
+        return JSONResponse({"items": items}, headers=_cache_headers())
     return JSONResponse({"items": items})
 
 
@@ -183,6 +256,7 @@ def refresh(request: Request) -> JSONResponse:
     run_fetch_cycle()
     retranslate_result = retranslate_until_stable(batch_limit=120, max_rounds=6)
     pending = count_pending_translations()
+    _clear_cache()
     return JSONResponse({"ok": True, "mode": "sync", "pending_translation_items": pending, **retranslate_result})
 
 
@@ -194,4 +268,5 @@ def retranslate(request: Request, limit: int = 50) -> JSONResponse:
         result = retranslate_until_stable(batch_limit=120, max_rounds=8)
     else:
         result = retranslate_missing(limit)
+    _clear_cache()
     return JSONResponse({"ok": True, "limit": limit, **result, "mode": "sync"})

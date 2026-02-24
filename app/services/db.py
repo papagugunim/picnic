@@ -14,11 +14,14 @@ def _default_db_path() -> str:
 
 
 DB_PATH = os.environ.get("NEWS_DB_PATH", _default_db_path())
+SQLITE_TIMEOUT_SECONDS = float(os.environ.get("SQLITE_TIMEOUT_SECONDS", "5"))
+SQLITE_BUSY_TIMEOUT_MS = int(os.environ.get("SQLITE_BUSY_TIMEOUT_MS", "5000"))
 
 
 def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=SQLITE_TIMEOUT_SECONDS)
     conn.row_factory = sqlite3.Row
+    conn.execute(f"PRAGMA busy_timeout = {SQLITE_BUSY_TIMEOUT_MS}")
     return conn
 
 
@@ -109,6 +112,8 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_items_topic ON items(topic);
             CREATE INDEX IF NOT EXISTS idx_items_is_political ON items(is_political);
             CREATE INDEX IF NOT EXISTS idx_items_quality_score ON items(quality_score DESC);
+            CREATE INDEX IF NOT EXISTS idx_items_source_topic_published ON items(source_kind, topic, published_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_items_source_published ON items(source_kind, published_at DESC);
             """
         )
 
@@ -119,8 +124,14 @@ def get_or_create_source(name: str, url: str) -> int:
         row = cur.fetchone()
         if row:
             return int(row["id"])
-        cur = conn.execute("INSERT INTO sources (name, url) VALUES (?, ?)", (name, url))
-        return int(cur.lastrowid)
+        try:
+            cur = conn.execute("INSERT INTO sources (name, url) VALUES (?, ?)", (name, url))
+            return int(cur.lastrowid)
+        except sqlite3.IntegrityError:
+            row = conn.execute("SELECT id FROM sources WHERE url = ?", (url,)).fetchone()
+            if row:
+                return int(row["id"])
+            raise
 
 
 def create_batch(run_at: str) -> int:

@@ -115,6 +115,15 @@
       return new Date(v).toLocaleString();
     }
 
+    function escapeHtml(raw = '') {
+      return String(raw)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
     function status(text, ok = true) {
       adminStatus.textContent = text;
       adminStatus.className = ok ? 'admin-status ok' : 'admin-status err';
@@ -140,33 +149,33 @@
         ['최근 기사 시각', date(t.latest_published_at)],
       ].map(([k, v]) => `
         <article class="stat-card">
-          <div class="stat-label">${k}</div>
-          <div class="stat-value">${v}</div>
+          <div class="stat-label">${escapeHtml(k)}</div>
+          <div class="stat-value">${escapeHtml(v)}</div>
         </article>
       `).join('');
 
       sourceList.innerHTML = Object.entries(m.source_counts || {})
-        .map(([k, v]) => `<div class="kv-item"><span>${k}</span><strong>${number(v)}</strong></div>`)
+        .map(([k, v]) => `<div class="kv-item"><span>${escapeHtml(k)}</span><strong>${escapeHtml(number(v))}</strong></div>`)
         .join('') || '<div class="muted">데이터 없음</div>';
 
       topicList.innerHTML = Object.entries(m.topic_counts || {})
-        .map(([k, v]) => `<div class="kv-item"><span>${k}</span><strong>${number(v)}</strong></div>`)
+        .map(([k, v]) => `<div class="kv-item"><span>${escapeHtml(k)}</span><strong>${escapeHtml(number(v))}</strong></div>`)
         .join('') || '<div class="muted">데이터 없음</div>';
 
       batchList.innerHTML = (m.recent_batches || []).map(item => `
         <div class="admin-list-item">
-          <strong>#${item.id}</strong>
-          <span>${date(item.run_at)}</span>
-          <span>${number(item.item_count)}건</span>
+          <strong>#${escapeHtml(item.id)}</strong>
+          <span>${escapeHtml(date(item.run_at))}</span>
+          <span>${escapeHtml(number(item.item_count))}건</span>
         </div>
       `).join('') || '<div class="muted">배치 이력이 없습니다.</div>';
 
       recentList.innerHTML = (m.recent_items || []).map(item => `
         <div class="admin-list-item">
           <span class="mini-badge ${item.translation_applied ? 'ok' : 'warn'}">${item.translation_applied ? '번역완료' : '원문'}</span>
-          <strong>${item.topic || '미분류'} · ${item.source_name || 'unknown'}</strong>
-          <span>${item.title || ''}</span>
-          <span>${date(item.published_at)}</span>
+          <strong>${escapeHtml(item.topic || '미분류')} · ${escapeHtml(item.source_name || 'unknown')}</strong>
+          <span>${escapeHtml(item.title || '')}</span>
+          <span>${escapeHtml(date(item.published_at))}</span>
         </div>
       `).join('') || '<div class="muted">기사 이력이 없습니다.</div>';
 
