@@ -42,6 +42,27 @@ const categories = [
 
 const PAGE_SIZE = 20
 
+type RankedCommunityPostRow = {
+  id: string
+  title: string
+  content: string
+  images: string[] | null
+  category: string
+  created_at: string
+  user_id: string
+  view_count: number | null
+  author_full_name: string | null
+  author_avatar_url: string | null
+  author_bread_level: number | null
+  author_city: string | null
+  author_user_role: string | null
+  likes_count: number | null
+  comments_count: number | null
+  is_liked: boolean | null
+  milk_boost_score: number | string | null
+  milk_boost_until: string | null
+}
+
 interface Props {
   initialPosts: CommunityPost[]
   initialCursor: string | null
@@ -52,6 +73,8 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
   const { user, profile, loading: userLoading } = useUser()
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [milkPoints, setMilkPoints] = useState<number | null>(null)
+  const [boostingPostId, setBoostingPostId] = useState<string | null>(null)
 
   const currentUserId = user?.id || null
   const userCity = profile?.city || null
@@ -95,106 +118,55 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
     }
 
     const supabase = createClient()
+    const isAdminOrDeveloper = profile?.user_role === 'admin' || profile?.user_role === 'developer'
+    const offset = cursor ? Number.parseInt(cursor, 10) || 0 : 0
 
-    let query = supabase
-      .from('community_posts')
-      .select(`
-        id,
-        title,
-        content,
-        images,
-        category,
-        created_at,
-        user_id,
-        view_count,
-        profiles!community_posts_user_id_fkey (
-          full_name,
-          avatar_url,
-          bread_level,
-          city,
-          user_role
-        )
-      `)
-      .order('created_at', { ascending: false })
-      .limit(PAGE_SIZE)
-
-    if (cursor) {
-      query = query.lt('created_at', cursor)
-    }
-
-    const { data: postsData, error: postsError } = await query
+    const { data: postsData, error: postsError } = await supabase.rpc('get_ranked_community_posts', {
+      p_city: userCity,
+      p_limit: PAGE_SIZE,
+      p_offset: offset,
+      p_include_hidden: isAdminOrDeveloper,
+    })
 
     if (postsError) {
-      logger.error('Posts fetch error:', postsError)
+      logger.error('Ranked community posts fetch error:', postsError)
       return { data: [], nextCursor: null, hasMore: false }
     }
 
-    const filteredByCity = userCity
-      ? (postsData || []).filter((post) => {
-          const author = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles
-          return author?.city === userCity
-        })
-      : postsData
+    const rows = ((postsData || []) as RankedCommunityPostRow[])
+    const postsWithCounts = rows.map((post) => ({
+      id: post.id,
+      title: post.title,
+      content: post.content,
+      images: post.images || [],
+      category: post.category,
+      created_at: post.created_at,
+      user_id: post.user_id,
+      view_count: post.view_count || 0,
+      profiles: {
+        full_name: post.author_full_name || null,
+        avatar_url: post.author_avatar_url || null,
+        bread_level: post.author_bread_level || 1,
+        city: post.author_city || null,
+        user_role: post.author_user_role || null,
+      },
+      likes_count: post.likes_count || 0,
+      comments_count: post.comments_count || 0,
+      is_liked: !!post.is_liked,
+      milk_boost_score: Number(post.milk_boost_score || 0),
+      milk_boost_until: post.milk_boost_until,
+    })) as CommunityPost[]
 
-    const postIds = (filteredByCity || []).map(p => p.id)
-
-    if (postIds.length === 0) {
-      return { data: [], nextCursor: null, hasMore: false }
-    }
-
-    const [likesResult, commentsResult] = await Promise.all([
-      supabase
-        .from('community_likes')
-        .select('post_id, user_id')
-        .in('post_id', postIds),
-      supabase
-        .from('community_comments')
-        .select('post_id')
-        .in('post_id', postIds)
-    ])
-
-    const likesData = likesResult.data || []
-    const commentsData = commentsResult.data || []
-
-    const likesCountMap = new Map<string, number>()
-    const userLikesSet = new Set<string>()
-
-    likesData.forEach(like => {
-      likesCountMap.set(like.post_id, (likesCountMap.get(like.post_id) || 0) + 1)
-      if (like.user_id === user.id) {
-        userLikesSet.add(like.post_id)
-      }
-    })
-
-    const commentsCountMap = new Map<string, number>()
-    commentsData.forEach(comment => {
-      commentsCountMap.set(comment.post_id, (commentsCountMap.get(comment.post_id) || 0) + 1)
-    })
-
-    const postsWithCounts = (filteredByCity || []).map(post => {
-      const postAuthor = Array.isArray(post.profiles)
-        ? post.profiles[0]
-        : post.profiles
-
-      return {
-        ...post,
-        profiles: postAuthor,
-        likes_count: likesCountMap.get(post.id) || 0,
-        comments_count: commentsCountMap.get(post.id) || 0,
-        is_liked: userLikesSet.has(post.id),
-      }
-    }) as CommunityPost[]
-
-    const nextCursor = postsData && postsData.length === PAGE_SIZE
-      ? postsData[postsData.length - 1].created_at
+    const nextCursor = rows.length === PAGE_SIZE
+      ? String(offset + rows.length)
       : null
 
     return {
       data: postsWithCounts,
       nextCursor,
-      hasMore: (postsData?.length || 0) === PAGE_SIZE,
+      hasMore: rows.length === PAGE_SIZE,
     }
-  }, [userCity, user])
+  }, [profile?.user_role, user, userCity])
 
   const {
     data: allPosts,
@@ -205,7 +177,6 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
     sentinelRef,
     refresh,
     updateItem,
-    reset,
   } = useInfiniteScroll<CommunityPost>({
     fetchFn: fetchPosts,
     pageSize: PAGE_SIZE,
@@ -214,6 +185,25 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
     initialData: initialPosts,
     initialCursor: initialCursor,
   })
+
+  const fetchMilkPoints = useCallback(async () => {
+    if (!user) {
+      setMilkPoints(null)
+      return
+    }
+
+    const supabase = createClient()
+    const { data, error } = await supabase.rpc('get_my_milk_points')
+    if (error) {
+      logger.warn('Milk points fetch error:', error)
+      return
+    }
+    setMilkPoints(typeof data === 'number' ? data : Number(data || 0))
+  }, [user])
+
+  useEffect(() => {
+    fetchMilkPoints()
+  }, [fetchMilkPoints])
 
   // Client-side category filtering
   const posts = useMemo(() => {
@@ -252,7 +242,7 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
 
   // Browser back button closes modal instead of navigating away
   useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
+    const handlePopState = () => {
       if (isPostModalOpen) {
         setIsPostModalOpen(false)
         setSelectedPost(null)
@@ -381,6 +371,57 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
     }
   }
 
+  const handleBoost = useCallback(async (postId: string) => {
+    if (!currentUserId || boostingPostId) return
+
+    try {
+      setBoostingPostId(postId)
+      const supabase = createClient()
+      const { data, error } = await supabase.rpc('apply_milk_boost', {
+        p_target_type: 'community_post',
+        p_target_id: postId,
+        p_points: 10,
+        p_duration_hours: 24,
+      })
+
+      if (error) {
+        toast.error(error.message || '밀크 포인트 사용에 실패했습니다')
+        return
+      }
+
+      const result = Array.isArray(data) ? data[0] : null
+      if (result) {
+        const remaining = Number(result.remaining_milk_points || 0)
+        const appliedUntil = result.boost_until || null
+        const appliedScore = Number(result.applied_boost_score || 0)
+
+        setMilkPoints(remaining)
+        updateItem(postId, (post) => ({
+          ...post,
+          milk_boost_until: appliedUntil || post.milk_boost_until,
+          milk_boost_score: appliedScore || post.milk_boost_score,
+        }))
+        setSelectedPost((prev) => (
+          prev && prev.id === postId
+            ? {
+                ...prev,
+                milk_boost_until: appliedUntil || prev.milk_boost_until,
+                milk_boost_score: appliedScore || prev.milk_boost_score,
+              }
+            : prev
+        ))
+      }
+
+      toast.success('밀크 포인트 사용 완료 · 밀크 부스트 적용 중')
+      await refresh()
+    } catch (err) {
+      logger.error('Apply community milk boost error:', err)
+      toast.error('밀크 포인트 사용 중 오류가 발생했습니다')
+    } finally {
+      setBoostingPostId(null)
+    }
+  }, [boostingPostId, currentUserId, refresh, updateItem])
+
   // 화면에 노출되면 조회수 증가 (세션당 게시글 1회)
   const viewedPostIds = useRef(new Set<string>())
 
@@ -473,6 +514,12 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
                   </button>
                 ))}
               </div>
+              {user && (
+                <div className="pt-3 text-xs text-muted-foreground">
+                  남은 밀크 포인트{' '}
+                  <span className="font-semibold text-primary">{milkPoints ?? '...'}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -508,8 +555,10 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
                     onCommentClick={openPostComments}
                     onLikeToggle={toggleLike}
                     onImageClick={openGallery}
+                    onBoost={handleBoost}
                     onView={handlePostView}
-                    currentUserRole={currentUserRole}
+                    currentUserId={currentUserId}
+                    boostingPostId={boostingPostId}
                     formatTimeAgo={formatTimeAgo}
                     getCategoryEmoji={getCategoryEmoji}
                     getCategoryName={getCategoryName}

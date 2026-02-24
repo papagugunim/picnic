@@ -4,7 +4,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('FeedClient')
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Plus, Heart, Bookmark, BarChart2, Loader2 } from 'lucide-react'
+import { Plus, Heart, Bookmark, BarChart2, Loader2, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,7 @@ import { useUser } from '@/lib/contexts/UserContext'
 import { formatTimeAgo } from '@/lib/utils/date'
 import { getCityNameInKorean } from '@/lib/constants'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
+import { toast } from 'sonner'
 
 interface Post {
   id: string
@@ -36,39 +37,54 @@ interface Post {
   interests_count: number
   user_liked: boolean
   user_interested: boolean
+  milk_boost_score: number
+  milk_boost_until: string | null
 }
 
-type RawProfileRow = {
-  full_name: string | null
-}
-
-type RawPost = Omit<Post, 'likes_count' | 'interests_count' | 'user_liked' | 'user_interested' | 'profiles'> & {
-  profiles: RawProfileRow | RawProfileRow[] | null
-}
-
-function normalizeAuthorProfile(profileRow: RawProfileRow | RawProfileRow[] | null): { full_name: string | null } {
-  const normalized = Array.isArray(profileRow) ? profileRow[0] : profileRow
-  return {
-    full_name: normalized?.full_name ?? null,
-  }
+type RankedPostRow = {
+  id: string
+  author_id: string
+  title: string
+  price: number | null
+  city: string
+  neighborhood: string
+  preferred_metro_stations: string[] | null
+  created_at: string
+  images: string[] | null
+  status: string
+  view_count: number | null
+  author_full_name: string | null
+  likes_count: number | null
+  interests_count: number | null
+  user_liked: boolean | null
+  user_interested: boolean | null
+  milk_boost_score: number | string | null
+  milk_boost_until: string | null
 }
 
 interface FeedPostItemProps {
   post: Post
   isDeveloper: boolean
+  currentUserId: string | null
+  boostingPostId: string | null
   onLikeToggle: (postId: string, currentlyLiked: boolean) => void
   onInterestToggle: (postId: string, currentlyInterested: boolean) => void
+  onBoost: (postId: string) => void
   onView?: (postId: string, authorId: string) => void
 }
 
 function FeedPostItem({
   post,
   isDeveloper,
+  currentUserId,
+  boostingPostId,
   onLikeToggle,
   onInterestToggle,
+  onBoost,
   onView,
 }: FeedPostItemProps) {
   const isHiddenPost = post.status === 'hidden'
+  const isBoostActive = !!post.milk_boost_until && new Date(post.milk_boost_until).getTime() > Date.now()
   const linkRef = useRef<HTMLAnchorElement>(null)
   const viewedRef = useRef(false)
 
@@ -124,6 +140,12 @@ function FeedPostItem({
           <h3 className={`text-base font-normal line-clamp-2 mb-0.5 ${isHiddenPost ? 'text-muted-foreground' : ''}`}>
             {post.title}
             {isHiddenPost && <span className="ml-1 text-xs font-medium">(숨김처리)</span>}
+            {isBoostActive && (
+              <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] text-primary">
+                <Sparkles className="h-3 w-3" />
+                밀크 부스트 적용 중
+              </span>
+            )}
           </h3>
           <div className="text-xs text-muted-foreground mb-0.5">
             <span>{getCityNameInKorean(post.city)}</span>
@@ -186,6 +208,22 @@ function FeedPostItem({
               <span>{post.view_count || 0}</span>
             </div>
           )}
+
+          {post.author_id === currentUserId && (
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onBoost(post.id)
+              }}
+              disabled={boostingPostId === post.id}
+              className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-primary hover:bg-primary/10 disabled:opacity-60"
+              aria-label="밀크 부스트"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span>{boostingPostId === post.id ? '적용중' : '밀크 사용'}</span>
+            </button>
+          )}
         </div>
       </div>
     </Link>
@@ -193,7 +231,7 @@ function FeedPostItem({
 }
 
 const categories = [
-  { id: 'all', label: '최신순' },
+  { id: 'all', label: '추천순' },
   { id: 'nearby', label: '가까운 동네' },
   { id: 'free', label: '무료나눔' },
 ]
@@ -209,6 +247,8 @@ interface FeedClientProps {
 export default function FeedClient({ initialPosts, initialCursor, initialCity }: FeedClientProps) {
   const [selectedTab, setSelectedTab] = useState<'all' | 'nearby' | 'free'>('all')
   const { user, profile, loading: userLoading } = useUser()
+  const [milkPoints, setMilkPoints] = useState<number | null>(null)
+  const [boostingPostId, setBoostingPostId] = useState<string | null>(null)
 
   const userCity = profile?.city || null
   const userStations = useMemo(() => profile?.preferred_metro_stations ?? [], [profile?.preferred_metro_stations])
@@ -223,108 +263,50 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
     const supabase = createClient()
     const isAdminOrDeveloper = profile?.user_role === 'admin' || profile?.user_role === 'developer'
 
-    let query = supabase
-      .from('posts')
-      .select(`
-        id,
-        author_id,
-        title,
-        price,
-        city,
-        neighborhood,
-        preferred_metro_stations,
-        created_at,
-        images,
-        status,
-        view_count,
-        profiles:author_id (
-          full_name
-        )
-      `)
-      .order('created_at', { ascending: false })
-      .limit(PAGE_SIZE)
+    const offset = cursor ? Number.parseInt(cursor, 10) || 0 : 0
 
-    if (isAdminOrDeveloper) {
-      query = query.in('status', ['active', 'hidden'])
-    } else {
-      query = query.or(`status.eq.active,and(status.eq.hidden,author_id.eq.${user.id})`)
-    }
+    const { data: postsData, error } = await supabase.rpc('get_ranked_posts', {
+      p_city: userCity,
+      p_limit: PAGE_SIZE,
+      p_offset: offset,
+      p_include_hidden: isAdminOrDeveloper,
+    })
 
-    if (userCity) {
-      query = query.eq('city', userCity)
-    }
-
-    if (cursor) {
-      query = query.lt('created_at', cursor)
-    }
-
-    const { data: postsData, error } = await query
-
-    if (error || !postsData) {
-      logger.error('Posts fetch error:', error)
+    if (error) {
+      logger.error('Ranked posts fetch error:', error)
       return { data: [], nextCursor: null, hasMore: false }
     }
 
-    const normalizedPostsData = (postsData as RawPost[]).map((post) => ({
-      ...post,
-      profiles: normalizeAuthorProfile(post.profiles),
-    }))
-
-    const postIds = normalizedPostsData.map((post) => post.id)
-
-    if (postIds.length === 0) {
-      return { data: [], nextCursor: null, hasMore: false }
-    }
-
-    const [likesResult, interestsResult] = await Promise.all([
-      supabase
-        .from('post_likes')
-        .select('post_id, user_id')
-        .in('post_id', postIds),
-      supabase
-        .from('post_interests')
-        .select('post_id, user_id')
-        .in('post_id', postIds)
-    ])
-
-    const likesData = likesResult.data || []
-    const interestsData = interestsResult.data || []
-
-    const likesCountMap = new Map<string, number>()
-    const interestsCountMap = new Map<string, number>()
-    const userLikesSet = new Set<string>()
-    const userInterestsSet = new Set<string>()
-
-    likesData.forEach(like => {
-      likesCountMap.set(like.post_id, (likesCountMap.get(like.post_id) || 0) + 1)
-      if (like.user_id === user.id) {
-        userLikesSet.add(like.post_id)
-      }
-    })
-
-    interestsData.forEach(interest => {
-      interestsCountMap.set(interest.post_id, (interestsCountMap.get(interest.post_id) || 0) + 1)
-      if (interest.user_id === user.id) {
-        userInterestsSet.add(interest.post_id)
-      }
-    })
-
-    const postsWithReactions = normalizedPostsData.map((post) => ({
-      ...post,
-      likes_count: likesCountMap.get(post.id) || 0,
-      interests_count: interestsCountMap.get(post.id) || 0,
-      user_liked: userLikesSet.has(post.id),
-      user_interested: userInterestsSet.has(post.id),
+    const rows = ((postsData || []) as RankedPostRow[])
+    const postsWithReactions = rows.map((post) => ({
+      id: post.id,
+      author_id: post.author_id,
+      title: post.title,
+      price: post.price,
+      city: post.city,
+      neighborhood: post.neighborhood,
+      preferred_metro_stations: post.preferred_metro_stations || [],
+      created_at: post.created_at,
+      images: post.images || [],
+      status: post.status,
+      view_count: post.view_count || 0,
+      profiles: { full_name: post.author_full_name || null },
+      likes_count: post.likes_count || 0,
+      interests_count: post.interests_count || 0,
+      user_liked: !!post.user_liked,
+      user_interested: !!post.user_interested,
+      milk_boost_score: Number(post.milk_boost_score || 0),
+      milk_boost_until: post.milk_boost_until,
     })) as Post[]
 
-    const nextCursor = normalizedPostsData.length === PAGE_SIZE
-      ? normalizedPostsData[normalizedPostsData.length - 1].created_at
+    const nextCursor = rows.length === PAGE_SIZE
+      ? String(offset + rows.length)
       : null
 
     return {
       data: postsWithReactions,
       nextCursor,
-      hasMore: normalizedPostsData.length === PAGE_SIZE,
+      hasMore: rows.length === PAGE_SIZE,
     }
   }, [userCity, user, profile?.user_role])
 
@@ -335,6 +317,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
     isRefreshing,
     hasMore,
     sentinelRef,
+    refresh,
     updateItem,
     reset,
   } = useInfiniteScroll<Post>({
@@ -365,6 +348,25 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
       getNearbyMetroStations(userStations, userCity, 5).then(setNearbyStationsList)
     }
   }, [userStations, userCity])
+
+  const fetchMilkPoints = useCallback(async () => {
+    if (!user) {
+      setMilkPoints(null)
+      return
+    }
+
+    const supabase = createClient()
+    const { data, error } = await supabase.rpc('get_my_milk_points')
+    if (error) {
+      logger.warn('Milk points fetch error:', error)
+      return
+    }
+    setMilkPoints(typeof data === 'number' ? data : Number(data || 0))
+  }, [user])
+
+  useEffect(() => {
+    fetchMilkPoints()
+  }, [fetchMilkPoints])
 
   // Filter posts based on selected tab - memoized to prevent recalculation
   const posts = useMemo(() => {
@@ -468,6 +470,45 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
     }
   }
 
+  const handleBoost = useCallback(async (postId: string) => {
+    if (!user || boostingPostId) return
+
+    try {
+      setBoostingPostId(postId)
+      const supabase = createClient()
+      const { data, error } = await supabase.rpc('apply_milk_boost', {
+        p_target_type: 'post',
+        p_target_id: postId,
+        p_points: 10,
+        p_duration_hours: 24,
+      })
+
+      if (error) {
+        toast.error(error.message || '밀크 포인트 사용에 실패했습니다')
+        return
+      }
+
+      const result = Array.isArray(data) ? data[0] : null
+      if (result) {
+        const remaining = Number(result.remaining_milk_points || 0)
+        setMilkPoints(remaining)
+        updateItem(postId, (post) => ({
+          ...post,
+          milk_boost_until: result.boost_until || post.milk_boost_until,
+          milk_boost_score: Number(result.applied_boost_score || post.milk_boost_score || 0),
+        }))
+      }
+
+      toast.success('밀크 포인트 사용 완료 · 밀크 부스트 적용 중')
+      await refresh()
+    } catch (err) {
+      logger.error('Apply milk boost error:', err)
+      toast.error('밀크 포인트 사용 중 오류가 발생했습니다')
+    } finally {
+      setBoostingPostId(null)
+    }
+  }, [boostingPostId, refresh, updateItem, user])
+
   if (isLoading && initialPosts.length === 0) {
     return (
       <div>
@@ -514,6 +555,12 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
               </button>
             ))}
           </div>
+          {user && (
+            <div className="px-4 pb-2 text-xs text-muted-foreground">
+              남은 밀크 포인트{' '}
+              <span className="font-semibold text-primary">{milkPoints ?? '...'}</span>
+            </div>
+          )}
         </div>
 
         {/* Refreshing indicator */}
@@ -546,8 +593,11 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
                 key={post.id}
                 post={post}
                 isDeveloper={profile?.user_role === 'developer'}
+                currentUserId={user?.id || null}
+                boostingPostId={boostingPostId}
                 onLikeToggle={toggleLike}
                 onInterestToggle={toggleInterest}
+                onBoost={handleBoost}
                 onView={handlePostView}
               />
             ))}

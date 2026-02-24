@@ -4,21 +4,34 @@ import type { Metadata } from 'next'
 import type { ComponentProps } from 'react'
 
 type InitialPost = ComponentProps<typeof FeedClient>['initialPosts'][number]
-type RawPost = Omit<InitialPost, 'likes_count' | 'interests_count' | 'user_liked' | 'user_interested' | 'profiles'> & {
-  profiles: { full_name: string | null } | Array<{ full_name: string | null }> | null
-}
 
-function normalizeAuthorProfile(profileRow: RawPost['profiles']): { full_name: string | null } {
-  const normalized = Array.isArray(profileRow) ? profileRow[0] : profileRow
-  return {
-    full_name: normalized?.full_name ?? null,
-  }
+type RankedPostRow = {
+  id: string
+  author_id: string
+  title: string
+  price: number | null
+  city: string
+  neighborhood: string
+  preferred_metro_stations: string[] | null
+  created_at: string
+  images: string[] | null
+  status: string
+  view_count: number | null
+  author_full_name: string | null
+  likes_count: number | null
+  interests_count: number | null
+  user_liked: boolean | null
+  user_interested: boolean | null
+  milk_boost_score: number | string | null
+  milk_boost_until: string | null
 }
 
 export const metadata: Metadata = {
   title: '피드 | Picnic',
   description: '러시아 한인 중고거래 피드 - 내 주변의 중고 물품을 찾아보세요',
 }
+
+const PAGE_SIZE = 20
 
 export default async function FeedPage() {
   const supabase = await createServerClient()
@@ -42,90 +55,44 @@ export default async function FeedPage() {
     initialCity = profile?.city || null
     const isAdminOrDeveloper = profile?.user_role === 'admin' || profile?.user_role === 'developer'
 
-    let query = supabase
-      .from('posts')
-      .select(`
-        id,
-        author_id,
-        title,
-        price,
-        city,
-        neighborhood,
-        preferred_metro_stations,
-        created_at,
-        images,
-        status,
-        view_count,
-        profiles:author_id (
-          full_name
-        )
-      `)
-      .order('created_at', { ascending: false })
-      .limit(20)
+    const { data: postsData, error } = await supabase.rpc('get_ranked_posts', {
+      p_city: profile?.city || null,
+      p_limit: PAGE_SIZE,
+      p_offset: 0,
+      p_include_hidden: isAdminOrDeveloper,
+    })
 
-    if (isAdminOrDeveloper) {
-      query = query.in('status', ['active', 'hidden'])
-    } else {
-      query = query.or(`status.eq.active,and(status.eq.hidden,author_id.eq.${userId})`)
+    if (error) {
+      return (
+        <FeedClient
+          initialPosts={[]}
+          initialCursor={null}
+          initialCity={initialCity}
+        />
+      )
     }
-
-    if (profile?.city) {
-      query = query.eq('city', profile.city)
-    }
-
-    const { data: postsData } = await query
 
     if (postsData && postsData.length > 0) {
-      const normalizedPostsData = (postsData as RawPost[]).map((post) => ({
+      const normalizedPostsData = (postsData as RankedPostRow[]).map((post) => ({
         ...post,
-        profiles: normalizeAuthorProfile(post.profiles),
-      }))
+        preferred_metro_stations: post.preferred_metro_stations || [],
+        images: post.images || [],
+        view_count: post.view_count || 0,
+        likes_count: post.likes_count || 0,
+        interests_count: post.interests_count || 0,
+        user_liked: !!post.user_liked,
+        user_interested: !!post.user_interested,
+        milk_boost_score: Number(post.milk_boost_score || 0),
+        milk_boost_until: post.milk_boost_until,
+        profiles: {
+          full_name: post.author_full_name || null,
+        },
+      })) as InitialPost[]
 
-      const postIds = normalizedPostsData.map((post) => post.id)
+      initialPosts = normalizedPostsData
 
-      const [likesResult, interestsResult] = await Promise.all([
-        supabase
-          .from('post_likes')
-          .select('post_id, user_id')
-          .in('post_id', postIds),
-        supabase
-          .from('post_interests')
-          .select('post_id, user_id')
-          .in('post_id', postIds)
-      ])
-
-      const likesData = likesResult.data || []
-      const interestsData = interestsResult.data || []
-
-      const likesCountMap = new Map<string, number>()
-      const interestsCountMap = new Map<string, number>()
-      const userLikesSet = new Set<string>()
-      const userInterestsSet = new Set<string>()
-
-      likesData.forEach(like => {
-        likesCountMap.set(like.post_id, (likesCountMap.get(like.post_id) || 0) + 1)
-        if (like.user_id === userId) {
-          userLikesSet.add(like.post_id)
-        }
-      })
-
-      interestsData.forEach(interest => {
-        interestsCountMap.set(interest.post_id, (interestsCountMap.get(interest.post_id) || 0) + 1)
-        if (interest.user_id === userId) {
-          userInterestsSet.add(interest.post_id)
-        }
-      })
-
-      initialPosts = normalizedPostsData.map((post) => ({
-        ...post,
-        likes_count: likesCountMap.get(post.id) || 0,
-        interests_count: interestsCountMap.get(post.id) || 0,
-        user_liked: userLikesSet.has(post.id),
-        user_interested: userInterestsSet.has(post.id),
-      }))
-
-      if (normalizedPostsData.length === 20) {
-        initialCursor = normalizedPostsData[normalizedPostsData.length - 1].created_at
+      if (normalizedPostsData.length === PAGE_SIZE) {
+        initialCursor = String(PAGE_SIZE)
       }
     }
   }

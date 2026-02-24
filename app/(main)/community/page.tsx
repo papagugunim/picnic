@@ -10,6 +10,27 @@ export const metadata: Metadata = {
 
 const PAGE_SIZE = 20
 
+type RankedCommunityPostRow = {
+  id: string
+  title: string
+  content: string
+  images: string[] | null
+  category: string
+  created_at: string
+  user_id: string
+  view_count: number | null
+  author_full_name: string | null
+  author_avatar_url: string | null
+  author_bread_level: number | null
+  author_city: string | null
+  author_user_role: string | null
+  likes_count: number | null
+  comments_count: number | null
+  is_liked: boolean | null
+  milk_boost_score: number | string | null
+  milk_boost_until: string | null
+}
+
 export default async function CommunityPage() {
   const supabase = await createServerClient()
 
@@ -23,93 +44,47 @@ export default async function CommunityPage() {
     // 사용자 프로필에서 city 가져오기
     const { data: profile } = await supabase
       .from('profiles')
-      .select('city')
+      .select('city, user_role')
       .eq('id', userId)
       .single()
 
     const userCity = profile?.city || null
 
-    // 게시글 가져오기
-    const { data: postsData } = await supabase
-      .from('community_posts')
-      .select(`
-        id,
-        title,
-        content,
-        images,
-        category,
-        created_at,
-        user_id,
-        view_count,
-        profiles!community_posts_user_id_fkey (
-          full_name,
-          avatar_url,
-          bread_level,
-          city,
-          user_role
-        )
-      `)
-      .order('created_at', { ascending: false })
-      .limit(PAGE_SIZE)
+    const isAdminOrDeveloper = profile?.user_role === 'admin' || profile?.user_role === 'developer'
 
-    // 도시 기준 필터링
-    const filteredByCity = userCity
-      ? (postsData || []).filter((post: any) => {
-          const author = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles
-          return author?.city === userCity
-        })
-      : postsData
+    const { data: postsData, error } = await supabase.rpc('get_ranked_community_posts', {
+      p_city: userCity,
+      p_limit: PAGE_SIZE,
+      p_offset: 0,
+      p_include_hidden: isAdminOrDeveloper,
+    })
 
-    const postIds = (filteredByCity || []).map((p: any) => p.id)
+    if (!error && postsData && postsData.length > 0) {
+      initialPosts = (postsData as RankedCommunityPostRow[]).map((post) => ({
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        images: post.images || [],
+        category: post.category,
+        created_at: post.created_at,
+        user_id: post.user_id,
+        view_count: post.view_count || 0,
+        profiles: {
+          full_name: post.author_full_name || null,
+          avatar_url: post.author_avatar_url || null,
+          bread_level: post.author_bread_level || 1,
+          city: post.author_city || null,
+          user_role: post.author_user_role || null,
+        },
+        likes_count: post.likes_count || 0,
+        comments_count: post.comments_count || 0,
+        is_liked: !!post.is_liked,
+        milk_boost_score: Number(post.milk_boost_score || 0),
+        milk_boost_until: post.milk_boost_until,
+      })) as CommunityPost[]
 
-    if (postIds.length > 0) {
-      // 좋아요, 댓글 수를 병렬로 가져오기
-      const [likesResult, commentsResult] = await Promise.all([
-        supabase
-          .from('community_likes')
-          .select('post_id, user_id')
-          .in('post_id', postIds),
-        supabase
-          .from('community_comments')
-          .select('post_id')
-          .in('post_id', postIds)
-      ])
-
-      const likesData = likesResult.data || []
-      const commentsData = commentsResult.data || []
-
-      const likesCountMap = new Map<string, number>()
-      const userLikesSet = new Set<string>()
-
-      likesData.forEach((like: any) => {
-        likesCountMap.set(like.post_id, (likesCountMap.get(like.post_id) || 0) + 1)
-        if (like.user_id === userId) {
-          userLikesSet.add(like.post_id)
-        }
-      })
-
-      const commentsCountMap = new Map<string, number>()
-      commentsData.forEach((comment: any) => {
-        commentsCountMap.set(comment.post_id, (commentsCountMap.get(comment.post_id) || 0) + 1)
-      })
-
-      initialPosts = (filteredByCity || []).map((post: any) => {
-        const postAuthor = Array.isArray(post.profiles)
-          ? post.profiles[0]
-          : post.profiles
-
-        return {
-          ...post,
-          profiles: postAuthor,
-          likes_count: likesCountMap.get(post.id) || 0,
-          comments_count: commentsCountMap.get(post.id) || 0,
-          is_liked: userLikesSet.has(post.id),
-        }
-      }) as CommunityPost[]
-
-      // 다음 페이지 커서 설정
-      if (postsData && postsData.length === PAGE_SIZE) {
-        initialCursor = postsData[postsData.length - 1].created_at
+      if (initialPosts.length === PAGE_SIZE) {
+        initialCursor = String(PAGE_SIZE)
       }
     }
   }

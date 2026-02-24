@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useState, useEffect, useRef } from 'react'
-import { Heart, MessageCircle, BarChart2 } from 'lucide-react'
+import { Heart, MessageCircle, BarChart2, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { getBreadEmoji } from '@/lib/bread'
 import { UserAvatar } from '@/components/ui/user-avatar'
@@ -26,6 +26,8 @@ export interface CommunityPost {
   likes_count: number
   comments_count: number
   is_liked: boolean
+  milk_boost_score: number
+  milk_boost_until: string | null
 }
 
 interface CommunityPostItemProps {
@@ -34,8 +36,10 @@ interface CommunityPostItemProps {
   onCommentClick: (post: CommunityPost, e?: React.MouseEvent) => void
   onLikeToggle: (postId: string, currentlyLiked: boolean) => void
   onImageClick: (images: string[], index: number, e: React.MouseEvent) => void
+  onBoost: (postId: string) => void
   onView?: (postId: string) => void
-  currentUserRole?: string | null
+  currentUserId?: string | null
+  boostingPostId?: string | null
   formatTimeAgo: (dateString: string) => string
   getCategoryEmoji: (category: string) => string
   getCategoryName: (category: string) => string
@@ -47,8 +51,10 @@ export function CommunityPostItem({
   onCommentClick,
   onLikeToggle,
   onImageClick,
+  onBoost,
   onView,
-  currentUserRole,
+  currentUserId,
+  boostingPostId,
   formatTimeAgo,
   getCategoryEmoji,
   getCategoryName,
@@ -56,6 +62,7 @@ export function CommunityPostItem({
   const [isExpanded, setIsExpanded] = useState(false)
   const articleRef = useRef<HTMLElement>(null)
   const viewedRef = useRef(false)
+  const isBoostActive = !!post.milk_boost_until && new Date(post.milk_boost_until).getTime() > Date.now()
 
   // 화면에 노출되면 조회수 카운팅
   useEffect(() => {
@@ -126,6 +133,15 @@ export function CommunityPostItem({
           <span className="text-muted-foreground flex-shrink-0">
             {formatTimeAgo(post.created_at)}
           </span>
+          {isBoostActive && (
+            <>
+              <span className="text-muted-foreground flex-shrink-0">·</span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] text-primary">
+                <Sparkles className="h-3 w-3" />
+                밀크 부스트 적용 중
+              </span>
+            </>
+          )}
         </div>
 
         {/* Body */}
@@ -186,6 +202,22 @@ export function CommunityPostItem({
             <BarChart2 className="w-[18px] h-[18px]" />
             <span className="text-sm">{post.view_count || 0}</span>
           </div>
+
+          {currentUserId === post.user_id && (
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onBoost(post.id)
+              }}
+              disabled={boostingPostId === post.id}
+              className="flex items-center gap-2 p-2 rounded-full text-primary hover:bg-primary/10 disabled:opacity-60"
+              aria-label="밀크 부스트"
+            >
+              <Sparkles className="w-[18px] h-[18px]" />
+              <span className="text-sm">{boostingPostId === post.id ? '적용중' : '밀크 사용'}</span>
+            </button>
+          )}
         </div>
       </div>
     </article>
