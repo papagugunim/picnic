@@ -198,6 +198,7 @@ export default function ProfilePage() {
   const [isBreadModalOpen, setIsBreadModalOpen] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [breadScoreBreakdown, setBreadScoreBreakdown] = useState<BreadScoreBreakdown | null>(null)
+  const [milkPoints, setMilkPoints] = useState<number | null>(null)
   const [receivedReviews, setReceivedReviews] = useState<ReceivedReview[]>([])
   const cacheSnapshotRef = useRef<ProfileViewCacheData>(createEmptyProfileCacheData())
   const metroStations = useMetroStations(profile?.city)
@@ -321,6 +322,7 @@ export default function ProfilePage() {
         if (cancelled) return
 
         setIsOwnProfile(ownProfile)
+        setMilkPoints(null)
         setIsLoading(true)
         setLoadingSections({
           marketplace: false,
@@ -353,7 +355,7 @@ export default function ProfilePage() {
         }
 
         updateSectionLoading('marketplace', true)
-        const [profileResult, postsResult] = await Promise.all([
+        const [profileResult, postsResult, milkPointResult] = await Promise.all([
           supabase
             .from('profiles')
             .select('id, full_name, avatar_url, city, created_at, email, preferred_metro_stations, bread_level, user_role, post_count')
@@ -364,6 +366,9 @@ export default function ProfilePage() {
             .select('id, title, price, images, created_at, status')
             .eq('author_id', userId)
             .order('created_at', { ascending: false }),
+          ownProfile
+            ? supabase.rpc('get_my_milk_points')
+            : Promise.resolve({ data: null, error: null } as { data: number | null; error: null }),
         ])
 
         if (cancelled) return
@@ -381,6 +386,16 @@ export default function ProfilePage() {
             details: postsResult.error.details,
             hint: postsResult.error.hint,
           })
+        }
+
+        if (milkPointResult?.error) {
+          logger.warn('Milk points fetch error:', milkPointResult.error)
+        } else if (ownProfile) {
+          setMilkPoints(
+            typeof milkPointResult?.data === 'number'
+              ? milkPointResult.data
+              : Number(milkPointResult?.data || 0)
+          )
         }
 
         const nextProfile = profileResult.data as Profile
@@ -620,7 +635,7 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Bread Level Badge */}
+              {/* Bread + Milk Badge */}
               <div className="mb-2">
                 {(() => {
                   const breadInfo = getBreadInfo(
@@ -636,26 +651,35 @@ export default function ProfilePage() {
                     profile.user_role || undefined
                   )
                   return (
-                    <button
-                      onClick={() => setIsBreadModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold hover:opacity-80 transition-opacity cursor-pointer"
-                      style={{
-                        backgroundColor: breadInfo.color,
-                      }}
-                    >
-                      <div className="w-4 h-4 flex items-center justify-center text-sm">
-                        {emoji}
-                      </div>
-                      <span
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => setIsBreadModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold hover:opacity-80 transition-opacity cursor-pointer"
                         style={{
-                          color: profile.user_role === 'developer' || profile.user_role === 'admin'
-                            ? '#FFFFFF'
-                            : '#1F2937'
+                          backgroundColor: breadInfo.color,
                         }}
                       >
-                        {breadInfo.name} · {description}
-                      </span>
-                    </button>
+                        <div className="w-4 h-4 flex items-center justify-center text-sm">
+                          {emoji}
+                        </div>
+                        <span
+                          style={{
+                            color: profile.user_role === 'developer' || profile.user_role === 'admin'
+                              ? '#FFFFFF'
+                              : '#1F2937'
+                          }}
+                        >
+                          {breadInfo.name} · {description}
+                        </span>
+                      </button>
+
+                      {isOwnProfile && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                          <span role="img" aria-label="우유">🥛</span>
+                          잔여 밀크 포인트 {milkPoints ?? '...'}
+                        </span>
+                      )}
+                    </div>
                   )
                 })()}
               </div>
