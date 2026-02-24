@@ -273,7 +273,6 @@ interface FeedClientProps {
 export default function FeedClient({ initialPosts, initialCursor, initialCity }: FeedClientProps) {
   const [selectedTab, setSelectedTab] = useState<'all' | 'nearby' | 'free'>('all')
   const { user, profile, loading: userLoading } = useUser()
-  const [milkPoints, setMilkPoints] = useState<number | null>(null)
   const [boostingPostId, setBoostingPostId] = useState<string | null>(null)
   const [boostedPostId, setBoostedPostId] = useState<string | null>(null)
 
@@ -375,25 +374,6 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
       getNearbyMetroStations(userStations, userCity, 5).then(setNearbyStationsList)
     }
   }, [userStations, userCity])
-
-  const fetchMilkPoints = useCallback(async () => {
-    if (!user) {
-      setMilkPoints(null)
-      return
-    }
-
-    const supabase = createClient()
-    const { data, error } = await supabase.rpc('get_my_milk_points')
-    if (error) {
-      logger.warn('Milk points fetch error:', error)
-      return
-    }
-    setMilkPoints(typeof data === 'number' ? data : Number(data || 0))
-  }, [user])
-
-  useEffect(() => {
-    fetchMilkPoints()
-  }, [fetchMilkPoints])
 
   // Filter posts based on selected tab - memoized to prevent recalculation
   const posts = useMemo(() => {
@@ -517,8 +497,6 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
 
       const result = Array.isArray(data) ? data[0] : null
       if (result) {
-        const remaining = Number(result.remaining_milk_points || 0)
-        setMilkPoints(remaining)
         setBoostedPostId(postId)
         window.setTimeout(() => {
           setBoostedPostId((prev) => (prev === postId ? null : prev))
@@ -586,12 +564,6 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
               </button>
             ))}
           </div>
-          {user && (
-            <div className="px-4 pb-2 text-xs text-muted-foreground">
-              남은 밀크 포인트{' '}
-              <span className="font-semibold text-primary">{milkPoints ?? '...'}</span>
-            </div>
-          )}
         </div>
 
         {/* Refreshing indicator */}
