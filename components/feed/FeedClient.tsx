@@ -115,10 +115,21 @@ function FeedPostItem({
     <Link
       ref={linkRef}
       href={`/post/${post.id}`}
-      className="flex gap-3 p-3 hover:bg-muted/30 transition-colors"
+      className={`relative flex gap-3 p-3 transition-colors hover:bg-muted/30 ${
+        isBoostActive
+          ? 'rounded-xl border border-primary/40 bg-primary/5 shadow-[0_0_18px_hsl(var(--primary)/0.22)]'
+          : ''
+      }`}
     >
+      {isBoostActive && (
+        <div className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
+          <span className="inline-block animate-bounce" role="img" aria-label="우유">🥛</span>
+          부스트
+        </div>
+      )}
+
       {/* Image */}
-      <div className="flex-shrink-0 w-24 h-24 bg-muted rounded-lg overflow-hidden relative">
+      <div className={`flex-shrink-0 w-24 h-24 bg-muted rounded-lg overflow-hidden relative ${isBoostActive ? 'ring-2 ring-primary/50' : ''}`}>
         {post.images && post.images.length > 0 ? (
           <Image
             src={post.images[0]}
@@ -134,6 +145,11 @@ function FeedPostItem({
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
             이미지 없음
+          </div>
+        )}
+        {isBoostActive && (
+          <div className="absolute bottom-1 right-1 rounded-full bg-background/85 px-1 text-xs backdrop-blur-sm">
+            <span className="inline-block animate-pulse" role="img" aria-label="우유">🥛</span>
           </div>
         )}
       </div>
