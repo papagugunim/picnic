@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useState, useEffect, useRef } from 'react'
-import { Heart, MessageCircle, BarChart2, Sparkles } from 'lucide-react'
+import { Heart, MessageCircle, BarChart2 } from 'lucide-react'
 import Link from 'next/link'
 import { getBreadEmoji } from '@/lib/bread'
 import { UserAvatar } from '@/components/ui/user-avatar'
@@ -40,6 +40,7 @@ interface CommunityPostItemProps {
   onView?: (postId: string) => void
   currentUserId?: string | null
   boostingPostId?: string | null
+  boostedPostId?: string | null
   formatTimeAgo: (dateString: string) => string
   getCategoryEmoji: (category: string) => string
   getCategoryName: (category: string) => string
@@ -55,6 +56,7 @@ export function CommunityPostItem({
   onView,
   currentUserId,
   boostingPostId,
+  boostedPostId,
   formatTimeAgo,
   getCategoryEmoji,
   getCategoryName,
@@ -63,6 +65,8 @@ export function CommunityPostItem({
   const articleRef = useRef<HTMLElement>(null)
   const viewedRef = useRef(false)
   const isBoostActive = !!post.milk_boost_until && new Date(post.milk_boost_until).getTime() > Date.now()
+  const isBoosting = boostingPostId === post.id
+  const isBoostedJustNow = boostedPostId === post.id
 
   // 화면에 노출되면 조회수 카운팅
   useEffect(() => {
@@ -137,7 +141,7 @@ export function CommunityPostItem({
             <>
               <span className="text-muted-foreground flex-shrink-0">·</span>
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] text-primary">
-                <Sparkles className="h-3 w-3" />
+                <span className="inline-block animate-pulse" role="img" aria-label="우유">🥛</span>
                 밀크 부스트 적용 중
               </span>
             </>
@@ -210,12 +214,18 @@ export function CommunityPostItem({
                 e.stopPropagation()
                 onBoost(post.id)
               }}
-              disabled={boostingPostId === post.id}
+              disabled={isBoosting}
               className="flex items-center gap-2 p-2 rounded-full text-primary hover:bg-primary/10 disabled:opacity-60"
               aria-label="밀크 부스트"
             >
-              <Sparkles className="w-[18px] h-[18px]" />
-              <span className="text-sm">{boostingPostId === post.id ? '적용중' : '밀크 사용'}</span>
+              <span
+                className={`inline-block text-base leading-none ${isBoosting ? 'animate-bounce' : ''} ${isBoostedJustNow ? 'animate-pulse' : ''}`}
+                role="img"
+                aria-label="우유"
+              >
+                🥛
+              </span>
+              <span className="text-sm">{isBoosting ? '적용중' : '밀크 사용'}</span>
             </button>
           )}
         </div>

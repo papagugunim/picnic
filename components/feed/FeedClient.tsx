@@ -4,7 +4,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('FeedClient')
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Plus, Heart, Bookmark, BarChart2, Loader2, Sparkles } from 'lucide-react'
+import { Plus, Heart, Bookmark, BarChart2, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -67,6 +67,7 @@ interface FeedPostItemProps {
   isDeveloper: boolean
   currentUserId: string | null
   boostingPostId: string | null
+  boostedPostId: string | null
   onLikeToggle: (postId: string, currentlyLiked: boolean) => void
   onInterestToggle: (postId: string, currentlyInterested: boolean) => void
   onBoost: (postId: string) => void
@@ -78,6 +79,7 @@ function FeedPostItem({
   isDeveloper,
   currentUserId,
   boostingPostId,
+  boostedPostId,
   onLikeToggle,
   onInterestToggle,
   onBoost,
@@ -85,6 +87,8 @@ function FeedPostItem({
 }: FeedPostItemProps) {
   const isHiddenPost = post.status === 'hidden'
   const isBoostActive = !!post.milk_boost_until && new Date(post.milk_boost_until).getTime() > Date.now()
+  const isBoosting = boostingPostId === post.id
+  const isBoostedJustNow = boostedPostId === post.id
   const linkRef = useRef<HTMLAnchorElement>(null)
   const viewedRef = useRef(false)
 
@@ -142,7 +146,7 @@ function FeedPostItem({
             {isHiddenPost && <span className="ml-1 text-xs font-medium">(숨김처리)</span>}
             {isBoostActive && (
               <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] text-primary">
-                <Sparkles className="h-3 w-3" />
+                <span className="inline-block animate-pulse" role="img" aria-label="우유">🥛</span>
                 밀크 부스트 적용 중
               </span>
             )}
@@ -216,12 +220,18 @@ function FeedPostItem({
                 e.stopPropagation()
                 onBoost(post.id)
               }}
-              disabled={boostingPostId === post.id}
+              disabled={isBoosting}
               className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-primary hover:bg-primary/10 disabled:opacity-60"
               aria-label="밀크 부스트"
             >
-              <Sparkles className="h-4 w-4" />
-              <span>{boostingPostId === post.id ? '적용중' : '밀크 사용'}</span>
+              <span
+                className={`inline-block text-base leading-none ${isBoosting ? 'animate-bounce' : ''} ${isBoostedJustNow ? 'animate-pulse' : ''}`}
+                role="img"
+                aria-label="우유"
+              >
+                🥛
+              </span>
+              <span>{isBoosting ? '적용중' : '밀크 사용'}</span>
             </button>
           )}
         </div>
@@ -249,6 +259,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
   const { user, profile, loading: userLoading } = useUser()
   const [milkPoints, setMilkPoints] = useState<number | null>(null)
   const [boostingPostId, setBoostingPostId] = useState<string | null>(null)
+  const [boostedPostId, setBoostedPostId] = useState<string | null>(null)
 
   const userCity = profile?.city || null
   const userStations = useMemo(() => profile?.preferred_metro_stations ?? [], [profile?.preferred_metro_stations])
@@ -492,6 +503,10 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
       if (result) {
         const remaining = Number(result.remaining_milk_points || 0)
         setMilkPoints(remaining)
+        setBoostedPostId(postId)
+        window.setTimeout(() => {
+          setBoostedPostId((prev) => (prev === postId ? null : prev))
+        }, 1400)
         updateItem(postId, (post) => ({
           ...post,
           milk_boost_until: result.boost_until || post.milk_boost_until,
@@ -595,6 +610,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
                 isDeveloper={profile?.user_role === 'developer'}
                 currentUserId={user?.id || null}
                 boostingPostId={boostingPostId}
+                boostedPostId={boostedPostId}
                 onLikeToggle={toggleLike}
                 onInterestToggle={toggleInterest}
                 onBoost={handleBoost}

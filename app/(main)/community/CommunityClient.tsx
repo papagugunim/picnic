@@ -75,6 +75,7 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
   const [searchQuery, setSearchQuery] = useState('')
   const [milkPoints, setMilkPoints] = useState<number | null>(null)
   const [boostingPostId, setBoostingPostId] = useState<string | null>(null)
+  const [boostedPostId, setBoostedPostId] = useState<string | null>(null)
 
   const currentUserId = user?.id || null
   const userCity = profile?.city || null
@@ -396,6 +397,10 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
         const appliedScore = Number(result.applied_boost_score || 0)
 
         setMilkPoints(remaining)
+        setBoostedPostId(postId)
+        window.setTimeout(() => {
+          setBoostedPostId((prev) => (prev === postId ? null : prev))
+        }, 1400)
         updateItem(postId, (post) => ({
           ...post,
           milk_boost_until: appliedUntil || post.milk_boost_until,
@@ -559,6 +564,7 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
                     onView={handlePostView}
                     currentUserId={currentUserId}
                     boostingPostId={boostingPostId}
+                    boostedPostId={boostedPostId}
                     formatTimeAgo={formatTimeAgo}
                     getCategoryEmoji={getCategoryEmoji}
                     getCategoryName={getCategoryName}
