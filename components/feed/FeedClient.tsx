@@ -122,14 +122,13 @@ function FeedPostItem({
       }`}
     >
       {isBoostActive && (
-        <div className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
+        <div className="absolute right-2 top-2 z-10 inline-flex items-center justify-center rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
           <span className="inline-block animate-bounce" role="img" aria-label="우유">🥛</span>
-          부스트
         </div>
       )}
 
       {/* Image */}
-      <div className={`flex-shrink-0 w-24 h-24 bg-muted rounded-lg overflow-hidden relative ${isBoostActive ? 'ring-2 ring-primary/50' : ''}`}>
+      <div className="flex-shrink-0 w-24 h-24 bg-muted rounded-lg overflow-hidden relative">
         {post.images && post.images.length > 0 ? (
           <Image
             src={post.images[0]}
@@ -160,12 +159,6 @@ function FeedPostItem({
           <h3 className={`text-base font-normal line-clamp-2 mb-0.5 ${isHiddenPost ? 'text-muted-foreground' : ''}`}>
             {post.title}
             {isHiddenPost && <span className="ml-1 text-xs font-medium">(숨김처리)</span>}
-            {isBoostActive && (
-              <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] text-primary">
-                <span className="inline-block animate-pulse" role="img" aria-label="우유">🥛</span>
-                밀크 부스트 적용 중
-              </span>
-            )}
           </h3>
           <div className="text-xs text-muted-foreground mb-0.5">
             <span>{getCityNameInKorean(post.city)}</span>
