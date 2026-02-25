@@ -519,14 +519,6 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
                   </button>
                 ))}
               </div>
-              {user && (
-                <div className="pt-3 text-xs text-muted-foreground">
-                  남은 밀크 포인트{' '}
-                  <span className="font-semibold text-primary">
-                    {profile?.user_role === 'developer' ? '무제한 ∞' : (milkPoints ?? '...')}
-                  </span>
-                </div>
-              )}
             </div>
           </div>
 

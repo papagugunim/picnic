@@ -142,8 +142,12 @@ export function CommunityPostItem({
             {getBreadEmoji(post.profiles.bread_level, post.profiles.user_role || undefined)}
           </span>
           <span className="text-muted-foreground flex-shrink-0">·</span>
-          <span className="text-xs px-1.5 py-0.5 bg-secondary rounded-full text-muted-foreground flex-shrink-0">
-            {getCategoryEmoji(post.category)} {getCategoryName(post.category)}
+          <span
+            className="text-xs px-1.5 py-0.5 bg-secondary rounded-full text-muted-foreground flex-shrink-0"
+            title={getCategoryName(post.category)}
+            aria-label={getCategoryName(post.category)}
+          >
+            {getCategoryEmoji(post.category)}
           </span>
           <span className="text-muted-foreground flex-shrink-0">·</span>
           <span className="text-muted-foreground flex-shrink-0">
