@@ -115,18 +115,8 @@ function FeedPostItem({
     <Link
       ref={linkRef}
       href={`/post/${post.id}`}
-      className={`relative flex gap-3 p-3 transition-colors hover:bg-muted/30 ${
-        isBoostActive
-          ? 'rounded-xl border border-primary/40 bg-primary/5 shadow-[0_0_18px_hsl(var(--primary)/0.22)]'
-          : ''
-      }`}
+      className="relative flex gap-3 p-3 transition-colors hover:bg-muted/30"
     >
-      {isBoostActive && (
-        <div className="absolute right-2 top-2 z-10 inline-flex items-center justify-center rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
-          <span className="inline-block animate-bounce" role="img" aria-label="우유">🥛</span>
-        </div>
-      )}
-
       {/* Image */}
       <div className="flex-shrink-0 w-24 h-24 bg-muted rounded-lg overflow-hidden relative">
         {post.images && post.images.length > 0 ? (
