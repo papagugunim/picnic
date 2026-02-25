@@ -100,15 +100,14 @@ export function CommunityPostItem({
       ref={articleRef}
       className={`relative flex gap-3 px-4 py-3 transition-colors cursor-pointer hover:bg-muted/50 ${
         isBoostActive
-          ? 'rounded-xl border border-primary/40 bg-primary/5 shadow-[0_0_16px_hsl(var(--primary)/0.2)]'
+          ? 'rounded-xl bg-primary/[0.04]'
           : ''
       }`}
       onClick={() => onPostClick(post)}
     >
       {isBoostActive && (
-        <div className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
-          <span className="inline-block animate-bounce" role="img" aria-label="우유">🥛</span>
-          부스트
+        <div className="absolute right-2 top-2 z-10 inline-flex items-center justify-center rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
+          <span className="inline-block" role="img" aria-label="우유">🥛</span>
         </div>
       )}
 
@@ -118,18 +117,13 @@ export function CommunityPostItem({
         onClick={(e) => e.stopPropagation()}
         className="flex-shrink-0"
       >
-        <div className={`relative rounded-full ${isBoostActive ? 'ring-2 ring-primary/50 ring-offset-2 ring-offset-background' : ''}`}>
+        <div className="relative rounded-full">
           <UserAvatar
             src={post.profiles.avatar_url}
             alt={post.profiles.full_name || '사용자'}
             breadLevel={post.profiles.bread_level}
             size="md"
           />
-          {isBoostActive && (
-            <div className="absolute -bottom-1 -right-1 rounded-full bg-background px-1 text-[11px] shadow-sm">
-              <span className="inline-block animate-pulse" role="img" aria-label="우유">🥛</span>
-            </div>
-          )}
         </div>
       </Link>
 
@@ -155,15 +149,6 @@ export function CommunityPostItem({
           <span className="text-muted-foreground flex-shrink-0">
             {formatTimeAgo(post.created_at)}
           </span>
-          {isBoostActive && (
-            <>
-              <span className="text-muted-foreground flex-shrink-0">·</span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] text-primary">
-                <span className="inline-block animate-pulse" role="img" aria-label="우유">🥛</span>
-                밀크 부스트 적용 중
-              </span>
-            </>
-          )}
         </div>
 
         {/* Body */}
