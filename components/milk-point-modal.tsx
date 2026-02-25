@@ -58,10 +58,13 @@ export function MilkPointModal({
               <section className="rounded-2xl border border-border bg-card p-4">
                 <h3 className="mb-2 text-sm font-semibold">어떻게 쌓이나요?</h3>
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
-                  <li>가입 시 웰컴 보너스 +30P</li>
-                  <li>중고거래 게시글 좋아요를 받으면 +1P</li>
-                  <li>동네생활 게시글/댓글 좋아요를 받으면 +1P</li>
-                  <li>동네생활 게시글에 댓글이 달리면 +2P (하루 1회 기준)</li>
+                  <li>웰컴 보너스: 가입 완료 시 +1,000P</li>
+                  <li>브레드 등급 상승: 등급이 올라갈 때마다 +1,000P</li>
+                  <li>중고거래 무료나눔 판매 완료: +1,000P</li>
+                  <li>내 게시글에 받은 좋아요: 1개당 +5P</li>
+                  <li>내가 누른 좋아요: 1개당 +1P</li>
+                  <li>내 게시글에 받은 댓글: 1개당 +10P</li>
+                  <li>내가 남긴 댓글: 1개당 +10P</li>
                 </ul>
               </section>
 
@@ -69,16 +72,17 @@ export function MilkPointModal({
                 <h3 className="mb-2 text-sm font-semibold">어떻게 사용하나요?</h3>
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
                   <li>본인 게시글에만 밀크 부스트를 적용할 수 있습니다.</li>
-                  <li>사용 범위: 1회 1~200P</li>
-                  <li>노출 가중치: 사용 포인트 × 3점</li>
-                  <li>적용 시간: 1~72시간</li>
+                  <li>1회 사용량: 100P (고정)</li>
+                  <li>부스트가 적용되지 않은 게시글에만 사용할 수 있습니다.</li>
+                  <li>부스트 종료 후 다시 부스트를 적용할 수 있습니다.</li>
+                  <li>부스트 적용 시간: 6시간</li>
                 </ul>
               </section>
 
               <section className="rounded-2xl border border-border bg-card p-4">
                 <h3 className="mb-2 text-sm font-semibold">상단 노출은 어떻게 되나요?</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  최근 3일 게시글은 좋아요/관심/조회 기반 점수에 밀크 부스트 점수가 더해져 추천순으로 정렬됩니다.
+                  최근 3일 게시글은 좋아요/댓글 등 반응 점수에 밀크 부스트 점수가 더해져 추천순으로 정렬됩니다.
                   점수가 같으면 최신 게시글이 먼저 노출됩니다.
                 </p>
               </section>
