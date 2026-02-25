@@ -1,14 +1,12 @@
-<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    /* 브라우저 설정에 따라 색상 자동 변경 */
-    path {
-      fill: #5C9973;
-    }
-    @media (prefers-color-scheme: dark) {
-      path {
-        fill: #66A67F;
-      }
-    }
-  </style>
-  <path d="M16 2C10 2 6 8 6 16C6 24 10 30 16 30C22 30 26 24 26 16C26 8 22 2 16 2ZM16 12C17.66 12 19 10.66 19 9C19 7.34 17.66 6 16 6C14.34 6 13 7.34 13 9C13 10.66 14.34 12 16 12ZM16 26C14 26 12 24.5 12 22C12 20 13.5 19 16 19C18.5 19 20 20 20 22C20 24.5 18 26 16 26Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect x="26" y="26" width="460" height="460" rx="118" fill="#F7FAF8"/>
+  <path d="M157 282a14 14 0 0 1-14-14c0-67 51-121 113-121s113 54 113 121a14 14 0 0 1-28 0c0-52-38-93-85-93s-85 41-85 93a14 14 0 0 1-14 14Z" fill="#89623A"/>
+  <rect x="112" y="226" width="288" height="60" rx="34" fill="#CB955C"/>
+  <rect x="118" y="252" width="276" height="140" rx="56" fill="#B8844E"/>
+  <rect x="152" y="238" width="24" height="44" rx="10" fill="#89623A"/>
+  <rect x="336" y="238" width="24" height="44" rx="10" fill="#89623A"/>
+  <path d="M181 273v100M223 273v100M265 273v100M307 273v100M349 273v100" stroke="#95663A" stroke-width="7" stroke-linecap="round" opacity=".85"/>
+  <path d="M151 292h210M151 323h210M151 354h210" stroke="#95663A" stroke-width="7" stroke-linecap="round" opacity=".85"/>
+  <path d="M186 212h58l-16 40h-60l18-40Z" fill="#DC5858"/>
+  <path d="m193 214 30 38M212 214l30 38" stroke="#FFEBEB" stroke-width="5" stroke-linecap="round" opacity=".85"/>
 </svg>
