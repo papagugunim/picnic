@@ -16,6 +16,7 @@ import { useUser } from '@/lib/contexts/UserContext'
 import { formatTimeAgo } from '@/lib/utils/date'
 import { getCityNameInKorean } from '@/lib/constants'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
+import { MILK_BOOST_COST, MILK_BOOST_DURATION_HOURS } from '@/lib/milk-points'
 import { toast } from 'sonner'
 
 interface Post {
@@ -463,14 +464,21 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
   const handleBoost = useCallback(async (postId: string) => {
     if (!user || boostingPostId) return
 
+    const targetPost = allPosts.find((post) => post.id === postId)
+    const hasActiveBoost = !!targetPost?.milk_boost_until && new Date(targetPost.milk_boost_until).getTime() > Date.now()
+    if (hasActiveBoost) {
+      toast.error('이미 밀크 부스트가 적용 중인 게시글입니다')
+      return
+    }
+
     try {
       setBoostingPostId(postId)
       const supabase = createClient()
       const { data, error } = await supabase.rpc('apply_milk_boost', {
         p_target_type: 'post',
         p_target_id: postId,
-        p_points: 10,
-        p_duration_hours: 24,
+        p_points: MILK_BOOST_COST,
+        p_duration_hours: MILK_BOOST_DURATION_HOURS,
       })
 
       if (error) {
@@ -499,7 +507,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
     } finally {
       setBoostingPostId(null)
     }
-  }, [boostingPostId, refresh, updateItem, user])
+  }, [allPosts, boostingPostId, refresh, updateItem, user])
 
   if (isLoading && initialPosts.length === 0) {
     return (

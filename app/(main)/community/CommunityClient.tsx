@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 import { useInfiniteScroll } from '@/lib/hooks/useInfiniteScroll'
 import { getLoadingMessage } from '@/lib/loading-messages'
+import { MILK_BOOST_COST, MILK_BOOST_DURATION_HOURS } from '@/lib/milk-points'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -73,7 +74,6 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
   const { user, profile, loading: userLoading } = useUser()
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [milkPoints, setMilkPoints] = useState<number | null>(null)
   const [boostingPostId, setBoostingPostId] = useState<string | null>(null)
   const [boostedPostId, setBoostedPostId] = useState<string | null>(null)
 
@@ -186,25 +186,6 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
     initialData: initialPosts,
     initialCursor: initialCursor,
   })
-
-  const fetchMilkPoints = useCallback(async () => {
-    if (!user) {
-      setMilkPoints(null)
-      return
-    }
-
-    const supabase = createClient()
-    const { data, error } = await supabase.rpc('get_my_milk_points')
-    if (error) {
-      logger.warn('Milk points fetch error:', error)
-      return
-    }
-    setMilkPoints(typeof data === 'number' ? data : Number(data || 0))
-  }, [user])
-
-  useEffect(() => {
-    fetchMilkPoints()
-  }, [fetchMilkPoints])
 
   // Client-side category filtering
   const posts = useMemo(() => {
@@ -375,14 +356,21 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
   const handleBoost = useCallback(async (postId: string) => {
     if (!currentUserId || boostingPostId) return
 
+    const targetPost = allPosts.find((post) => post.id === postId)
+    const hasActiveBoost = !!targetPost?.milk_boost_until && new Date(targetPost.milk_boost_until).getTime() > Date.now()
+    if (hasActiveBoost) {
+      toast.error('이미 밀크 부스트가 적용 중인 게시글입니다')
+      return
+    }
+
     try {
       setBoostingPostId(postId)
       const supabase = createClient()
       const { data, error } = await supabase.rpc('apply_milk_boost', {
         p_target_type: 'community_post',
         p_target_id: postId,
-        p_points: 10,
-        p_duration_hours: 24,
+        p_points: MILK_BOOST_COST,
+        p_duration_hours: MILK_BOOST_DURATION_HOURS,
       })
 
       if (error) {
@@ -392,11 +380,9 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
 
       const result = Array.isArray(data) ? data[0] : null
       if (result) {
-        const remaining = Number(result.remaining_milk_points || 0)
         const appliedUntil = result.boost_until || null
         const appliedScore = Number(result.applied_boost_score || 0)
 
-        setMilkPoints(remaining)
         setBoostedPostId(postId)
         window.setTimeout(() => {
           setBoostedPostId((prev) => (prev === postId ? null : prev))
@@ -425,7 +411,7 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
     } finally {
       setBoostingPostId(null)
     }
-  }, [boostingPostId, currentUserId, refresh, updateItem])
+  }, [allPosts, boostingPostId, currentUserId, refresh, updateItem])
 
   // 화면에 노출되면 조회수 증가 (세션당 게시글 1회)
   const viewedPostIds = useRef(new Set<string>())

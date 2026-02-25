@@ -1,6 +1,7 @@
 'use client'
 
 import { X } from 'lucide-react'
+import { MILK_BOOST_COST, MILK_BOOST_DURATION_HOURS } from '@/lib/milk-points'
 import {
   Dialog,
   DialogClose,
@@ -79,10 +80,10 @@ export function MilkPointModal({
                 <h3 className="mb-2 text-sm font-semibold">어떻게 사용하나요?</h3>
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
                   <li>본인 게시글에만 밀크 부스트를 적용할 수 있습니다.</li>
-                  <li>1회 사용량: 100P (고정)</li>
+                  <li>1회 사용량: {MILK_BOOST_COST}P (고정)</li>
                   <li>부스트가 적용되지 않은 게시글에만 사용할 수 있습니다.</li>
                   <li>부스트 종료 후 다시 부스트를 적용할 수 있습니다.</li>
-                  <li>부스트 적용 시간: 6시간</li>
+                  <li>부스트 적용 시간: {MILK_BOOST_DURATION_HOURS}시간</li>
                 </ul>
               </section>
 
