@@ -13,12 +13,14 @@ interface MilkPointModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   currentPoints?: number | null
+  isUnlimited?: boolean
 }
 
 export function MilkPointModal({
   open,
   onOpenChange,
   currentPoints,
+  isUnlimited = false,
 }: MilkPointModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -51,8 +53,13 @@ export function MilkPointModal({
                 <p className="text-xs text-muted-foreground">현재 보유 포인트</p>
                 <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary">
                   <span role="img" aria-label="우유">🥛</span>
-                  내 밀크 포인트 {currentPoints ?? '...'}P
+                  {isUnlimited ? '내 밀크 포인트 무제한 ∞' : `내 밀크 포인트 ${currentPoints ?? '...'}P`}
                 </div>
+                {isUnlimited && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    개발자 등급 혜택으로 밀크 부스트를 무제한으로 사용할 수 있습니다.
+                  </p>
+                )}
               </section>
 
               <section className="rounded-2xl border border-border bg-card p-4">

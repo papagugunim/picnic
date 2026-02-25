@@ -682,7 +682,7 @@ export default function ProfilePage() {
                           className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary hover:opacity-80 transition-opacity"
                         >
                           <span role="img" aria-label="우유">🥛</span>
-                          내 밀크 포인트 {milkPoints ?? '...'}
+                          내 밀크 포인트 {profile.user_role === 'developer' ? '무제한 ∞' : (milkPoints ?? '...')}
                         </button>
                       )}
                     </div>
@@ -1065,6 +1065,7 @@ export default function ProfilePage() {
         open={isMilkModalOpen}
         onOpenChange={setIsMilkModalOpen}
         currentPoints={milkPoints}
+        isUnlimited={profile.user_role === 'developer'}
       />
 
       {/* 로그아웃 확인 다이얼로그 */}

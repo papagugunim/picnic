@@ -522,7 +522,9 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
               {user && (
                 <div className="pt-3 text-xs text-muted-foreground">
                   남은 밀크 포인트{' '}
-                  <span className="font-semibold text-primary">{milkPoints ?? '...'}</span>
+                  <span className="font-semibold text-primary">
+                    {profile?.user_role === 'developer' ? '무제한 ∞' : (milkPoints ?? '...')}
+                  </span>
                 </div>
               )}
             </div>
