@@ -186,6 +186,28 @@ picnic/
 npm run test
 ```
 
+## 🖼️ 이미지 생성 (imagegen)
+
+피크닉 프로젝트에는 Codex `imagegen` 스킬 래퍼가 연결되어 있습니다.
+
+1. API 키 설정
+```bash
+cp .env.imagegen.example .env.imagegen
+# .env.imagegen 파일에 OPENAI_API_KEY 입력
+```
+
+2. dry-run 확인 (API 호출 없음)
+```bash
+npm run imagegen -- generate --prompt "test image" --dry-run
+```
+
+3. 실제 테스트 이미지 1건 생성
+```bash
+npm run imagegen:test
+```
+
+생성 결과는 `output/imagegen/` 경로에 저장됩니다.
+
 ## 🏗 빌드
 
 ```bash
