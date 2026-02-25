@@ -15,6 +15,7 @@ import { BREAD_SCORE_FACTORS, getBreadDescription, getBreadEmoji, getBreadInfo, 
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { getLoadingMessage } from '@/lib/loading-messages'
 import { BreadLevelModal } from '@/components/bread-level-modal'
+import { MilkPointModal } from '@/components/milk-point-modal'
 import {
   readProfileViewCache,
   writeProfileViewCache,
@@ -196,6 +197,7 @@ export default function ProfilePage() {
     interests: false,
   })
   const [isBreadModalOpen, setIsBreadModalOpen] = useState(false)
+  const [isMilkModalOpen, setIsMilkModalOpen] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [breadScoreBreakdown, setBreadScoreBreakdown] = useState<BreadScoreBreakdown | null>(null)
   const [milkPoints, setMilkPoints] = useState<number | null>(null)
@@ -674,10 +676,14 @@ export default function ProfilePage() {
                       </button>
 
                       {isOwnProfile && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                        <button
+                          type="button"
+                          onClick={() => setIsMilkModalOpen(true)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary hover:opacity-80 transition-opacity"
+                        >
                           <span role="img" aria-label="우유">🥛</span>
-                          잔여 밀크 포인트 {milkPoints ?? '...'}
-                        </span>
+                          내 밀크 포인트 {milkPoints ?? '...'}
+                        </button>
                       )}
                     </div>
                   )
@@ -1053,6 +1059,12 @@ export default function ProfilePage() {
         currentRole={profile.user_role}
         currentScore={breadScoreBreakdown?.totalScore || 0}
         scoreBreakdown={breadScoreBreakdown}
+      />
+
+      <MilkPointModal
+        open={isMilkModalOpen}
+        onOpenChange={setIsMilkModalOpen}
+        currentPoints={milkPoints}
       />
 
       {/* 로그아웃 확인 다이얼로그 */}
