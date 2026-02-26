@@ -183,6 +183,8 @@ export default function ProfilePage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [communityPosts, setCommunityPosts] = useState<CommunityPost[]>([])
   const [interestedPosts, setInterestedPosts] = useState<Post[]>([])
+  const [communityPostCount, setCommunityPostCount] = useState<number | null>(null)
+  const [interestedPostCount, setInterestedPostCount] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<ProfileTab>('marketplace')
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -246,6 +248,7 @@ export default function ProfilePage() {
       } else {
         const nextItems = (data || []) as CommunityPost[]
         setCommunityPosts(nextItems)
+        setCommunityPostCount(nextItems.length)
         persistCache({
           communityPosts: nextItems,
           loadedSections: { community: true },
@@ -293,6 +296,7 @@ export default function ProfilePage() {
           })
           .filter((item): item is Post => Boolean(item))
         setInterestedPosts(nextItems)
+        setInterestedPostCount(nextItems.length)
         persistCache({
           interestedPosts: nextItems,
           loadedSections: { interests: true },
@@ -325,6 +329,8 @@ export default function ProfilePage() {
 
         setIsOwnProfile(ownProfile)
         setMilkPoints(null)
+        setCommunityPostCount(null)
+        setInterestedPostCount(null)
         setIsLoading(true)
         setLoadingSections({
           marketplace: false,
@@ -339,6 +345,8 @@ export default function ProfilePage() {
           setPosts((cached.posts || []) as Post[])
           setCommunityPosts((cached.communityPosts || []) as CommunityPost[])
           setInterestedPosts((cached.interestedPosts || []) as Post[])
+          setCommunityPostCount((cached.communityPosts || []).length)
+          setInterestedPostCount(ownProfile ? (cached.interestedPosts || []).length : null)
           setReceivedReviews((cached.receivedReviews || []) as ReceivedReview[])
           setBreadScoreBreakdown((cached.breadScoreBreakdown as BreadScoreBreakdown | null) || null)
           setLoadedSections({
@@ -357,7 +365,7 @@ export default function ProfilePage() {
         }
 
         updateSectionLoading('marketplace', true)
-        const [profileResult, postsResult, milkPointResult] = await Promise.all([
+        const [profileResult, postsResult, milkPointResult, communityCountResult, interestedCountResult] = await Promise.all([
           supabase
             .from('profiles')
             .select('id, full_name, avatar_url, city, created_at, email, preferred_metro_stations, bread_level, user_role, post_count')
@@ -371,6 +379,16 @@ export default function ProfilePage() {
           ownProfile
             ? supabase.rpc('get_my_milk_points')
             : Promise.resolve({ data: null, error: null } as { data: number | null; error: null }),
+          supabase
+            .from('community_posts')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId),
+          ownProfile
+            ? supabase
+                .from('post_interests')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId)
+            : Promise.resolve({ count: null, error: null } as { count: number | null; error: null }),
         ])
 
         if (cancelled) return
@@ -398,6 +416,22 @@ export default function ProfilePage() {
               ? milkPointResult.data
               : Number(milkPointResult?.data || 0)
           )
+        }
+
+        if (communityCountResult.error) {
+          logger.warn('Community post count fetch error:', communityCountResult.error)
+        } else {
+          setCommunityPostCount(communityCountResult.count ?? 0)
+        }
+
+        if (ownProfile) {
+          if (interestedCountResult.error) {
+            logger.warn('Interested post count fetch error:', interestedCountResult.error)
+          } else {
+            setInterestedPostCount(interestedCountResult.count ?? 0)
+          }
+        } else {
+          setInterestedPostCount(null)
         }
 
         const nextProfile = profileResult.data as Profile
@@ -591,7 +625,12 @@ export default function ProfilePage() {
     return metroStations.find((s) => s.value === stationValue)
   }
 
-  const tabCountLabel = (_tab: ProfileTab, count: number) => String(count)
+  const tabCountLabel = (_tab: ProfileTab, count: number | null) => (count === null ? '...' : String(count))
+  const marketplaceTabCount = posts.length
+  const communityTabCount = communityPostCount ?? (loadedSections.community ? communityPosts.length : null)
+  const interestsTabCount = isOwnProfile
+    ? (interestedPostCount ?? (loadedSections.interests ? interestedPosts.length : null))
+    : null
 
   const averageReviewRating = receivedReviews.length > 0
     ? receivedReviews.reduce((sum, review) => sum + review.rating, 0) / receivedReviews.length
@@ -821,7 +860,7 @@ export default function ProfilePage() {
               }`}
             >
               <span>중고거래</span>
-              <span className="text-xs font-medium">({tabCountLabel('marketplace', posts.length)})</span>
+              <span className="text-xs font-medium">({tabCountLabel('marketplace', marketplaceTabCount)})</span>
             </button>
             <button
               onClick={() => setActiveTab('community')}
@@ -832,7 +871,7 @@ export default function ProfilePage() {
               }`}
             >
               <span>동네생활</span>
-              <span className="text-xs font-medium">({tabCountLabel('community', communityPosts.length)})</span>
+              <span className="text-xs font-medium">({tabCountLabel('community', communityTabCount)})</span>
             </button>
             {isOwnProfile && (
               <button
@@ -844,7 +883,7 @@ export default function ProfilePage() {
                 }`}
               >
                 <span>관심</span>
-                <span className="text-xs font-medium">({tabCountLabel('interests', interestedPosts.length)})</span>
+                <span className="text-xs font-medium">({tabCountLabel('interests', interestsTabCount)})</span>
               </button>
             )}
           </div>

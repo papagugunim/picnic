@@ -4,7 +4,9 @@ import { readCachedRussiaNews, writeCachedRussiaNews } from '@/lib/russia-news-c
 import { getEmergencyFallbackNews } from '@/lib/russia-news-fallback'
 import { fetchRussiaNewsFromUpstream } from '@/lib/russia-news-proxy'
 import { normalizeTopic, type RussiaNewsApiPayload, type RussiaNewsTopic } from '@/lib/russia-news'
+import { readUpstashRussiaNews, writeUpstashRussiaNews } from '@/lib/russia-news-upstash-cache'
 import { isInArchiveWindow, readRussiaNewsFromArchiveStore, saveRussiaNewsArchiveItems } from '@/lib/russia-news-archive-store'
+import { checkUpstashRateLimit, getRateLimitIdentifier } from '@/lib/upstash'
 
 const TOPIC_BUCKETS: RussiaNewsTopic[] = ['정치', '사회', '경제', '문화', '날씨']
 
@@ -41,6 +43,20 @@ export async function GET(request: NextRequest) {
   const cursor = searchParams.get('cursor')
   const topic = searchParams.get('topic')
   const limit = Number(searchParams.get('limit') || '20')
+  const requester = getRateLimitIdentifier(request.headers, `russia-news:${topic || 'all'}`)
+
+  const limitResult = await checkUpstashRateLimit('russia-news-api', requester, 180, 60)
+  if (!limitResult.success) {
+    return NextResponse.json(
+      { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': '30',
+        },
+      }
+    )
+  }
 
   const fallbackFromStore = async () => {
     return readRussiaNewsFromArchiveStore({
@@ -50,22 +66,42 @@ export async function GET(request: NextRequest) {
     })
   }
 
-  const fallbackFromCache = () => {
+  const fallbackFromCache = async () => {
     const cachedToday = readCachedRussiaNews('today', topic, limit, cursor)
     if (cachedToday.length > 0) {
       return cachedToday
     }
 
+    const upstashToday = await readUpstashRussiaNews('today', topic, limit, cursor)
+    if (upstashToday.length > 0) {
+      return upstashToday
+    }
+
     const cachedArchive = readCachedRussiaNews('archive', topic, limit, cursor)
-    return cachedArchive
+    if (cachedArchive.length > 0) {
+      return cachedArchive
+    }
+
+    return readUpstashRussiaNews('archive', topic, limit, cursor)
   }
 
-  const fallbackFromAnyCache = () => {
+  const fallbackFromAnyCache = async () => {
     const cachedToday = readCachedRussiaNews('today', '', limit, cursor)
     if (cachedToday.length > 0) {
       return cachedToday
     }
-    return readCachedRussiaNews('archive', '', limit, cursor)
+
+    const upstashToday = await readUpstashRussiaNews('today', '', limit, cursor)
+    if (upstashToday.length > 0) {
+      return upstashToday
+    }
+
+    const cachedArchive = readCachedRussiaNews('archive', '', limit, cursor)
+    if (cachedArchive.length > 0) {
+      return cachedArchive
+    }
+
+    return readUpstashRussiaNews('archive', '', limit, cursor)
   }
 
   try {
@@ -150,6 +186,7 @@ export async function GET(request: NextRequest) {
     if (payload.items.length > 0) {
       await saveRussiaNewsArchiveItems(payload.items)
       writeCachedRussiaNews('today', topic, payload.items)
+      await writeUpstashRussiaNews('today', topic, limit, cursor, payload.items)
       return NextResponse.json(payload, {
         headers: {
           'Cache-Control': 'public, s-maxage=180, stale-while-revalidate=120',
@@ -160,6 +197,7 @@ export async function GET(request: NextRequest) {
     const storedItems = await fallbackFromStore()
     if (storedItems.length > 0) {
       writeCachedRussiaNews('today', topic, storedItems)
+      await writeUpstashRussiaNews('today', topic, limit, cursor, storedItems)
       return NextResponse.json(
         { items: storedItems, stale: true, fallback: 'archive-store' },
         {
@@ -171,7 +209,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const cachedItems = fallbackFromCache()
+    const cachedItems = await fallbackFromCache()
     if (cachedItems.length > 0) {
       return NextResponse.json(
         { items: cachedItems, stale: true },
@@ -185,8 +223,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (topic) {
+      const anyCachedItems = await fallbackFromAnyCache()
       const broadCachedItems = filterPayloadByTopic(
-        { items: fallbackFromAnyCache() },
+        { items: anyCachedItems },
         topic
       ).items
       if (broadCachedItems.length > 0) {
@@ -216,6 +255,7 @@ export async function GET(request: NextRequest) {
     const storedItems = await fallbackFromStore()
     if (storedItems.length > 0) {
       writeCachedRussiaNews('today', topic, storedItems)
+      await writeUpstashRussiaNews('today', topic, limit, cursor, storedItems)
       return NextResponse.json(
         { items: storedItems, stale: true, fallback: 'archive-store-on-error' },
         {
@@ -227,7 +267,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const cachedItems = fallbackFromCache()
+    const cachedItems = await fallbackFromCache()
     if (cachedItems.length > 0) {
       return NextResponse.json(
         { items: cachedItems, stale: true },
@@ -241,8 +281,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (topic) {
+      const anyCachedItems = await fallbackFromAnyCache()
       const broadCachedItems = filterPayloadByTopic(
-        { items: fallbackFromAnyCache() },
+        { items: anyCachedItems },
         topic
       ).items
       if (broadCachedItems.length > 0) {

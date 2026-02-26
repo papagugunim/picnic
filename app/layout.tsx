@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/react";
+import PostHogProvider from "@/components/analytics/PostHogProvider";
 
 export const metadata: Metadata = {
   title: "picnic - 해외 한인 커뮤니티",
@@ -41,10 +42,12 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <body className="antialiased">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
-          <Toaster position="top-center" richColors />
-        </ThemeProvider>
+        <PostHogProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            {children}
+            <Toaster position="top-center" richColors />
+          </ThemeProvider>
+        </PostHogProvider>
         {/* 개발 환경에서는 Analytics 비활성화 - 속도 개선 */}
         {isProduction && (
           <>

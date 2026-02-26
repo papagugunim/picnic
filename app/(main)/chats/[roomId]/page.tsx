@@ -33,6 +33,84 @@ type ChatImageViewerState = {
 const urlPattern = /(https?:\/\/[^\s]+)/gi
 const CHAT_MAX_IMAGE_FILES = 5
 
+const BUYER_QUICK_MESSAGE_POOL = [
+  '안녕하세요! {postTitle}({priceLabel}) 아직 거래 가능할까요?',
+  '{postTitle} 실사용 기간과 상태를 알려주실 수 있을까요?',
+  '혹시 눈에 띄는 하자나 수리 이력은 없을까요?',
+  '구성품(박스/충전기/설명서) 포함 여부를 확인하고 싶어요.',
+  '추가 사진을 몇 장 더 받을 수 있을까요?',
+  '오늘 저녁 거래 가능하시면 시간 맞춰볼게요.',
+  '내일 오전 거래도 가능하실까요?',
+  '거래 장소를 지하철역 기준으로 맞출 수 있을까요?',
+  '가격 제안이 가능한지 여쭤봐도 될까요?',
+  '현장 확인 후 바로 거래 가능할 것 같습니다.',
+  '예약 가능하다면 언제까지 가능할까요?',
+  '혹시 직거래만 가능하신가요?',
+  '제품 작동 영상이나 테스트 결과가 있을까요?',
+  '사용감이 가장 많은 부분을 사진으로 보여주실 수 있을까요?',
+  '거래 전에 궁금한 점을 정리해서 다시 연락드릴게요.',
+  '오늘 이동 가능해서 시간만 맞으면 바로 갈 수 있어요.',
+  '주말 거래도 가능하신지 확인 부탁드려요.',
+  '거래 확정 시 결제 방식은 어떤 걸 선호하시나요?',
+  '좋은 물건이라 빠르게 결정하려고 합니다.',
+  '가능하시면 구매약속 제안드려도 될까요?',
+] as const
+
+const SELLER_QUICK_MESSAGE_POOL = [
+  '안녕하세요! {postTitle} 문의 주셔서 감사합니다 🙌',
+  '현재 {postTitle}는 거래 가능합니다.',
+  '제품 상태는 양호하고, 필요하시면 추가 사진 드릴게요.',
+  '오늘 저녁/내일 오전 중 거래 가능한 시간이 있습니다.',
+  '원하시면 구매약속으로 시간과 장소를 바로 확정할 수 있어요.',
+  '거래 장소는 서로 이동 편한 지하철역으로 맞추겠습니다.',
+  '확정하시면 다른 문의는 잠시 보류하고 예약 처리해둘게요.',
+  '현장에서 상태 확인 후 거래 진행하셔도 괜찮습니다.',
+  '직거래 기준으로 진행하고 있습니다.',
+  '빠른 거래 원하시면 가능한 시간을 알려주세요.',
+  '가격은 현재 {priceLabel} 기준으로 안내드리고 있어요.',
+  '제품 확인 포인트가 있으면 미리 말씀 주세요.',
+  '오늘 안에 거래 가능하면 우선순위로 맞춰드리겠습니다.',
+  '내일 일정도 조율 가능하니 편한 시간 알려주세요.',
+  '필요하신 각도/부분 사진 요청 주시면 바로 찍어드릴게요.',
+  '구성품 포함 내역을 다시 한번 정리해드릴까요?',
+  '거래 전 궁금하신 점 편하게 물어보세요.',
+  '구매 의사 확정되면 구매약속으로 빠르게 진행하겠습니다.',
+  '원활한 거래 위해 약속 시간 10분 전 재확인 드릴게요.',
+  '좋은 거래가 되도록 끝까지 책임지고 안내드릴게요.',
+] as const
+
+function createSeededRng(seedInput: string) {
+  let seed = 0
+  for (let idx = 0; idx < seedInput.length; idx += 1) {
+    seed = (seed * 31 + seedInput.charCodeAt(idx)) | 0
+  }
+
+  return () => {
+    seed = (seed * 1664525 + 1013904223) | 0
+    return (seed >>> 0) / 4294967296
+  }
+}
+
+function shuffleBySeed<T>(items: readonly T[], seedInput: string): T[] {
+  const next = [...items]
+  const rng = createSeededRng(seedInput)
+
+  for (let idx = next.length - 1; idx > 0; idx -= 1) {
+    const swapIndex = Math.floor(rng() * (idx + 1))
+    const temp = next[idx]
+    next[idx] = next[swapIndex]
+    next[swapIndex] = temp
+  }
+
+  return next
+}
+
+function applyQuickMessageTemplate(template: string, postTitle: string, priceLabel: string) {
+  return template
+    .replace(/\{postTitle\}/g, postTitle)
+    .replace(/\{priceLabel\}/g, priceLabel)
+}
+
 function renderMessageContent(content: string) {
   return content.split(urlPattern).map((part, index) => {
     const isUrl = /^https?:\/\//i.test(part)
@@ -815,21 +893,10 @@ export default function ChatRoomPage() {
       room?.post?.price === 0 || room?.post?.price === null || room?.post?.price === undefined
         ? '무료나눔'
         : `${room.post.price.toLocaleString()}₽`
-
-    if (isSeller) {
-      return [
-        `안녕하세요! ${postTitle} 문의 주셔서 감사합니다 🙌`,
-        '거래 가능한 시간은 오늘 저녁/내일 오전입니다. 편한 시간을 알려주세요.',
-        '원하시면 제품 상태를 확인할 수 있게 추가 사진을 보내드릴게요.',
-      ]
-    }
-
-    return [
-      `안녕하세요! ${postTitle}(${priceLabel}) 아직 거래 가능할까요?`,
-      '오늘 저녁 또는 내일 오전에 거래 가능하실까요?',
-      '거래 가능한 장소를 알려주시면 맞춰서 이동할게요.',
-    ]
-  }, [isSeller, room?.post?.price, room?.post?.title])
+    const pool = isSeller ? SELLER_QUICK_MESSAGE_POOL : BUYER_QUICK_MESSAGE_POOL
+    const shuffled = shuffleBySeed(pool, `${roomId}:${isSeller ? 'seller' : 'buyer'}:${room?.post?.id || 'no-post'}`)
+    return shuffled.map((template) => applyQuickMessageTemplate(template, postTitle, priceLabel))
+  }, [isSeller, room?.post?.id, room?.post?.price, room?.post?.title, roomId])
   const insertMessageTemplate = useCallback(
     (template: string) => {
       setNewMessage((prev) => (prev.trim().length > 0 ? `${prev.trim()}\n${template}` : template))
@@ -1249,7 +1316,7 @@ export default function ChatRoomPage() {
                 triggerClassName="shrink-0 rounded-full h-8 px-3 text-xs font-medium"
                 showTriggerIcon={false}
               />
-              {!hasActiveAppointment && quickMessageTemplates.slice(1).map((template) => (
+              {!hasActiveAppointment && quickMessageTemplates.slice(0, 4).map((template) => (
                 <Button
                   key={template}
                   type="button"

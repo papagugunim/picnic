@@ -67,6 +67,11 @@ export function CommunityPostItem({
   const isBoostActive = !!post.milk_boost_until && new Date(post.milk_boost_until).getTime() > Date.now()
   const isBoosting = boostingPostId === post.id
   const isBoostedJustNow = boostedPostId === post.id
+  const boostButtonLabel = isBoosting
+    ? '적용중'
+    : isBoostActive
+      ? '밀크 부스트중'
+      : '밀크 사용'
 
   // 화면에 노출되면 조회수 카운팅
   useEffect(() => {
@@ -101,14 +106,6 @@ export function CommunityPostItem({
       className="relative flex gap-3 px-4 py-3 transition-colors cursor-pointer hover:bg-muted/50"
       onClick={() => onPostClick(post)}
     >
-      {isBoostActive && (!post.images || post.images.length === 0) && (
-        <div className="pointer-events-none absolute right-0 top-0 z-10 overflow-hidden rounded-bl-lg">
-          <span className="inline-flex bg-primary/90 px-2 py-1 text-[9px] font-semibold leading-none text-primary-foreground">
-            BOOST
-          </span>
-        </div>
-      )}
-
       {/* Profile photo */}
       <Link
         href={`/profile/${post.user_id}`}
@@ -172,21 +169,13 @@ export function CommunityPostItem({
 
         {/* Images */}
         {post.images && post.images.length > 0 && (
-          <div className="relative mb-3">
-            <InlineImageCarousel
-              images={post.images}
-              maxHeightClassName="max-h-[460px]"
-              stopPropagation
-              onImageClick={(index, event) => onImageClick(post.images!, index, event)}
-            />
-            {isBoostActive && (
-              <div className="pointer-events-none absolute right-0 top-0 z-10 overflow-hidden rounded-bl-xl">
-                <span className="inline-flex bg-primary/90 px-2 py-1 text-[10px] font-semibold leading-none text-primary-foreground">
-                  BOOST
-                </span>
-              </div>
-            )}
-          </div>
+          <InlineImageCarousel
+            images={post.images}
+            className="mb-3"
+            maxHeightClassName="max-h-[460px]"
+            stopPropagation
+            onImageClick={(index, event) => onImageClick(post.images!, index, event)}
+          />
         )}
 
         {/* Action buttons */}
@@ -238,7 +227,7 @@ export function CommunityPostItem({
               >
                 🥛
               </span>
-              <span className="text-sm">{isBoosting ? '적용중' : '밀크 사용'}</span>
+              <span className="text-sm">{boostButtonLabel}</span>
             </button>
           )}
         </div>

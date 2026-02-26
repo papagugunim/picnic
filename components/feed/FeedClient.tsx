@@ -90,6 +90,11 @@ function FeedPostItem({
   const isBoostActive = !!post.milk_boost_until && new Date(post.milk_boost_until).getTime() > Date.now()
   const isBoosting = boostingPostId === post.id
   const isBoostedJustNow = boostedPostId === post.id
+  const boostButtonLabel = isBoosting
+    ? '적용중'
+    : isBoostActive
+      ? '밀크 부스트중'
+      : '밀크 사용'
   const linkRef = useRef<HTMLAnchorElement>(null)
   const viewedRef = useRef(false)
 
@@ -135,13 +140,6 @@ function FeedPostItem({
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
             이미지 없음
-          </div>
-        )}
-        {isBoostActive && (
-          <div className="pointer-events-none absolute right-0 top-0 z-10 overflow-hidden rounded-bl-lg">
-            <span className="inline-flex bg-primary/90 px-1.5 py-1 text-[9px] font-semibold leading-none text-primary-foreground">
-              BOOST
-            </span>
           </div>
         )}
       </div>
@@ -233,7 +231,7 @@ function FeedPostItem({
               >
                 🥛
               </span>
-              <span>{isBoosting ? '적용중' : '밀크 사용'}</span>
+              <span>{boostButtonLabel}</span>
             </button>
           )}
         </div>
@@ -606,14 +604,6 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
           )
         ) : (
           <div>
-            {boostedPosts.length > 0 && (
-              <div className="px-3 pb-1 pt-2">
-                <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                  지금 부스트 중 {boostedPosts.length}
-                </span>
-              </div>
-            )}
-
             {boostedPosts.map((post) => (
               <FeedPostItem
                 key={post.id}
@@ -628,12 +618,6 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
                 onView={handlePostView}
               />
             ))}
-
-            {boostedPosts.length > 0 && regularPosts.length > 0 && (
-              <div className="px-3 pb-1 pt-2">
-                <p className="text-[11px] font-medium text-muted-foreground">일반 게시글</p>
-              </div>
-            )}
 
             {regularPosts.map((post) => (
               <FeedPostItem
