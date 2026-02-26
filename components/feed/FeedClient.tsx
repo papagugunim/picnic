@@ -138,8 +138,10 @@ function FeedPostItem({
           </div>
         )}
         {isBoostActive && (
-          <div className="absolute bottom-1 right-1 rounded-full bg-background/85 px-1 text-xs backdrop-blur-sm">
-            <span className="inline-block animate-pulse" role="img" aria-label="우유">🥛</span>
+          <div className="pointer-events-none absolute right-0 top-0 z-10 overflow-hidden rounded-bl-lg">
+            <span className="inline-flex bg-primary/90 px-1.5 py-1 text-[9px] font-semibold leading-none text-primary-foreground">
+              BOOST
+            </span>
           </div>
         )}
       </div>
@@ -381,6 +383,28 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
     }
   }, [allPosts, selectedTab, nearbyStationsList])
 
+  const { boostedPosts, regularPosts } = useMemo(() => {
+    if (posts.length === 0) {
+      return { boostedPosts: [] as Post[], regularPosts: [] as Post[] }
+    }
+
+    const now = Date.now()
+    const boosted: Post[] = []
+    const regular: Post[] = []
+
+    posts.forEach((post) => {
+      const isBoostActive =
+        !!post.milk_boost_until && new Date(post.milk_boost_until).getTime() > now
+      if (isBoostActive) {
+        boosted.push(post)
+      } else {
+        regular.push(post)
+      }
+    })
+
+    return { boostedPosts: boosted, regularPosts: regular }
+  }, [posts])
+
   const handlePostView = useCallback((postId: string, authorId: string) => {
     if (!user || viewedPostIds.current.has(postId) || authorId === user.id) return
     viewedPostIds.current.add(postId)
@@ -582,7 +606,36 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
           )
         ) : (
           <div>
-            {posts.map((post) => (
+            {boostedPosts.length > 0 && (
+              <div className="px-3 pb-1 pt-2">
+                <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                  지금 부스트 중 {boostedPosts.length}
+                </span>
+              </div>
+            )}
+
+            {boostedPosts.map((post) => (
+              <FeedPostItem
+                key={post.id}
+                post={post}
+                isDeveloper={profile?.user_role === 'developer'}
+                currentUserId={user?.id || null}
+                boostingPostId={boostingPostId}
+                boostedPostId={boostedPostId}
+                onLikeToggle={toggleLike}
+                onInterestToggle={toggleInterest}
+                onBoost={handleBoost}
+                onView={handlePostView}
+              />
+            ))}
+
+            {boostedPosts.length > 0 && regularPosts.length > 0 && (
+              <div className="px-3 pb-1 pt-2">
+                <p className="text-[11px] font-medium text-muted-foreground">일반 게시글</p>
+              </div>
+            )}
+
+            {regularPosts.map((post) => (
               <FeedPostItem
                 key={post.id}
                 post={post}

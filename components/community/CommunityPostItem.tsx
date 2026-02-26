@@ -98,16 +98,14 @@ export function CommunityPostItem({
   return (
     <article
       ref={articleRef}
-      className={`relative flex gap-3 px-4 py-3 transition-colors cursor-pointer hover:bg-muted/50 ${
-        isBoostActive
-          ? 'rounded-xl bg-primary/[0.04]'
-          : ''
-      }`}
+      className="relative flex gap-3 px-4 py-3 transition-colors cursor-pointer hover:bg-muted/50"
       onClick={() => onPostClick(post)}
     >
-      {isBoostActive && (
-        <div className="absolute right-2 top-2 z-10 inline-flex items-center justify-center rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
-          <span className="inline-block" role="img" aria-label="우유">🥛</span>
+      {isBoostActive && (!post.images || post.images.length === 0) && (
+        <div className="pointer-events-none absolute right-0 top-0 z-10 overflow-hidden rounded-bl-lg">
+          <span className="inline-flex bg-primary/90 px-2 py-1 text-[9px] font-semibold leading-none text-primary-foreground">
+            BOOST
+          </span>
         </div>
       )}
 
@@ -174,13 +172,21 @@ export function CommunityPostItem({
 
         {/* Images */}
         {post.images && post.images.length > 0 && (
-          <InlineImageCarousel
-            images={post.images}
-            className="mb-3"
-            maxHeightClassName="max-h-[460px]"
-            stopPropagation
-            onImageClick={(index, event) => onImageClick(post.images!, index, event)}
-          />
+          <div className="relative mb-3">
+            <InlineImageCarousel
+              images={post.images}
+              maxHeightClassName="max-h-[460px]"
+              stopPropagation
+              onImageClick={(index, event) => onImageClick(post.images!, index, event)}
+            />
+            {isBoostActive && (
+              <div className="pointer-events-none absolute right-0 top-0 z-10 overflow-hidden rounded-bl-xl">
+                <span className="inline-flex bg-primary/90 px-2 py-1 text-[10px] font-semibold leading-none text-primary-foreground">
+                  BOOST
+                </span>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Action buttons */}

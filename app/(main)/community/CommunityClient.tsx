@@ -447,6 +447,28 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
     ), [posts, searchQuery]
   )
 
+  const { boostedPosts, regularPosts } = useMemo(() => {
+    if (filteredPosts.length === 0) {
+      return { boostedPosts: [] as CommunityPost[], regularPosts: [] as CommunityPost[] }
+    }
+
+    const now = Date.now()
+    const boosted: CommunityPost[] = []
+    const regular: CommunityPost[] = []
+
+    filteredPosts.forEach((post) => {
+      const isBoostActive =
+        !!post.milk_boost_until && new Date(post.milk_boost_until).getTime() > now
+      if (isBoostActive) {
+        boosted.push(post)
+      } else {
+        regular.push(post)
+      }
+    })
+
+    return { boostedPosts: boosted, regularPosts: regular }
+  }, [filteredPosts])
+
   const handleCommentCountChange = useCallback((count: number) => {
     if (selectedPost) {
       updateItem(selectedPost.id, (post) => ({ ...post, comments_count: count }))
@@ -532,7 +554,40 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
               </div>
             ) : (
               <div>
-                {filteredPosts.map((post) => (
+                {boostedPosts.length > 0 && (
+                  <div className="px-3 pb-1 pt-2">
+                    <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                      지금 부스트 중 {boostedPosts.length}
+                    </span>
+                  </div>
+                )}
+
+                {boostedPosts.map((post) => (
+                  <CommunityPostItem
+                    key={post.id}
+                    post={post}
+                    onPostClick={openPostModal}
+                    onCommentClick={openPostComments}
+                    onLikeToggle={toggleLike}
+                    onImageClick={openGallery}
+                    onBoost={handleBoost}
+                    onView={handlePostView}
+                    currentUserId={currentUserId}
+                    boostingPostId={boostingPostId}
+                    boostedPostId={boostedPostId}
+                    formatTimeAgo={formatTimeAgo}
+                    getCategoryEmoji={getCategoryEmoji}
+                    getCategoryName={getCategoryName}
+                  />
+                ))}
+
+                {boostedPosts.length > 0 && regularPosts.length > 0 && (
+                  <div className="px-3 pb-1 pt-2">
+                    <p className="text-[11px] font-medium text-muted-foreground">일반 게시글</p>
+                  </div>
+                )}
+
+                {regularPosts.map((post) => (
                   <CommunityPostItem
                     key={post.id}
                     post={post}
