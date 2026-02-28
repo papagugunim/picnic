@@ -1,9 +1,9 @@
 'use client'
 
-import { memo, useCallback, useMemo } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { TrendingUp, X, RefreshCw } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import { OHLCData, ChartPeriod, ChartType } from './types'
+import { OHLCData, ChartPeriod, ChartType, ChartViewMode } from './types'
 import { CHART_PERIOD_CONFIG } from './constants'
 
 // 차트 컴포넌트 단일 dynamic import (recharts 번들을 하나의 청크로 로드)
@@ -67,6 +67,8 @@ function ExchangeChartModalComponent({
   onClose,
   onPeriodChange
 }: ExchangeChartModalProps) {
+  const [viewMode, setViewMode] = useState<ChartViewMode>('line')
+
   // 배경 클릭 시 닫기
   const handleBackdropClick = useCallback(() => {
     onClose()
@@ -108,8 +110,34 @@ function ExchangeChartModalComponent({
           </button>
         </div>
 
-        {/* 기간 선택 */}
-        <div className="flex gap-2 mb-4">
+        {/* 기간 + 시각화 선택 */}
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div className="inline-flex items-center rounded-lg bg-background p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('line')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                viewMode === 'line'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              라인
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('candle')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                viewMode === 'candle'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              캔들
+            </button>
+          </div>
+
+          <div className="flex gap-2">
           {periods.map(period => (
             <PeriodButton
               key={period}
@@ -118,6 +146,7 @@ function ExchangeChartModalComponent({
               onClick={onPeriodChange}
             />
           ))}
+          </div>
         </div>
 
         {/* 그래프 */}
@@ -130,7 +159,12 @@ function ExchangeChartModalComponent({
               </div>
             </div>
           ) : (
-            <ExchangeChart chartPeriod={chartPeriod} chartType={chartType} chartData={chartData} />
+            <ExchangeChart
+              chartPeriod={chartPeriod}
+              chartType={chartType}
+              viewMode={viewMode}
+              chartData={chartData}
+            />
           )}
         </div>
       </div>

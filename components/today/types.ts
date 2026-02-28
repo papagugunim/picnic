@@ -43,6 +43,9 @@ export type ChartPeriod = 'week' | 'month' | 'quarter' | 'year'
 // 차트 통화 타입
 export type ChartType = 'rub' | 'usd'
 
+// 차트 시각화 타입
+export type ChartViewMode = 'line' | 'candle'
+
 // 뉴스 폼 데이터
 export interface NewsFormData {
   title: string
