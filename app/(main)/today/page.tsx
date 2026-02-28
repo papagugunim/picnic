@@ -333,7 +333,7 @@ export default function TodayPage() {
 
     setIsLoadingChart(true)
     try {
-      const response = await fetch(`/api/exchange-rates/history?currency=${type}`)
+      const response = await fetch(`/api/exchange-rates/history?currency=${type}&v=2`)
 
       if (!response.ok) {
         throw new Error('환율 히스토리 데이터를 가져올 수 없습니다')
