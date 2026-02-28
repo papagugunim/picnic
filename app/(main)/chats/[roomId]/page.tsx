@@ -894,8 +894,10 @@ export default function ChatRoomPage() {
         ? '무료나눔'
         : `${room.post.price.toLocaleString()}₽`
     const pool = isSeller ? SELLER_QUICK_MESSAGE_POOL : BUYER_QUICK_MESSAGE_POOL
-    const shuffled = shuffleBySeed(pool, `${roomId}:${isSeller ? 'seller' : 'buyer'}:${room?.post?.id || 'no-post'}`)
-    return shuffled.map((template) => applyQuickMessageTemplate(template, postTitle, priceLabel))
+    const seed = `${roomId}:${isSeller ? 'seller' : 'buyer'}:${room?.post?.id || 'no-post'}`
+    const shuffled = shuffleBySeed(pool, seed)
+    const pickCount = 3 + Math.floor(createSeededRng(`${seed}:pick-count`)() * 2) // 3~4개 노출
+    return shuffled.slice(0, pickCount).map((template) => applyQuickMessageTemplate(template, postTitle, priceLabel))
   }, [isSeller, room?.post?.id, room?.post?.price, room?.post?.title, roomId])
   const insertMessageTemplate = useCallback(
     (template: string) => {
