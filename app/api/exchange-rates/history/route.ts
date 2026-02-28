@@ -55,6 +55,10 @@ function formatDateForDisplay(date: Date): string {
   return dateFormatter.format(date)
 }
 
+function round2(value: number): number {
+  return parseFloat(value.toFixed(2))
+}
+
 function generateDeterministicOHLCData(currency: Currency, baseRate: number): OHLCData[] {
   const safeBase = Number.isFinite(baseRate) && baseRate > 0 ? baseRate : defaultBaseRate(currency)
   const lowerBound = safeBase * 0.7
@@ -134,6 +138,60 @@ async function fetchLatestRubKrwBaseRate(): Promise<number | null> {
   }
 }
 
+async function fetchLatestUsdRubBaseRate(): Promise<number | null> {
+  // 우선순위: ExchangeRate-API -> KoreaExim
+  // 이유: today 카드와 같은 소스를 우선 사용해 그래프 숫자와 카드 숫자 괴리를 최소화
+  try {
+    const response = await fetchWithTimeout('https://api.exchangerate-api.com/v4/latest/KRW', 4000)
+    if (response.ok) {
+      const data = (await response.json()) as { rates?: Record<string, number> }
+      const krwToRub = data?.rates?.RUB
+      const krwToUsd = data?.rates?.USD
+
+      if (
+        typeof krwToRub === 'number' &&
+        typeof krwToUsd === 'number' &&
+        Number.isFinite(krwToRub) &&
+        Number.isFinite(krwToUsd) &&
+        krwToRub > 0 &&
+        krwToUsd > 0
+      ) {
+        const usdRub = krwToRub / krwToUsd
+        if (Number.isFinite(usdRub) && usdRub > 0) {
+          return usdRub
+        }
+      }
+    }
+  } catch (error) {
+    logger.warn('USD/RUB 기준값 조회(ExchangeRate-API) 실패:', error)
+  }
+
+  try {
+    const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
+    const authKey = process.env.KOREAEXIM_API_KEY || ''
+    const url = `https://www.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey=${authKey}&searchdate=${today}&data=AP01`
+    const response = await fetchWithTimeout(url, 4000)
+    if (!response.ok) return null
+
+    const data = (await response.json()) as Array<{ cur_unit?: string; deal_bas_r?: string }>
+    if (!Array.isArray(data)) return null
+
+    const rubRow = data.find((item) => item.cur_unit === 'RUB')
+    const usdRow = data.find((item) => item.cur_unit === 'USD')
+    if (!rubRow?.deal_bas_r || !usdRow?.deal_bas_r) return null
+
+    const rubKrw = parseFloat(rubRow.deal_bas_r.replace(/,/g, ''))
+    const usdKrw = parseFloat(usdRow.deal_bas_r.replace(/,/g, ''))
+    if (!Number.isFinite(rubKrw) || !Number.isFinite(usdKrw) || rubKrw <= 0 || usdKrw <= 0) return null
+
+    const usdRub = usdKrw / rubKrw
+    return Number.isFinite(usdRub) && usdRub > 0 ? usdRub : null
+  } catch (error) {
+    logger.warn('USD/RUB 기준값 조회(KoreaExim) 실패:', error)
+    return null
+  }
+}
+
 async function fetchAlphaVantageOHLC(from: string, to: string): Promise<OHLCData[]> {
   try {
     const apiKey = process.env.ALPHA_VANTAGE_API_KEY
@@ -185,13 +243,40 @@ async function fetchAlphaVantageOHLC(from: string, to: string): Promise<OHLCData
   }
 }
 
+function normalizeUsdHistoryToSpot(history: OHLCData[], spotUsdRub: number | null): OHLCData[] {
+  if (!history.length || !spotUsdRub || !Number.isFinite(spotUsdRub) || spotUsdRub <= 0) {
+    return history
+  }
+
+  const lastClose = history[history.length - 1]?.close
+  if (!lastClose || !Number.isFinite(lastClose) || lastClose <= 0) {
+    return history
+  }
+
+  const deviation = Math.abs(lastClose - spotUsdRub) / spotUsdRub
+  // 8% 이내면 원본 유지, 그 이상이면 레벨만 정규화
+  if (deviation <= 0.08) {
+    return history
+  }
+
+  const factor = spotUsdRub / lastClose
+  return history.map((point) => ({
+    ...point,
+    open: round2(point.open * factor),
+    high: round2(point.high * factor),
+    low: round2(point.low * factor),
+    close: round2(point.close * factor),
+  }))
+}
+
 async function buildHistoryData(currency: Currency): Promise<OHLCData[]> {
   if (currency === 'usd') {
+    const spotUsdRub = await fetchLatestUsdRubBaseRate()
     const apiData = await fetchAlphaVantageOHLC('USD', 'RUB')
     if (apiData.length > 0) {
-      return apiData
+      return normalizeUsdHistoryToSpot(apiData, spotUsdRub)
     }
-    return generateDeterministicOHLCData('usd', defaultBaseRate('usd'))
+    return generateDeterministicOHLCData('usd', spotUsdRub ?? defaultBaseRate('usd'))
   }
 
   const baseRate = await fetchLatestRubKrwBaseRate()
