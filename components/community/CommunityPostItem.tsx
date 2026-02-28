@@ -190,6 +190,19 @@ export function CommunityPostItem({
           <span className="text-muted-foreground flex-shrink-0">
             {formatTimeAgo(post.created_at)}
           </span>
+          {isBoostActive && (
+            <>
+              <span className="text-muted-foreground flex-shrink-0">·</span>
+              <span
+                className="text-base leading-none flex-shrink-0"
+                role="img"
+                aria-label="밀크 부스트 적용중"
+                title="밀크 부스트 적용중"
+              >
+                🥛
+              </span>
+            </>
+          )}
         </div>
 
         {/* Body */}

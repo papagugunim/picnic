@@ -197,6 +197,12 @@ function FeedPostItem({
             <span>{getCityNameInKorean(post.city)}</span>
             <span> · </span>
             <span>{formatTimeAgo(post.created_at)}</span>
+            {isBoostActive && (
+              <>
+                <span> · </span>
+                <span role="img" aria-label="밀크 부스트 적용중" title="밀크 부스트 적용중">🥛</span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <p className="text-base font-bold">
