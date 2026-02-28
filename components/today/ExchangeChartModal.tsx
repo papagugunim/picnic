@@ -130,7 +130,7 @@ function ExchangeChartModalComponent({
               </div>
             </div>
           ) : (
-            <ExchangeChart chartPeriod={chartPeriod} chartData={chartData} />
+            <ExchangeChart chartPeriod={chartPeriod} chartType={chartType} chartData={chartData} />
           )}
         </div>
       </div>

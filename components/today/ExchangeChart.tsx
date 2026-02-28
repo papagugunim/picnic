@@ -10,14 +10,15 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { OHLCData, ChartPeriod } from './types'
+import { OHLCData, ChartPeriod, ChartType } from './types'
 
 interface ExchangeChartProps {
   chartPeriod: ChartPeriod
+  chartType: ChartType
   chartData: OHLCData[]
 }
 
-function ExchangeChartComponent({ chartPeriod, chartData }: ExchangeChartProps) {
+function ExchangeChartComponent({ chartPeriod, chartType, chartData }: ExchangeChartProps) {
   // X축 간격 계산
   const xAxisInterval = useMemo(() => {
     if (chartPeriod === 'year') return Math.floor(chartData.length / 6)
@@ -32,15 +33,19 @@ function ExchangeChartComponent({ chartPeriod, chartData }: ExchangeChartProps) 
     const { active, payload } = props
     if (active && payload && payload.length) {
       const data = payload[0].payload as OHLCData
+      const valuePrecision = chartType === 'usd' ? 2 : 2
       return (
         <div className="bg-background/95 backdrop-blur border border-border rounded-lg px-3 py-2 shadow-lg">
           <div className="text-xs text-muted-foreground mb-1">{data.date}</div>
-          <div className="text-sm font-bold">{data.close.toFixed(2)}</div>
+          <div className="text-sm font-bold">{data.close.toFixed(valuePrecision)}</div>
+          <div className="text-[11px] text-muted-foreground mt-1">
+            고가 {data.high.toFixed(valuePrecision)} · 저가 {data.low.toFixed(valuePrecision)}
+          </div>
         </div>
       )
     }
     return null
-  }, [])
+  }, [chartType])
 
   // X축 포맷터
   const tickFormatter = useCallback((value: string) => {
@@ -50,6 +55,34 @@ function ExchangeChartComponent({ chartPeriod, chartData }: ExchangeChartProps) 
     }
     return value
   }, [])
+
+  const yAxisDomain = useMemo<[number, number]>(() => {
+    const values = chartData
+      .flatMap((item) => [item.low, item.high, item.close])
+      .filter((value) => Number.isFinite(value))
+
+    if (values.length === 0) return [0, 1]
+
+    const min = Math.min(...values)
+    const max = Math.max(...values)
+    const range = max - min
+
+    // 달러 구간에서 축 숫자가 어색하지 않도록 고정 여유치 + 범위 비례 여유를 함께 사용
+    const minPadding = chartType === 'usd' ? 0.8 : 0.2
+    const dynamicPadding = Math.max(range * 0.12, minPadding)
+
+    if (range < 0.0001) {
+      const centerPadding = Math.max(min * 0.02, dynamicPadding)
+      return [Math.max(0, min - centerPadding), max + centerPadding]
+    }
+
+    return [Math.max(0, min - dynamicPadding), max + dynamicPadding]
+  }, [chartData, chartType])
+
+  const yTickFormatter = useCallback((value: number) => {
+    if (!Number.isFinite(value)) return ''
+    return value.toFixed(chartType === 'usd' ? 1 : 2)
+  }, [chartType])
 
   if (chartData.length === 0) {
     return (
@@ -84,9 +117,11 @@ function ExchangeChartComponent({ chartPeriod, chartData }: ExchangeChartProps) 
           tick={{ fontSize: 10, fill: '#9ca3af' }}
           axisLine={false}
           tickLine={false}
-          domain={['dataMin - 0.5', 'dataMax + 0.5']}
+          domain={yAxisDomain}
+          tickFormatter={yTickFormatter}
+          tickCount={6}
           tickMargin={8}
-          width={45}
+          width={50}
         />
         <Tooltip content={renderTooltip} />
         <Area

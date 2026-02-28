@@ -77,7 +77,7 @@ export const USEFUL_LINKS = [
 // 차트 기간 설정
 export const CHART_PERIOD_CONFIG = {
   week: { days: 7, interval: 1, label: '1주일' },
-  month: { days: 30, interval: 2, label: '1개월' },
-  quarter: { days: 90, interval: 3, label: '1분기' },
-  year: { days: 365, interval: 7, label: '1년' }
+  month: { days: 30, interval: 2, label: '한달' },
+  quarter: { days: 90, interval: 3, label: '분기' },
+  year: { days: 365, interval: 7, label: '연간' }
 } as const
