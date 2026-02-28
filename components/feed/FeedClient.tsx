@@ -200,7 +200,19 @@ function FeedPostItem({
             {isBoostActive && (
               <>
                 <span> · </span>
-                <span role="img" aria-label="밀크 부스트 적용중" title="밀크 부스트 적용중">🥛</span>
+                <button
+                  type="button"
+                  className="inline-flex items-center rounded-full px-0.5"
+                  aria-label="밀크 부스트 안내"
+                  title="밀크 부스트 안내"
+                  onClick={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    toast('밀크 부스터가 적용된 게시글입니다')
+                  }}
+                >
+                  <span role="img" aria-hidden="true">🥛</span>
+                </button>
               </>
             )}
           </div>

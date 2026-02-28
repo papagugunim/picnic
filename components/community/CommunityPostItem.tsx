@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { getBreadEmoji } from '@/lib/bread'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { InlineImageCarousel } from '@/components/community/InlineImageCarousel'
+import { toast } from 'sonner'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -193,14 +194,19 @@ export function CommunityPostItem({
           {isBoostActive && (
             <>
               <span className="text-muted-foreground flex-shrink-0">·</span>
-              <span
-                className="text-base leading-none flex-shrink-0"
-                role="img"
-                aria-label="밀크 부스트 적용중"
-                title="밀크 부스트 적용중"
+              <button
+                type="button"
+                className="inline-flex items-center rounded-full px-0.5 text-base leading-none flex-shrink-0"
+                aria-label="밀크 부스트 안내"
+                title="밀크 부스트 안내"
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  toast('밀크 부스터가 적용된 게시글입니다')
+                }}
               >
-                🥛
-              </span>
+                <span role="img" aria-hidden="true">🥛</span>
+              </button>
             </>
           )}
         </div>
