@@ -38,9 +38,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const isProduction = process.env.NODE_ENV === 'production'
+  const supabaseOrigin = (() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    if (!url) return null
+    try {
+      return new URL(url).origin
+    } catch {
+      return null
+    }
+  })()
+  const posthogOrigin = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com'
 
   return (
     <html lang="ko" suppressHydrationWarning>
+      <head>
+        {supabaseOrigin && (
+          <>
+            <link rel="preconnect" href={supabaseOrigin} crossOrigin="" />
+            <link rel="dns-prefetch" href={supabaseOrigin} />
+          </>
+        )}
+        <link rel="preconnect" href={posthogOrigin} crossOrigin="" />
+        <link rel="dns-prefetch" href={posthogOrigin} />
+      </head>
       <body className="antialiased">
         <PostHogProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

@@ -1,8 +1,6 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
-import posthog from 'posthog-js'
-import { PostHogProvider as PostHogReactProvider } from 'posthog-js/react'
+import { useEffect } from 'react'
 
 declare global {
   interface Window {
@@ -15,35 +13,43 @@ interface PostHogProviderProps {
 }
 
 export default function PostHogProvider({ children }: PostHogProviderProps) {
-  const enabled = Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY)
-
-  const client = useMemo(() => {
-    if (!enabled || typeof window === 'undefined') return null
-    return posthog
-  }, [enabled])
+  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY
+  const enabled = Boolean(key)
 
   useEffect(() => {
-    if (!enabled || typeof window === 'undefined' || !client) return
+    if (!enabled || typeof window === 'undefined' || !key) return
     if (window.__PICNIC_POSTHOG_INIT__) return
 
-    client.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
-      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
-      person_profiles: 'identified_only',
-      capture_pageview: 'history_change',
-      loaded: (instance) => {
-        if (process.env.NODE_ENV === 'development') {
-          instance.debug()
-        }
-      },
-    })
+    let cancelled = false
+    const timer = window.setTimeout(async () => {
+      if (cancelled || window.__PICNIC_POSTHOG_INIT__) return
 
-    window.__PICNIC_POSTHOG_INIT__ = true
-  }, [client, enabled])
+      try {
+        const posthog = (await import('posthog-js')).default
+        if (cancelled || window.__PICNIC_POSTHOG_INIT__) return
 
-  if (!enabled || !client) {
-    return <>{children}</>
-  }
+        posthog.init(key, {
+          api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+          person_profiles: 'identified_only',
+          capture_pageview: 'history_change',
+          loaded: (instance) => {
+            if (process.env.NODE_ENV === 'development') {
+              instance.debug()
+            }
+          },
+        })
 
-  return <PostHogReactProvider client={client}>{children}</PostHogReactProvider>
+        window.__PICNIC_POSTHOG_INIT__ = true
+      } catch {
+        // analytics init failure should never block page
+      }
+    }, 1200)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [enabled, key])
+
+  return <>{children}</>
 }
-
