@@ -10,13 +10,9 @@ import {
 } from '@/components/ui/dialog'
 import {
   BREAD_LEVELS,
-  BREAD_LEVEL_RULES,
   BreadLevel,
   getBreadDescription,
   getBreadInfo,
-  getBreadLevelByScore,
-  getBreadProgress,
-  getBreadScoreRange,
 } from '@/lib/bread'
 
 interface BreadScoreBreakdown {
@@ -51,8 +47,6 @@ export function BreadLevelModal({
   const currentInfo = getBreadInfo(currentLevel, role)
   const currentDescription = getBreadDescription(currentLevel, role)
   const isSpecialRole = role === 'admin' || role === 'developer'
-  const scoreLevel = getBreadLevelByScore(currentScore)
-  const progress = getBreadProgress(currentScore)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -77,125 +71,76 @@ export function BreadLevelModal({
           </DialogHeader>
 
           <div
-            className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pb-8 pt-4 sm:px-6"
+            className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pb-4 pt-3 sm:px-6"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
-            <div className="mx-auto w-full max-w-5xl space-y-5">
-              <section className="rounded-2xl border border-border bg-card p-4">
-                <div className="grid gap-4 lg:grid-cols-[1.2fr,1fr] lg:items-center">
-                  <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground">현재 등급</p>
-                    <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold" style={{ backgroundColor: currentInfo.color }}>
-                      <span className="text-base">{currentInfo.emoji}</span>
-                      <span className={isSpecialRole ? 'text-white' : 'text-slate-800'}>
-                        {currentInfo.name} · {currentDescription}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {isSpecialRole
-                        ? '관리/개발 계정은 점수 기반이 아닌 역할 기반 특별 등급으로 관리됩니다.'
-                        : `현재 브레드 점수 ${currentScore.toLocaleString()}점 (점수 기준 등급: ${BREAD_LEVELS[scoreLevel].name})`}
-                    </p>
-                  </div>
-
-                  {!isSpecialRole && (
-                    <div className="rounded-xl border border-border bg-background p-3">
-                      <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-                        <span>다음 등급 진행률</span>
-                        <span>{progress.progressPercent}%</span>
-                      </div>
-                      <div className="h-2.5 rounded-full bg-muted">
-                        <div
-                          className="h-2.5 rounded-full bg-primary transition-all"
-                          style={{ width: `${progress.progressPercent}%` }}
-                        />
-                      </div>
-                      <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{BREAD_LEVELS[progress.level].name}</span>
-                        {progress.nextLevel ? (
-                          <span>
-                            다음: {BREAD_LEVELS[progress.nextLevel].name} ({progress.pointsToNext}점 남음)
-                          </span>
-                        ) : (
-                          <span>최고 등급</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
+            <div className="mx-auto w-full max-w-4xl space-y-3">
+              <section className="rounded-2xl border border-border bg-card p-3.5">
+                <p className="mb-1 text-xs text-muted-foreground">현재 등급</p>
+                <div
+                  className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold"
+                  style={{ backgroundColor: currentInfo.color }}
+                >
+                  <span className="text-base">{currentInfo.emoji}</span>
+                  <span className={isSpecialRole ? 'text-white' : 'text-slate-800'}>
+                    {currentInfo.name} · {currentDescription}
+                  </span>
                 </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {isSpecialRole
+                    ? '관리/개발 계정은 역할 기반 특별 등급으로 운영됩니다.'
+                    : `현재 활동 점수 ${currentScore.toLocaleString()}점 · 거래 완료, 리뷰, 커뮤니티 활동이 쌓이면 등급이 자동으로 성장합니다.`}
+                </p>
               </section>
 
-              <section className="rounded-2xl border border-border bg-card p-4">
-                <h3 className="mb-3 text-sm font-semibold">일반 회원 등급 (점수 기반)</h3>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <section className="rounded-2xl border border-border bg-card p-3.5">
+                <h3 className="mb-2 text-sm font-semibold">일반 등급</h3>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
                   {([1, 2, 3, 4, 5] as BreadLevel[]).map((level) => {
                     const info = BREAD_LEVELS[level]
-                    const rule = BREAD_LEVEL_RULES.find((item) => item.level === level)
-                    if (!rule) return null
+                    const isCurrent = !isSpecialRole && currentLevel === level
 
                     return (
                       <div
                         key={level}
-                        className="rounded-xl border border-border bg-background p-3"
+                        className={`rounded-xl border bg-background px-2 py-2 text-center ${
+                          isCurrent ? 'border-primary/60 ring-1 ring-primary/20' : 'border-border'
+                        }`}
                       >
-                        <div className="mb-2 flex items-center gap-2">
-                          <div
-                            className="flex h-9 w-9 items-center justify-center rounded-full text-lg"
-                            style={{ backgroundColor: info.color }}
-                          >
-                            {info.emoji}
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold">{info.name}</p>
-                            <p className="text-xs text-muted-foreground">{rule.subtitle}</p>
-                          </div>
-                        </div>
-                        <p className="mb-1 text-xs font-medium text-primary">
-                          점수: {getBreadScoreRange(level)}
-                        </p>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          {rule.description}
-                        </p>
+                        <p className="text-base leading-none">{info.emoji}</p>
+                        <p className="mt-1 text-[12px] font-semibold">{info.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{getBreadDescription(level)}</p>
                       </div>
                     )
                   })}
                 </div>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  식빵 → 바게트 → 크로아상 → 쁘레첼 → 베이글
+                </p>
               </section>
 
-              <section className="rounded-2xl border border-border bg-card p-4">
-                <h3 className="mb-3 text-sm font-semibold">특별 등급 (권한 기반)</h3>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl border border-indigo-300/40 bg-gradient-to-r from-indigo-500/10 to-indigo-500/5 p-3">
-                    <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400">
-                      <span className="text-lg">{BREAD_LEVELS[6].emoji}</span>
-                      {BREAD_LEVELS[6].name} · 피크닉 관리자
-                    </div>
-                    <p className="text-xs text-muted-foreground">커뮤니티 운영과 정책 관리를 담당합니다.</p>
+              <section className="rounded-2xl border border-border bg-card p-3.5">
+                <h3 className="mb-2 text-sm font-semibold">특별 등급</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl border border-indigo-300/40 bg-indigo-500/5 px-2 py-2 text-center">
+                    <p className="text-base">{BREAD_LEVELS[6].emoji}</p>
+                    <p className="text-[12px] font-semibold text-indigo-600 dark:text-indigo-400">{BREAD_LEVELS[6].name}</p>
+                    <p className="text-[11px] text-muted-foreground">관리자</p>
                   </div>
-                  <div className="rounded-xl border border-purple-300/40 bg-gradient-to-r from-purple-500/10 to-pink-500/10 p-3">
-                    <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-purple-600 dark:text-purple-400">
-                      <span className="text-lg">{BREAD_LEVELS[7].emoji}</span>
-                      {BREAD_LEVELS[7].name} · 피크닉 개발자
-                    </div>
-                    <p className="text-xs text-muted-foreground">서비스 개발 및 시스템 유지보수를 담당합니다.</p>
+                  <div className="rounded-xl border border-purple-300/40 bg-purple-500/5 px-2 py-2 text-center">
+                    <p className="text-base">{BREAD_LEVELS[7].emoji}</p>
+                    <p className="text-[12px] font-semibold text-purple-600 dark:text-purple-400">{BREAD_LEVELS[7].name}</p>
+                    <p className="text-[11px] text-muted-foreground">개발자</p>
                   </div>
                 </div>
               </section>
 
               {scoreBreakdown && !isSpecialRole && (
-                <section className="rounded-2xl border border-border bg-card p-4">
-                  <h3 className="mb-3 text-sm font-semibold">내 점수 구성</h3>
-                  <div className="rounded-xl border border-border bg-background p-3 text-xs text-muted-foreground">
-                    <div className="grid gap-1.5 sm:grid-cols-2">
-                      <p>거래 완료: {scoreBreakdown.soldCount}건 (+{scoreBreakdown.salesScore}점)</p>
-                      <p>받은 리뷰: {scoreBreakdown.receivedReviews}건 (+{scoreBreakdown.reviewScore}점)</p>
-                      <p>평균 평점: {scoreBreakdown.averageRating.toFixed(1)}점</p>
-                      <p>커뮤니티 좋아요 점수: +{scoreBreakdown.communityLikesScore}점</p>
-                    </div>
-                    <p className="mt-2 text-foreground">
-                      총점 {scoreBreakdown.totalScore}점 / 권장 등급 {BREAD_LEVELS[scoreBreakdown.suggestedLevel as BreadLevel].name}
-                    </p>
-                  </div>
+                <section className="rounded-2xl border border-border bg-card p-3.5">
+                  <h3 className="mb-1 text-sm font-semibold">내 활동 요약</h3>
+                  <p className="text-xs text-muted-foreground">
+                    거래 {scoreBreakdown.soldCount}건 · 받은 리뷰 {scoreBreakdown.receivedReviews}건 · 평균 평점 {scoreBreakdown.averageRating.toFixed(1)}
+                  </p>
                 </section>
               )}
             </div>
