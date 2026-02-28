@@ -15,6 +15,17 @@ import { createClient } from '@/lib/supabase/client'
 
 const logger = createNamespacedLogger('ProfileWarmup')
 
+function isLowBandwidthConnection() {
+  if (typeof navigator === 'undefined') return false
+  const nav = navigator as Navigator & {
+    connection?: { saveData?: boolean; effectiveType?: string }
+  }
+  const connection = nav.connection
+  if (!connection) return false
+  if (connection.saveData) return true
+  return connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g'
+}
+
 export function ProfileWarmup() {
   const { user, loading } = useUser()
   const router = useRouter()
@@ -44,7 +55,14 @@ export function ProfileWarmup() {
       return
     }
 
-    const timer = window.setTimeout(() => {
+    if (isLowBandwidthConnection()) {
+      return
+    }
+
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let idleHandle: number | null = null
+
+    const runWarmup = () => {
       void (async () => {
         try {
           const supabase = createClient()
@@ -90,10 +108,21 @@ export function ProfileWarmup() {
           logger.warn('프로필 선로딩 실패:', error)
         }
       })()
-    }, 1100)
+    }
+
+    if ('requestIdleCallback' in window) {
+      idleHandle = window.requestIdleCallback(runWarmup, { timeout: 2400 })
+    } else {
+      timer = setTimeout(runWarmup, 1300)
+    }
 
     return () => {
-      window.clearTimeout(timer)
+      if (timer) {
+        clearTimeout(timer)
+      }
+      if (idleHandle !== null && 'cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleHandle)
+      }
     }
   }, [loading, router, user?.id])
 

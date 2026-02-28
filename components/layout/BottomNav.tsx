@@ -66,7 +66,7 @@ function BottomNav() {
             <Link
               key={item.href}
               href={href}
-              prefetch={true}
+              prefetch={false}
               className={cn(
                 'flex flex-col items-center justify-center flex-1 h-full transition-colors relative',
                 isActive

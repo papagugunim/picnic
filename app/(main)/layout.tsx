@@ -5,12 +5,16 @@ import BottomNav from '@/components/layout/BottomNav'
 import MainContent from '@/components/layout/MainContent'
 import { UserProvider } from '@/lib/contexts/UserContext'
 
-const NotificationBridge = dynamic(() => import('@/components/notifications/NotificationBridge'))
+const NotificationBridge = dynamic(() => import('@/components/notifications/NotificationBridge'), {
+  loading: () => null,
+})
 const ProfileWarmup = dynamic(
-  () => import('@/components/profile/ProfileWarmup').then((module) => module.ProfileWarmup)
+  () => import('@/components/profile/ProfileWarmup').then((module) => module.ProfileWarmup),
+  { loading: () => null }
 )
 const RussiaNewsWarmup = dynamic(
-  () => import('@/components/today/RussiaNewsWarmup').then((module) => module.RussiaNewsWarmup)
+  () => import('@/components/today/RussiaNewsWarmup').then((module) => module.RussiaNewsWarmup),
+  { loading: () => null }
 )
 
 export default function MainLayout({
