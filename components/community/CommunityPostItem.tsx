@@ -1,11 +1,17 @@
 'use client'
 
 import { useCallback, useState, useEffect, useRef } from 'react'
-import { Heart, MessageCircle, BarChart2 } from 'lucide-react'
+import { Heart, MessageCircle, BarChart2, MoreHorizontal } from 'lucide-react'
 import Link from 'next/link'
 import { getBreadEmoji } from '@/lib/bread'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { InlineImageCarousel } from '@/components/community/InlineImageCarousel'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export interface CommunityPost {
   id: string
@@ -66,12 +72,12 @@ export function CommunityPostItem({
   const viewedRef = useRef(false)
   const isBoostActive = !!post.milk_boost_until && new Date(post.milk_boost_until).getTime() > Date.now()
   const isBoosting = boostingPostId === post.id
-  const isBoostedJustNow = boostedPostId === post.id
-  const boostButtonLabel = isBoosting
-    ? '적용중'
+  const boostMenuLabel = isBoosting
+    ? '밀크 부스트 적용중'
     : isBoostActive
       ? '밀크 부스트중'
-      : '밀크 사용'
+      : '밀크 부스트 적용'
+  const canApplyBoost = !isBoostActive && !isBoosting
 
   // 화면에 노출되면 조회수 카운팅
   useEffect(() => {
@@ -106,6 +112,42 @@ export function CommunityPostItem({
       className="relative flex gap-3 px-4 py-3 transition-colors cursor-pointer hover:bg-muted/50"
       onClick={() => onPostClick(post)}
     >
+      {currentUserId === post.user_id && (
+        <div
+          className="absolute right-3 top-3 z-10"
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          }}
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="게시글 더보기"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                disabled={!canApplyBoost}
+                onSelect={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  if (!canApplyBoost) return
+                  onBoost(post.id)
+                }}
+              >
+                <span className="text-base leading-none">🥛</span>
+                {boostMenuLabel}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
       {/* Profile photo */}
       <Link
         href={`/profile/${post.user_id}`}
@@ -123,7 +165,7 @@ export function CommunityPostItem({
       </Link>
 
       {/* Content area */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 pr-8">
         {/* Header: name + category + time */}
         <div className="flex items-center gap-1 text-sm mb-1">
           <Link
@@ -208,28 +250,6 @@ export function CommunityPostItem({
             <BarChart2 className="w-[18px] h-[18px]" />
             <span className="text-sm">{post.view_count || 0}</span>
           </div>
-
-          {currentUserId === post.user_id && (
-            <button
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onBoost(post.id)
-              }}
-              disabled={isBoosting}
-              className="flex items-center gap-2 p-2 rounded-full text-primary hover:bg-primary/10 disabled:opacity-60"
-              aria-label="밀크 부스트"
-            >
-              <span
-                className={`inline-block text-base leading-none ${isBoosting ? 'animate-bounce' : ''} ${isBoostedJustNow ? 'animate-pulse' : ''}`}
-                role="img"
-                aria-label="우유"
-              >
-                🥛
-              </span>
-              <span className="text-sm">{boostButtonLabel}</span>
-            </button>
-          )}
         </div>
       </div>
     </article>

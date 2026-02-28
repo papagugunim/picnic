@@ -4,10 +4,16 @@ import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('FeedClient')
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Plus, Heart, Bookmark, BarChart2, Loader2 } from 'lucide-react'
+import { Plus, Heart, Bookmark, BarChart2, Loader2, MoreHorizontal } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { createClient } from '@/lib/supabase/client'
 import { useInfiniteScroll } from '@/lib/hooks/useInfiniteScroll'
 import { getNearbyMetroStations, hasNearbyStation } from '@/lib/metro-utils'
@@ -89,12 +95,12 @@ function FeedPostItem({
   const isHiddenPost = post.status === 'hidden'
   const isBoostActive = !!post.milk_boost_until && new Date(post.milk_boost_until).getTime() > Date.now()
   const isBoosting = boostingPostId === post.id
-  const isBoostedJustNow = boostedPostId === post.id
-  const boostButtonLabel = isBoosting
-    ? '적용중'
+  const boostMenuLabel = isBoosting
+    ? '밀크 부스트 적용중'
     : isBoostActive
       ? '밀크 부스트중'
-      : '밀크 사용'
+      : '밀크 부스트 적용'
+  const canApplyBoost = !isBoostActive && !isBoosting
   const linkRef = useRef<HTMLAnchorElement>(null)
   const viewedRef = useRef(false)
 
@@ -123,6 +129,42 @@ function FeedPostItem({
       href={`/post/${post.id}`}
       className="relative flex gap-3 p-3 transition-colors hover:bg-muted/30"
     >
+      {post.author_id === currentUserId && (
+        <div
+          className="absolute right-2 top-2 z-10"
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          }}
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="게시글 더보기"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                disabled={!canApplyBoost}
+                onSelect={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  if (!canApplyBoost) return
+                  onBoost(post.id)
+                }}
+              >
+                <span className="text-base leading-none">🥛</span>
+                {boostMenuLabel}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
       {/* Image */}
       <div className="flex-shrink-0 w-24 h-24 bg-muted rounded-lg overflow-hidden relative">
         {post.images && post.images.length > 0 ? (
@@ -145,7 +187,7 @@ function FeedPostItem({
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col justify-between min-w-0">
+      <div className="flex-1 flex flex-col justify-between min-w-0 pr-8">
         <div>
           <h3 className={`text-base font-normal line-clamp-2 mb-0.5 ${isHiddenPost ? 'text-muted-foreground' : ''}`}>
             {post.title}
@@ -213,27 +255,6 @@ function FeedPostItem({
             </div>
           )}
 
-          {post.author_id === currentUserId && (
-            <button
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onBoost(post.id)
-              }}
-              disabled={isBoosting}
-              className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-primary hover:bg-primary/10 disabled:opacity-60"
-              aria-label="밀크 부스트"
-            >
-              <span
-                className={`inline-block text-base leading-none ${isBoosting ? 'animate-bounce' : ''} ${isBoostedJustNow ? 'animate-pulse' : ''}`}
-                role="img"
-                aria-label="우유"
-              >
-                🥛
-              </span>
-              <span>{boostButtonLabel}</span>
-            </button>
-          )}
         </div>
       </div>
     </Link>
