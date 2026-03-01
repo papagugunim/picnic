@@ -277,7 +277,7 @@
         hsl(var(--card) / 0.76) 52%,
         hsl(var(--background) / 0.82) 100%
       );
-    border-bottom: 1px solid hsl(var(--foreground) / 0.08);
+    border-bottom: none;
     backdrop-filter: saturate(185%) blur(18px);
     -webkit-backdrop-filter: saturate(185%) blur(18px);
     box-shadow: none;
@@ -291,7 +291,7 @@
         hsl(var(--card) / 0.78) 54%,
         hsl(var(--background) / 0.84) 100%
       );
-    border-top: 1px solid hsl(var(--foreground) / 0.08);
+    border-top: none;
     backdrop-filter: saturate(185%) blur(18px);
     -webkit-backdrop-filter: saturate(185%) blur(18px);
     box-shadow: none;
@@ -305,7 +305,6 @@
         hsl(var(--background) / 0.66) 52%,
         hsl(var(--card) / 0.72) 100%
     );
-    border-bottom-color: hsl(0 0% 100% / 0.1);
     box-shadow: none;
   }
 
@@ -317,7 +316,6 @@
         hsl(var(--background) / 0.68) 54%,
         hsl(var(--card) / 0.74) 100%
     );
-    border-top-color: hsl(0 0% 100% / 0.1);
     box-shadow: none;
   }
 
