@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 
-import { RussiaNewsCard } from '@/components/today/RussiaNewsCard'
+import { getRussiaNewsTopicBadgeClass, RussiaNewsCard } from '@/components/today/RussiaNewsCard'
 import { normalizeTopic, type RussiaNewsItem, type RussiaNewsTopic } from '@/lib/russia-news'
 
 const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
@@ -21,16 +21,8 @@ const ARCHIVE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const PAGE_SIZE = 20
 
 function topicButtonClass(value: RussiaNewsTopic, active: boolean): string {
-  if (!active) {
-    return 'border-border bg-background text-muted-foreground hover:text-foreground'
-  }
-
-  if (value === '정치') return 'border-rose-200 bg-rose-100 text-rose-700 dark:border-rose-400/40 dark:bg-rose-500/20 dark:text-rose-200'
-  if (value === '경제') return 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/20 dark:text-emerald-200'
-  if (value === '문화') return 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/20 dark:text-amber-200'
-  if (value === '날씨') return 'border-sky-200 bg-sky-100 text-sky-700 dark:border-sky-400/40 dark:bg-sky-500/20 dark:text-sky-200'
-  if (value === '사회') return 'border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-400/40 dark:bg-violet-500/20 dark:text-violet-200'
-  return 'border-border bg-muted text-foreground'
+  const toneClass = value ? getRussiaNewsTopicBadgeClass(value) : 'bg-muted text-muted-foreground'
+  return `${toneClass} ${active ? 'ring-1 ring-primary/40 opacity-100' : 'opacity-75 hover:opacity-100'}`
 }
 
 function buildLocalCacheKey(topic: RussiaNewsTopic): string {
@@ -328,7 +320,7 @@ export function RussiaNewsInfinitePage() {
                   topicTouchStateRef.current = null
                 }}
                 aria-pressed={active}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${topicButtonClass(entry.value, active)}`}
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium transition ${topicButtonClass(entry.value, active)}`}
               >
                 {entry.label}
               </button>

@@ -21,7 +21,7 @@ function formatDateTime(value: string): string {
   return `${month}/${day}/${meridiem}${hour12}시`
 }
 
-function topicBadgeClass(topic: string): string {
+export function getRussiaNewsTopicBadgeClass(topic: string): string {
   if (topic === '정치') return 'bg-rose-500/10 text-rose-600 dark:text-rose-300'
   if (topic === '사회') return 'bg-blue-500/10 text-blue-600 dark:text-blue-300'
   if (topic === '경제') return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
@@ -34,7 +34,7 @@ export function RussiaNewsCard({ item, compact = false }: RussiaNewsCardProps) {
   return (
     <article className="rounded-lg p-2.5 transition-opacity hover:opacity-85">
       <div className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <span className={`rounded-full px-2 py-0.5 font-medium ${topicBadgeClass(item.topic)}`}>
+        <span className={`rounded-full px-2 py-0.5 font-medium ${getRussiaNewsTopicBadgeClass(item.topic)}`}>
           {item.topic || '기타'}
         </span>
         <span className="inline-flex items-center gap-1">

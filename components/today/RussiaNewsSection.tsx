@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowRight, Radio, RefreshCw } from 'lucide-react'
 
-import { RussiaNewsCard } from '@/components/today/RussiaNewsCard'
+import { getRussiaNewsTopicBadgeClass, RussiaNewsCard } from '@/components/today/RussiaNewsCard'
 import { normalizeTopic, type RussiaNewsItem, type RussiaNewsTopic } from '@/lib/russia-news'
 import {
   fetchTodayNewsWithFallback,
@@ -23,16 +23,8 @@ const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
 const AUTO_RECOVERY_DELAY_MS = 6000
 
 function topicButtonClass(value: RussiaNewsTopic, active: boolean): string {
-  if (!active) {
-    return 'text-muted-foreground hover:text-foreground'
-  }
-
-  if (value === '정치') return 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200'
-  if (value === '경제') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200'
-  if (value === '문화') return 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200'
-  if (value === '날씨') return 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-200'
-  if (value === '사회') return 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-200'
-  return 'bg-muted text-foreground'
+  const toneClass = value ? getRussiaNewsTopicBadgeClass(value) : 'bg-muted text-muted-foreground'
+  return `${toneClass} ${active ? 'ring-1 ring-primary/40 opacity-100' : 'opacity-75 hover:opacity-100'}`
 }
 
 export function RussiaNewsSection() {
@@ -219,7 +211,7 @@ export function RussiaNewsSection() {
                 topicTouchStateRef.current = null
               }}
               aria-pressed={active}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${topicButtonClass(entry.value, active)}`}
+              className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium transition ${topicButtonClass(entry.value, active)}`}
             >
               {entry.label}
             </button>

@@ -3,6 +3,7 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('UseSale')
+import { useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 /**
@@ -10,12 +11,12 @@ import { createClient } from '@/lib/supabase/client'
  */
 export function useSale() {
   // 판매완료 처리
-  async function completeSale(
+  const completeSale = useCallback(async (
     postId: string,
     roomId: string,
     buyerId: string,
     sellerId: string
-  ): Promise<boolean> {
+  ): Promise<boolean> => {
     const supabase = createClient()
 
     try {
@@ -40,16 +41,16 @@ export function useSale() {
       logger.error('Complete sale error:', err)
       throw err
     }
-  }
+  }, [])
 
   // 리뷰 작성
-  async function createReview(
+  const createReview = useCallback(async (
     postId: string,
     reviewerId: string,
     revieweeId: string,
     rating: number,
     comment?: string
-  ): Promise<void> {
+  ): Promise<void> => {
     const supabase = createClient()
 
     try {
@@ -71,17 +72,17 @@ export function useSale() {
       logger.error('Create review error:', err)
       throw err
     }
-  }
+  }, [])
 
   // 리뷰 작성 및 판매완료 처리 (통합)
-  async function createReviewAndCompleteSale(
+  const createReviewAndCompleteSale = useCallback(async (
     postId: string,
     roomId: string,
     buyerId: string,
     sellerId: string,
     rating: number,
     comment?: string
-  ): Promise<void> {
+  ): Promise<void> => {
     const supabase = createClient()
 
     try {
@@ -121,14 +122,14 @@ export function useSale() {
       logger.error('Create review and complete sale error:', err)
       throw err
     }
-  }
+  }, [])
 
   // 리뷰 존재 여부 확인
-  async function checkReviewExists(
+  const checkReviewExists = useCallback(async (
     postId: string,
     reviewerId: string,
     revieweeId: string
-  ): Promise<boolean> {
+  ): Promise<boolean> => {
     const supabase = createClient()
 
     try {
@@ -150,10 +151,10 @@ export function useSale() {
       logger.error('Check review error:', err)
       return false
     }
-  }
+  }, [])
 
   // 게시물에 대한 모든 리뷰 조회
-  async function getPostReviews(postId: string) {
+  const getPostReviews = useCallback(async (postId: string) => {
     const supabase = createClient()
 
     try {
@@ -185,7 +186,7 @@ export function useSale() {
       logger.error('Get reviews error:', err)
       throw err
     }
-  }
+  }, [])
 
   return {
     completeSale,
