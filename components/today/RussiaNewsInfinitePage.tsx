@@ -96,6 +96,17 @@ export function RussiaNewsInfinitePage() {
 
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const lockRef = useRef(false)
+  const topicTouchStateRef = useRef<{
+    value: RussiaNewsTopic
+    startX: number
+    startY: number
+    moved: boolean
+  } | null>(null)
+
+  const selectTopic = useCallback((value: RussiaNewsTopic) => {
+    const normalized = normalizeTopic(value)
+    setTopic((prev) => (prev === normalized ? prev : normalized))
+  }, [])
 
   const fetchInitial = useCallback(async () => {
     setIsLoading(true)
@@ -273,7 +284,37 @@ export function RussiaNewsInfinitePage() {
               <button
                 key={entry.value || 'all'}
                 type="button"
-                onClick={() => setTopic(normalizeTopic(entry.value))}
+                onClick={() => selectTopic(entry.value)}
+                onTouchStart={(e) => {
+                  const touch = e.touches[0]
+                  if (!touch) return
+                  topicTouchStateRef.current = {
+                    value: entry.value,
+                    startX: touch.clientX,
+                    startY: touch.clientY,
+                    moved: false,
+                  }
+                }}
+                onTouchMove={(e) => {
+                  const state = topicTouchStateRef.current
+                  const touch = e.touches[0]
+                  if (!state || !touch) return
+                  const movedX = Math.abs(touch.clientX - state.startX)
+                  const movedY = Math.abs(touch.clientY - state.startY)
+                  if (movedX > 10 || movedY > 10) {
+                    state.moved = true
+                  }
+                }}
+                onTouchEnd={() => {
+                  const state = topicTouchStateRef.current
+                  topicTouchStateRef.current = null
+                  if (!state || state.value !== entry.value || state.moved) return
+                  selectTopic(entry.value)
+                }}
+                onTouchCancel={() => {
+                  topicTouchStateRef.current = null
+                }}
+                aria-pressed={active}
                 className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                   active
                     ? 'border-primary bg-primary/10 text-primary'

@@ -415,6 +415,50 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
 
   // 화면에 노출되면 조회수 증가 (세션당 게시글 1회)
   const viewedPostIds = useRef(new Set<string>())
+  const categoryTouchStateRef = useRef<{
+    id: string
+    startX: number
+    startY: number
+    moved: boolean
+  } | null>(null)
+
+  const selectCategory = useCallback((categoryId: string) => {
+    setSelectedCategory((prev) => (prev === categoryId ? prev : categoryId))
+  }, [])
+
+  const handleCategoryTouchStart = useCallback((categoryId: string, e: React.TouchEvent<HTMLButtonElement>) => {
+    const touch = e.touches[0]
+    if (!touch) return
+    categoryTouchStateRef.current = {
+      id: categoryId,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      moved: false,
+    }
+  }, [])
+
+  const handleCategoryTouchMove = useCallback((e: React.TouchEvent<HTMLButtonElement>) => {
+    const state = categoryTouchStateRef.current
+    const touch = e.touches[0]
+    if (!state || !touch) return
+
+    const movedX = Math.abs(touch.clientX - state.startX)
+    const movedY = Math.abs(touch.clientY - state.startY)
+    if (movedX > 10 || movedY > 10) {
+      state.moved = true
+    }
+  }, [])
+
+  const handleCategoryTouchEnd = useCallback((categoryId: string) => {
+    const state = categoryTouchStateRef.current
+    categoryTouchStateRef.current = null
+
+    if (!state || state.id !== categoryId || state.moved) {
+      return
+    }
+
+    selectCategory(categoryId)
+  }, [selectCategory])
 
   const handlePostView = useCallback((postId: string) => {
     if (!currentUserId || viewedPostIds.current.has(postId)) return
@@ -511,11 +555,19 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
               </div>
 
               {/* Category Tabs */}
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide touch-pan-x">
                 {categories.map((category) => (
                   <button
                     key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
+                    type="button"
+                    onClick={() => selectCategory(category.id)}
+                    onTouchStart={(e) => handleCategoryTouchStart(category.id, e)}
+                    onTouchMove={handleCategoryTouchMove}
+                    onTouchEnd={() => handleCategoryTouchEnd(category.id)}
+                    onTouchCancel={() => {
+                      categoryTouchStateRef.current = null
+                    }}
+                    aria-pressed={selectedCategory === category.id}
                     className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                       selectedCategory === category.id
                         ? 'bg-primary text-primary-foreground'
