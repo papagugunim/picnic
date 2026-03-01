@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/contexts/UserContext'
 import { useNotificationCount } from '@/lib/hooks/useNotificationCount'
+import { usePendingReportCount } from '@/lib/hooks/usePendingReportCount'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +26,8 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
   const isFullscreenPage = pathname?.match(/^\/chats\/[^/]+$/) || pathname?.match(/^\/post\/[^/]+$/) || pathname?.match(/^\/community\/[^/]+$/) || pathname === '/settings'
   const { profile, refreshProfile } = useUser()
   const { unreadCount } = useNotificationCount(!isFullscreenPage)
+  const isAdminOrDeveloper = Boolean(profile?.user_role && ['admin', 'developer'].includes(profile.user_role))
+  const { pendingReportCount } = usePendingReportCount(!isFullscreenPage && isAdminOrDeveloper)
 
   // 스크롤 방향 감지 - 직접 구현
   const [scrollHidden, setScrollHidden] = useState(false)
@@ -148,15 +151,20 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
           </Button>
 
           {/* 관리자 메뉴 (admin/developer만 표시) */}
-          {profile?.user_role && ['admin', 'developer'].includes(profile.user_role) && (
+          {isAdminOrDeveloper && (
             <Button
               variant="ghost"
               size="icon"
-              className="w-9 h-9"
+              className="w-9 h-9 relative"
               onClick={() => router.push('/admin')}
             >
               <Shield className="w-5 h-5" />
               <span className="sr-only">관리자</span>
+              {pendingReportCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center leading-none">
+                  {pendingReportCount > 99 ? '99+' : pendingReportCount}
+                </span>
+              )}
             </Button>
           )}
 
