@@ -173,7 +173,7 @@ export function RussiaNewsSection() {
         </button>
       </div>
 
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 touch-pan-x">
+      <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 touch-pan-x">
         {TOPICS.map((entry) => {
           const active = topic === entry.value
           return (
@@ -211,7 +211,7 @@ export function RussiaNewsSection() {
                 topicTouchStateRef.current = null
               }}
               aria-pressed={active}
-              className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium transition ${topicButtonClass(entry.value, active)}`}
+              className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] leading-[1.15] font-medium transition ${topicButtonClass(entry.value, active)}`}
             >
               {entry.label}
             </button>

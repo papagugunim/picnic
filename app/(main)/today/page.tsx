@@ -372,7 +372,7 @@ export default function TodayPage() {
         />
 
         {/* Content */}
-        <div className="px-4 pt-1 pb-4 space-y-2">
+        <div className="px-4 pt-0.5 pb-4 space-y-1">
           {/* 환율 정보 */}
           <ExchangeSection
             exchangeRates={exchangeRates}
