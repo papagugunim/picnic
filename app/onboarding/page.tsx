@@ -3,16 +3,14 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Sun, Moon, Circle } from 'lucide-react'
+import { Sun, Moon } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
 const THEME_OPTIONS = [
-  { key: 'white', label: '화이트', icon: Sun },
-  { key: 'light', label: '라이트', icon: Sun },
-  { key: 'dark', label: '다크', icon: Moon },
-  { key: 'black', label: '블랙', icon: Circle },
+  { key: 'light', label: '라이트 모드', icon: Sun },
+  { key: 'dark', label: '다크 모드', icon: Moon },
 ] as const
 
 export default function OnboardingPage() {

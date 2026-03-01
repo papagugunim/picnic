@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, Check, ChevronLeft, Loader2, Moon, Search, Sun, Circle, X } from 'lucide-react'
+import { Camera, Check, ChevronLeft, Loader2, Moon, Search, Sun, X } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,24 +24,14 @@ interface Profile {
 
 const THEME_OPTIONS = [
   {
-    key: 'white',
-    label: '화이트',
-    icon: Sun,
-  },
-  {
     key: 'light',
-    label: '라이트',
+    label: '라이트 모드',
     icon: Sun,
   },
   {
     key: 'dark',
-    label: '다크',
+    label: '다크 모드',
     icon: Moon,
-  },
-  {
-    key: 'black',
-    label: '블랙',
-    icon: Circle,
   },
 ] as const
 

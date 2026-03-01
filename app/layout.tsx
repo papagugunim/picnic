@@ -5,7 +5,6 @@ import { Toaster } from "sonner";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/react";
 import PostHogProvider from "@/components/analytics/PostHogProvider";
-import { ThemeClassBridge } from "@/components/theme/ThemeClassBridge";
 
 export const metadata: Metadata = {
   title: "picnic - 해외 한인 커뮤니티",
@@ -53,6 +52,18 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const key = 'theme';
+                const current = localStorage.getItem(key);
+                if (current === 'white') localStorage.setItem(key, 'light');
+                if (current === 'black') localStorage.setItem(key, 'dark');
+              } catch (_) {}
+            `,
+          }}
+        />
         {supabaseOrigin && (
           <>
             <link rel="preconnect" href={supabaseOrigin} crossOrigin="" />
@@ -68,9 +79,8 @@ export default function RootLayout({
             attribute="class"
             defaultTheme="light"
             enableSystem={false}
-            themes={['white', 'light', 'dark', 'black']}
+            themes={['light', 'dark']}
           >
-            <ThemeClassBridge />
             {children}
             <Toaster position="top-center" richColors />
           </ThemeProvider>
