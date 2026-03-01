@@ -32,6 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { EmojiBurstLayer, useEmojiBurst } from '@/components/ui/emoji-burst'
 
 const ReportDialog = dynamic(() => import('@/components/admin/ReportDialog').then(m => m.ReportDialog))
 const CommentSection = dynamic(
@@ -101,6 +102,7 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showHiddenConfirm, setShowHiddenConfirm] = useState(false)
+  const { particles: likeBurstParticles, burstFromElement: burstLikeFromElement } = useEmojiBurst()
 
   const openGallery = useCallback((images: string[], index: number) => {
     setGalleryImages(images)
@@ -570,7 +572,12 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
           {/* Actions */}
           <div className="flex items-center gap-6 py-4">
             <button
-              onClick={togglePostLike}
+              onClick={(event) => {
+                if (!post.is_liked) {
+                  burstLikeFromElement(event.currentTarget, ['💖', '💗', '💓', '💕', '❤️'])
+                }
+                void togglePostLike()
+              }}
               className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
             >
               <Heart
@@ -736,6 +743,7 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <EmojiBurstLayer particles={likeBurstParticles} />
     </div>
   )
 }

@@ -38,6 +38,7 @@ import { getBreadEmoji } from '@/lib/bread'
 import { getCache, setCache } from '@/lib/cache'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { useUser } from '@/lib/contexts/UserContext'
+import { EmojiBurstLayer, useEmojiBurst } from '@/components/ui/emoji-burst'
 
 const ReportDialog = dynamic(
   () => import('@/components/admin/ReportDialog').then(m => m.ReportDialog),
@@ -166,6 +167,7 @@ export default function PostDetailClient({
   const sliderRef = useRef<HTMLDivElement>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showHiddenConfirm, setShowHiddenConfirm] = useState(false)
+  const { particles: likeBurstParticles, burstFromElement: burstLikeFromElement } = useEmojiBurst()
 
   const currentUserId = user?.id || null
   const currentUserRole = profile?.user_role || null
@@ -880,7 +882,12 @@ export default function PostDetailClient({
           <div className="mb-6">
             <div className="flex gap-4 items-center">
               <button
-                onClick={toggleLike}
+                onClick={(event) => {
+                  if (!post.user_liked) {
+                    burstLikeFromElement(event.currentTarget, ['💖', '💗', '💓', '💕', '❤️'])
+                  }
+                  void toggleLike()
+                }}
                 className="flex items-center gap-2 hover:opacity-70 transition-opacity"
                 aria-label="좋아요"
               >
@@ -988,6 +995,7 @@ export default function PostDetailClient({
           onClose={() => setIsGalleryOpen(false)}
         />
       )}
+      <EmojiBurstLayer particles={likeBurstParticles} />
     </div>
   )
 }

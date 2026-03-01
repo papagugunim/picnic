@@ -28,6 +28,7 @@ import { formatTimeAgo } from '@/lib/utils/date'
 import dynamic from 'next/dynamic'
 import { CommunityPostItem } from '@/components/community/CommunityPostItem'
 import type { CommunityPost } from '@/components/community/CommunityPostItem'
+import { EmojiBurstLayer, useEmojiBurst } from '@/components/ui/emoji-burst'
 
 const PostDetailModal = dynamic(() => import('@/components/community/PostDetailModal').then(m => m.PostDetailModal))
 const ImageGalleryModal = dynamic(() => import('@/components/community/ImageGalleryModal').then(m => m.ImageGalleryModal))
@@ -93,6 +94,12 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
   const [focusCommentsOnOpen, setFocusCommentsOnOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const { particles: likeBurstParticles, burstFromElement: burstLikeFromElement } = useEmojiBurst()
+
+  const handleLikeBurst = useCallback((target: HTMLElement, currentlyLiked: boolean) => {
+    if (currentlyLiked) return
+    burstLikeFromElement(target, ['💖', '💗', '💓', '💕', '❤️'])
+  }, [burstLikeFromElement])
 
   const openGallery = useCallback((images: string[], index: number, e: React.MouseEvent) => {
     e.preventDefault()
@@ -613,6 +620,7 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
                     onPostClick={openPostModal}
                     onCommentClick={openPostComments}
                     onLikeToggle={toggleLike}
+                    onLikeBurst={handleLikeBurst}
                     onImageClick={openGallery}
                     onBoost={handleBoost}
                     onView={handlePostView}
@@ -632,6 +640,7 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
                     onPostClick={openPostModal}
                     onCommentClick={openPostComments}
                     onLikeToggle={toggleLike}
+                    onLikeBurst={handleLikeBurst}
                     onImageClick={openGallery}
                     onBoost={handleBoost}
                     onView={handlePostView}
@@ -681,6 +690,7 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
             currentUserRole={currentUserRole}
             onClose={closePostModal}
             onLikeToggle={toggleModalLike}
+            onLikeBurst={handleLikeBurst}
             onDelete={requestDeletePost}
             onImageClick={openGallery}
             onCommentCountChange={handleCommentCountChange}
@@ -700,6 +710,8 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
             onClose={closeGallery}
           />
         )}
+
+        <EmojiBurstLayer particles={likeBurstParticles} />
 
         {/* Delete confirmation dialog */}
         <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

@@ -43,6 +43,7 @@ interface CommunityPostItemProps {
   onPostClick: (post: CommunityPost, e?: React.MouseEvent) => void
   onCommentClick: (post: CommunityPost, e?: React.MouseEvent) => void
   onLikeToggle: (postId: string, currentlyLiked: boolean) => void
+  onLikeBurst: (target: HTMLElement, currentlyLiked: boolean) => void
   onImageClick: (images: string[], index: number, e: React.MouseEvent) => void
   onBoost: (postId: string) => void
   onView?: (postId: string) => void
@@ -59,6 +60,7 @@ export function CommunityPostItem({
   onPostClick,
   onCommentClick,
   onLikeToggle,
+  onLikeBurst,
   onImageClick,
   onBoost,
   onView,
@@ -273,6 +275,7 @@ export function CommunityPostItem({
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
+              onLikeBurst(e.currentTarget, post.is_liked)
               onLikeToggle(post.id, post.is_liked)
             }}
             className={`flex items-center gap-2 p-2 rounded-full hover:bg-red-500/10 transition-colors group ${

@@ -30,6 +30,7 @@ interface PostDetailModalProps {
   currentUserRole: string | null
   onClose: () => void
   onLikeToggle: () => void
+  onLikeBurst?: (target: HTMLElement, currentlyLiked: boolean) => void
   onDelete: () => void
   onImageClick: (images: string[], index: number, e: React.MouseEvent) => void
   onCommentCountChange: (count: number) => void
@@ -46,6 +47,7 @@ export function PostDetailModal({
   currentUserRole,
   onClose,
   onLikeToggle,
+  onLikeBurst,
   onDelete,
   onImageClick,
   onCommentCountChange,
@@ -78,7 +80,15 @@ export function PostDetailModal({
   }, [focusCommentsOnOpen, post.id, scrollToComments])
 
   return (
-    <Dialog open onOpenChange={(open) => !open && window.history.back()}>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose()
+          window.history.back()
+        }
+      }}
+    >
       <DialogContent
         hideCloseButton
         className="fixed inset-0 max-w-none w-screen h-screen translate-x-0 translate-y-0 left-0 top-0 bg-background p-0 border-0 rounded-none gap-0 flex flex-col"
@@ -94,7 +104,10 @@ export function PostDetailModal({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => window.history.back()}
+              onClick={() => {
+                onClose()
+                window.history.back()
+              }}
               aria-label="뒤로 가기"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -209,7 +222,10 @@ export function PostDetailModal({
             {/* Actions */}
             <div className="flex items-center gap-6 py-4">
               <button
-                onClick={onLikeToggle}
+                onClick={(event) => {
+                  onLikeBurst?.(event.currentTarget, post.is_liked)
+                  onLikeToggle()
+                }}
                 className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
                 aria-label="좋아요"
               >

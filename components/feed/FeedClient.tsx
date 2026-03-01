@@ -25,6 +25,7 @@ import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { MILK_BOOST_COST, MILK_BOOST_DURATION_HOURS } from '@/lib/milk-points'
 import { toast } from 'sonner'
 import { ReportDialog } from '@/components/admin/ReportDialog'
+import { EmojiBurstLayer, useEmojiBurst } from '@/components/ui/emoji-burst'
 
 interface Post {
   id: string
@@ -77,6 +78,7 @@ interface FeedPostItemProps {
   boostingPostId: string | null
   boostedPostId: string | null
   onLikeToggle: (postId: string, currentlyLiked: boolean) => void
+  onLikeBurst: (target: HTMLElement, currentlyLiked: boolean) => void
   onInterestToggle: (postId: string, currentlyInterested: boolean) => void
   onBoost: (postId: string) => void
   onView?: (postId: string, authorId: string) => void
@@ -89,6 +91,7 @@ function FeedPostItem({
   boostingPostId,
   boostedPostId,
   onLikeToggle,
+  onLikeBurst,
   onInterestToggle,
   onBoost,
   onView,
@@ -259,6 +262,7 @@ function FeedPostItem({
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
+              onLikeBurst(e.currentTarget, post.user_liked)
               onLikeToggle(post.id, post.user_liked)
             }}
             className="flex items-center gap-1 hover:text-foreground transition-colors"
@@ -334,6 +338,12 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
   const userStations = useMemo(() => profile?.preferred_metro_stations ?? [], [profile?.preferred_metro_stations])
   const isInitialized = !userLoading
   const viewedPostIds = useRef(new Set<string>())
+  const { particles: likeBurstParticles, burstFromElement: burstLikeFromElement } = useEmojiBurst()
+
+  const handleLikeBurst = useCallback((target: HTMLElement, currentlyLiked: boolean) => {
+    if (currentlyLiked) return
+    burstLikeFromElement(target, ['💖', '💗', '💓', '💕', '❤️'])
+  }, [burstLikeFromElement])
 
   const fetchPosts = useCallback(async (cursor: string | null) => {
     if (!user) {
@@ -683,6 +693,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
                 boostingPostId={boostingPostId}
                 boostedPostId={boostedPostId}
                 onLikeToggle={toggleLike}
+                onLikeBurst={handleLikeBurst}
                 onInterestToggle={toggleInterest}
                 onBoost={handleBoost}
                 onView={handlePostView}
@@ -698,6 +709,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
                 boostingPostId={boostingPostId}
                 boostedPostId={boostedPostId}
                 onLikeToggle={toggleLike}
+                onLikeBurst={handleLikeBurst}
                 onInterestToggle={toggleInterest}
                 onBoost={handleBoost}
                 onView={handlePostView}
@@ -733,6 +745,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
             <span className="sr-only">글쓰기</span>
           </Link>
         </Button>
+        <EmojiBurstLayer particles={likeBurstParticles} />
       </div>
   )
 }
