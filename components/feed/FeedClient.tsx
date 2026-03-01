@@ -245,10 +245,10 @@ function FeedPostItem({
           <div className="flex items-center gap-2">
             <p className="text-base font-bold">
               {post.price === 0 || post.price === null
-                ? '무료나눔'
+                ? '무료나눔 ✨'
                 : `${post.price.toLocaleString()}₽`}
             </p>
-            {normalizedPostStatus !== 'hidden' && (
+            {normalizedPostStatus === 'reserved' && (
               <span className={`text-xs px-2 py-0.5 rounded-full ${getPostStatusInfo(normalizedPostStatus).bgColor} ${getPostStatusInfo(normalizedPostStatus).textColor} font-medium`}>
                 {getPostStatusInfo(normalizedPostStatus).label}
               </span>
