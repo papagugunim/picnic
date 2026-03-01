@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useMetroStations } from '@/lib/hooks/useMetroStations'
 import { getLoadingMessage } from '@/lib/loading-messages'
+import { useUser } from '@/lib/contexts/UserContext'
 
 interface Profile {
   id: string
@@ -38,6 +39,7 @@ const THEME_OPTIONS = [
 export default function SettingsPage() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
+  const { refreshProfile } = useUser()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [selectedCity, setSelectedCity] = useState<string>('')
@@ -145,6 +147,23 @@ export default function SettingsPage() {
     setSelectedStations([])
   }
 
+  const extractProfileImageStoragePath = (url: string | null | undefined) => {
+    if (!url) return null
+
+    try {
+      const parsed = new URL(url)
+      const marker = '/storage/v1/object/public/profile-images/'
+      const markerIndex = parsed.pathname.indexOf(marker)
+      if (markerIndex === -1) return null
+      const rawPath = parsed.pathname.slice(markerIndex + marker.length)
+      const decodedPath = decodeURIComponent(rawPath)
+      return decodedPath || null
+    } catch (err) {
+      logger.warn('Failed to parse profile image URL for cleanup:', err)
+      return null
+    }
+  }
+
   const handleStationToggle = (stationValue: string) => {
     if (selectedStations.includes(stationValue)) {
       setSelectedStations(selectedStations.filter((s) => s !== stationValue))
@@ -173,16 +192,19 @@ export default function SettingsPage() {
         return
       }
 
-      let avatarUrl = profile?.avatar_url
+      let avatarUrl: string | null = profile?.avatar_url ?? null
+      let nextUploadedFilePath: string | null = null
 
       if (avatarFile) {
-        const fileExt = avatarFile.name.split('.').pop()
-        const fileName = user.id + '.' + fileExt
+        const fileExt = avatarFile.name.split('.').pop() || 'jpg'
+        const fileName = user.id + '-' + Date.now() + '.' + fileExt
         const filePath = 'avatars/' + fileName
+        nextUploadedFilePath = filePath
+        const previousAvatarPath = extractProfileImageStoragePath(profile?.avatar_url)
 
         const { error: uploadError } = await supabase.storage
           .from('profile-images')
-          .upload(filePath, avatarFile, { upsert: true })
+          .upload(filePath, avatarFile, { upsert: false })
 
         if (uploadError) {
           logger.error('Avatar upload error:', uploadError)
@@ -195,7 +217,16 @@ export default function SettingsPage() {
           .from('profile-images')
           .getPublicUrl(filePath)
 
-        avatarUrl = publicUrl
+        avatarUrl = publicUrl + '?v=' + Date.now()
+
+        if (previousAvatarPath && previousAvatarPath !== filePath) {
+          const { error: removeError } = await supabase.storage
+            .from('profile-images')
+            .remove([previousAvatarPath])
+          if (removeError) {
+            logger.warn('Previous avatar cleanup failed:', removeError)
+          }
+        }
       }
 
       const cityValue = selectedCity === 'Moscow' ? 'moscow' : 'spb'
@@ -212,10 +243,30 @@ export default function SettingsPage() {
 
       if (updateError) {
         logger.error('Profile update error:', updateError)
+        if (nextUploadedFilePath) {
+          await supabase.storage.from('profile-images').remove([nextUploadedFilePath])
+        }
         setError('프로필 업데이트 중 오류가 발생했습니다')
         setSaveButtonState('idle')
         return
       }
+
+      if (avatarUrl) {
+        setAvatarPreview(avatarUrl)
+      }
+      setAvatarFile(null)
+      setProfile((prev) => (
+        prev
+          ? {
+              ...prev,
+              avatar_url: avatarUrl,
+              city: cityValue,
+              preferred_metro_stations: selectedStations,
+            }
+          : prev
+      ))
+
+      await refreshProfile()
 
       setSaveButtonState('saved')
       if (saveStateTimerRef.current) {
