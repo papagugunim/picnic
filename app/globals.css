@@ -3,70 +3,115 @@
 
 @layer theme {
   :root {
-    /* Notion-inspired Light Mode - 간결하고 깔끔한 무채색 */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 9%;
-    --card: 0 0% 98%;
-    --card-foreground: 0 0% 9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
-
-    /* Primary - Sage Green (채도 낮은 초록색) */
-    --primary: 150 20% 45%;
+    /* 4-theme system default: Light Theme */
+    --background: 42 62% 83%;
+    --foreground: 217 29% 26%;
+    --card: 48 77% 82%;
+    --card-foreground: 217 29% 26%;
+    --popover: 48 77% 82%;
+    --popover-foreground: 217 29% 26%;
+    --primary: 163 18% 36%;
     --primary-foreground: 0 0% 100%;
-
-    /* Secondary - 무채색 */
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 9%;
-
-    /* Muted - 무채색 */
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-
-    /* Accent - 무채색 */
-    --accent: 0 0% 94%;
-    --accent-foreground: 0 0% 9%;
-
+    --secondary: 37 55% 79%;
+    --secondary-foreground: 217 29% 26%;
+    --muted: 30 40% 67%;
+    --muted-foreground: 53 7% 52%;
+    --accent: 40 67% 68%;
+    --accent-foreground: 217 29% 26%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 150 20% 45%;
+    --border: 30 40% 67%;
+    --input: 37 55% 79%;
+    --ring: 163 18% 36%;
     --radius: 8px;
   }
 
-  .dark {
-    /* X/Twitter-inspired Dark Mode - 완전한 검정 배경 */
-    --background: 0 0% 0%;
-    --foreground: 0 0% 95%;
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 95%;
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 95%;
-
-    /* Primary - Sage Green (채도 낮은 초록색) */
-    --primary: 150 20% 50%;
+  .white {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 8%;
+    --primary: 0 0% 18%;
     --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 97%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 42%;
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 10%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 89%;
+    --input: 0 0% 89%;
+    --ring: 0 0% 35%;
+  }
 
-    /* Secondary - 무채색 */
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 95%;
+  .light {
+    --background: 42 62% 83%;
+    --foreground: 217 29% 26%;
+    --card: 48 77% 82%;
+    --card-foreground: 217 29% 26%;
+    --popover: 48 77% 82%;
+    --popover-foreground: 217 29% 26%;
+    --primary: 163 18% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 37 55% 79%;
+    --secondary-foreground: 217 29% 26%;
+    --muted: 30 40% 67%;
+    --muted-foreground: 53 7% 52%;
+    --accent: 40 67% 68%;
+    --accent-foreground: 217 29% 26%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 40% 67%;
+    --input: 37 55% 79%;
+    --ring: 163 18% 36%;
+  }
 
-    /* Muted - 무채색 */
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 65%;
-
-    /* Accent - 무채색 */
-    --accent: 0 0% 14%;
-    --accent-foreground: 0 0% 95%;
-
+  .dark {
+    --background: 227 29% 13%;
+    --foreground: 43 61% 83%;
+    --card: 237 20% 21%;
+    --card-foreground: 43 61% 83%;
+    --popover: 237 20% 21%;
+    --popover-foreground: 43 61% 83%;
+    --primary: 123 12% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 223 32% 16%;
+    --secondary-foreground: 43 61% 83%;
+    --muted: 248 16% 29%;
+    --muted-foreground: 321 7% 52%;
+    --accent: 33 49% 62%;
+    --accent-foreground: 227 29% 13%;
     --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 95%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 248 16% 29%;
+    --input: 223 32% 16%;
+    --ring: 123 12% 50%;
+  }
 
-    --border: 0 0% 16%;
-    --input: 0 0% 12%;
-    --ring: 150 20% 50%;
+  .black {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 0 0% 82%;
+    --primary-foreground: 0 0% 8%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 66%;
+    --accent: 0 0% 18%;
+    --accent-foreground: 0 0% 96%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 21%;
+    --input: 0 0% 16%;
+    --ring: 0 0% 76%;
   }
 }
 
@@ -365,6 +410,39 @@
       );
     border-color: hsl(0 0% 100% / 0.1);
     box-shadow: none;
+  }
+
+  .black .liquid-glass-topbar {
+    background:
+      linear-gradient(
+        140deg,
+        hsl(0 0% 6% / 0.78) 0%,
+        hsl(0 0% 0% / 0.72) 52%,
+        hsl(0 0% 7% / 0.8) 100%
+      );
+    border-bottom-color: hsl(0 0% 100% / 0.08);
+  }
+
+  .black .liquid-glass-bottom-nav {
+    background:
+      linear-gradient(
+        145deg,
+        hsl(0 0% 6% / 0.78) 0%,
+        hsl(0 0% 0% / 0.74) 54%,
+        hsl(0 0% 7% / 0.8) 100%
+      );
+    border-top-color: hsl(0 0% 100% / 0.08);
+  }
+
+  .black .liquid-glass-card {
+    background:
+      linear-gradient(
+        145deg,
+        hsl(0 0% 6% / 0.76) 0%,
+        hsl(0 0% 0% / 0.72) 54%,
+        hsl(0 0% 7% / 0.78) 100%
+      );
+    border-color: hsl(0 0% 100% / 0.08);
   }
 
   .animate-in {

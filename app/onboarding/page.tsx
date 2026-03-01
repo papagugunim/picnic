@@ -3,16 +3,23 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Sun, Moon, Monitor } from 'lucide-react'
+import { Sun, Moon, Circle } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+
+const THEME_OPTIONS = [
+  { key: 'white', label: '화이트', icon: Sun },
+  { key: 'light', label: '라이트', icon: Sun },
+  { key: 'dark', label: '다크', icon: Moon },
+  { key: 'black', label: '블랙', icon: Circle },
+] as const
 
 export default function OnboardingPage() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  const [selectedTheme, setSelectedTheme] = useState<string>('system')
+  const [selectedTheme, setSelectedTheme] = useState<string>('light')
 
   useEffect(() => {
     setMounted(true)
@@ -55,42 +62,25 @@ export default function OnboardingPage() {
             </div>
 
             {mounted && (
-              <div className="grid grid-cols-3 gap-3">
-                <button
-                  onClick={() => handleThemeSelect('light')}
-                  className={`h-auto py-6 px-3 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
-                    selectedTheme === 'light'
-                      ? 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/50'
-                      : 'border-border hover:border-primary/50 hover:bg-primary/5'
-                  }`}
-                >
-                  <Sun className="w-6 h-6" />
-                  <span className="text-xs font-medium">라이트</span>
-                </button>
-
-                <button
-                  onClick={() => handleThemeSelect('dark')}
-                  className={`h-auto py-6 px-3 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
-                    selectedTheme === 'dark'
-                      ? 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/50'
-                      : 'border-border hover:border-primary/50 hover:bg-primary/5'
-                  }`}
-                >
-                  <Moon className="w-6 h-6" />
-                  <span className="text-xs font-medium">다크</span>
-                </button>
-
-                <button
-                  onClick={() => handleThemeSelect('system')}
-                  className={`h-auto py-6 px-3 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
-                    selectedTheme === 'system'
-                      ? 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/50'
-                      : 'border-border hover:border-primary/50 hover:bg-primary/5'
-                  }`}
-                >
-                  <Monitor className="w-6 h-6" />
-                  <span className="text-xs font-medium">시스템</span>
-                </button>
+              <div className="grid grid-cols-2 gap-3">
+                {THEME_OPTIONS.map((option) => {
+                  const Icon = option.icon
+                  const active = selectedTheme === option.key
+                  return (
+                    <button
+                      key={option.key}
+                      onClick={() => handleThemeSelect(option.key)}
+                      className={`h-auto py-5 px-3 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
+                        active
+                          ? 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/50'
+                          : 'border-border hover:border-primary/50 hover:bg-primary/5'
+                      }`}
+                    >
+                      <Icon className="w-6 h-6" />
+                      <span className="text-xs font-medium">{option.label}</span>
+                    </button>
+                  )
+                })}
               </div>
             )}
           </CardContent>

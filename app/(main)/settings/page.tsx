@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, Check, ChevronLeft, Loader2, Monitor, Moon, Search, Sun, X } from 'lucide-react'
+import { Camera, Check, ChevronLeft, Loader2, Moon, Search, Sun, Circle, X } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +21,29 @@ interface Profile {
   city: string | null
   preferred_metro_stations: string[] | null
 }
+
+const THEME_OPTIONS = [
+  {
+    key: 'white',
+    label: '화이트',
+    icon: Sun,
+  },
+  {
+    key: 'light',
+    label: '라이트',
+    icon: Sun,
+  },
+  {
+    key: 'dark',
+    label: '다크',
+    icon: Moon,
+  },
+  {
+    key: 'black',
+    label: '블랙',
+    icon: Circle,
+  },
+] as const
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -307,37 +330,26 @@ export default function SettingsPage() {
           <div>
             <div className="text-sm font-medium text-muted-foreground mb-2">테마</div>
             {mounted && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setTheme('light')}
-                  className={'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ' +
-                    (theme === 'light'
-                      ? 'bg-foreground text-background font-semibold'
-                      : 'bg-secondary hover:bg-muted')}
-                >
-                  <Sun className="w-4 h-4" />
-                  <span>라이트</span>
-                </button>
-                <button
-                  onClick={() => setTheme('dark')}
-                  className={'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ' +
-                    (theme === 'dark'
-                      ? 'bg-foreground text-background font-semibold'
-                      : 'bg-secondary hover:bg-muted')}
-                >
-                  <Moon className="w-4 h-4" />
-                  <span>다크</span>
-                </button>
-                <button
-                  onClick={() => setTheme('system')}
-                  className={'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ' +
-                    (theme === 'system'
-                      ? 'bg-foreground text-background font-semibold'
-                      : 'bg-secondary hover:bg-muted')}
-                >
-                  <Monitor className="w-4 h-4" />
-                  <span>시스템</span>
-                </button>
+              <div className="grid grid-cols-2 gap-2">
+                {THEME_OPTIONS.map((option) => {
+                  const Icon = option.icon
+                  const active = theme === option.key
+                  return (
+                    <button
+                      key={option.key}
+                      onClick={() => setTheme(option.key)}
+                      className={
+                        'flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all ' +
+                        (active
+                          ? 'bg-foreground text-background font-semibold'
+                          : 'bg-secondary hover:bg-muted')
+                      }
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span>{option.label}</span>
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
