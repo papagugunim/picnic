@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import Image from 'next/image'
-import { CATEGORIES, TRADE_METHODS, getCityNameInKorean } from '@/lib/constants'
+import { CATEGORIES, getCityNameInKorean } from '@/lib/constants'
 import { useMetroStations } from '@/lib/hooks/useMetroStations'
 import { formatTimeAgo } from '@/lib/utils/date'
 import {
@@ -34,7 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { getBreadInfo, getBreadEmoji } from '@/lib/bread'
+import { getBreadEmoji } from '@/lib/bread'
 import { getCache, setCache } from '@/lib/cache'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { useUser } from '@/lib/contexts/UserContext'
@@ -608,6 +608,10 @@ export default function PostDetailClient({
   const isAuthor = currentUserId === post.author_id
   const isAdmin = currentUserRole === 'admin' || currentUserRole === 'developer'
   const canManage = isAuthor || isAdmin
+  const normalizedPostStatus: PostStatus =
+    post.status === 'reserved' || post.status === 'sold' || post.status === 'hidden'
+      ? post.status
+      : 'active'
 
   return (
     <div className="bg-background">
@@ -802,25 +806,22 @@ export default function PostDetailClient({
           {/* Title & Price */}
           <div className="mb-2.5">
             <h1 className="text-xl font-bold mb-1">{post.title}</h1>
-            <div className="text-2xl font-bold text-primary">
-              {post.price === 0 || post.price === null
-                ? '무료나눔'
-                : `${post.price.toLocaleString()}₽`}
+            <div className="flex items-center gap-2">
+              <div className="text-2xl font-bold text-primary">
+                {post.price === 0 || post.price === null
+                  ? '무료나눔'
+                  : `${post.price.toLocaleString()}₽`}
+              </div>
+              {normalizedPostStatus !== 'hidden' && (
+                <span className={`text-xs px-2 py-0.5 rounded-full ${getPostStatusInfo(normalizedPostStatus).bgColor} ${getPostStatusInfo(normalizedPostStatus).textColor} font-medium`}>
+                  {getPostStatusInfo(normalizedPostStatus).label}
+                </span>
+              )}
             </div>
           </div>
 
           {/* Status Badge */}
           <div className="flex gap-2 mb-2.5">
-            {post.status === 'reserved' && (
-              <div className="inline-block px-3 py-1 bg-orange-500/10 text-orange-700 rounded-full text-sm font-medium">
-                예약중
-              </div>
-            )}
-            {post.status === 'sold' && (
-              <div className="inline-block px-3 py-1 bg-muted text-muted-foreground rounded-full text-sm font-medium">
-                판매완료
-              </div>
-            )}
             {post.is_hidden && isAdmin && (
               <div className="inline-block px-3 py-1 bg-destructive/10 text-destructive rounded-full text-sm font-medium flex items-center gap-1">
                 <EyeOff className="w-4 h-4" />

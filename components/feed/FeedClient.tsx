@@ -96,6 +96,10 @@ function FeedPostItem({
   void boostedPostId
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
   const isHiddenPost = post.status === 'hidden'
+  const normalizedPostStatus: PostStatus =
+    post.status === 'reserved' || post.status === 'sold' || post.status === 'hidden'
+      ? post.status
+      : 'active'
   const isBoostActive = !!post.milk_boost_until && new Date(post.milk_boost_until).getTime() > Date.now()
   const isBoosting = boostingPostId === post.id
   const boostMenuLabel = isBoosting
@@ -241,9 +245,9 @@ function FeedPostItem({
                 ? '무료나눔'
                 : `${post.price.toLocaleString()}₽`}
             </p>
-            {post.status && post.status !== 'active' && post.status !== 'hidden' && (
-              <span className={`text-xs px-2 py-0.5 rounded-full ${getPostStatusInfo(post.status as PostStatus).bgColor} ${getPostStatusInfo(post.status as PostStatus).textColor} font-medium`}>
-                {getPostStatusInfo(post.status as PostStatus).label}
+            {normalizedPostStatus !== 'hidden' && (
+              <span className={`text-xs px-2 py-0.5 rounded-full ${getPostStatusInfo(normalizedPostStatus).bgColor} ${getPostStatusInfo(normalizedPostStatus).textColor} font-medium`}>
+                {getPostStatusInfo(normalizedPostStatus).label}
               </span>
             )}
           </div>
