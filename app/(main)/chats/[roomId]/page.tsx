@@ -23,6 +23,7 @@ import { ReviewModal } from '@/components/review/ReviewModal'
 import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
 import { toast } from 'sonner'
 import { cleanupUploadedPostImages, createClientId, uploadPostImagesWithRetry } from '@/lib/post-image-upload'
+import type { CreateAppointmentParams } from '@/types/purchase'
 
 type PostWithImages = { images?: string[] | string | null } | null | undefined
 type ChatImageViewerState = {
@@ -209,6 +210,8 @@ export default function ChatRoomPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
+  const [hasCurrentUserReviewed, setHasCurrentUserReviewed] = useState(false)
+  const [isCheckingReviewState, setIsCheckingReviewState] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [isChatInfoHidden, setIsChatInfoHidden] = useState(false)
@@ -260,7 +263,7 @@ export default function ChatRoomPage() {
     sendMessage,
   } = useMessages(roomId)
   const { appointment, proposeAppointment, respondToAppointment } = useAppointment(roomId)
-  const { createReviewAndCompleteSale } = useSale()
+  const { createReviewAndCompleteSale, createReview, checkReviewExists } = useSale()
 
   const fetchRoom = useCallback(async () => {
     try {
@@ -838,6 +841,55 @@ export default function ChatRoomPage() {
     }
   }
 
+  const formatAppointmentSummary = useCallback((appointmentDate: string, location?: string | null) => {
+    const parsed = new Date(appointmentDate)
+    const dateLabel = Number.isNaN(parsed.getTime())
+      ? appointmentDate
+      : parsed.toLocaleString('ko-KR', {
+          month: 'numeric',
+          day: 'numeric',
+          weekday: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+    const locationLabel = (location || '').trim() || '장소 협의 중'
+    return `${dateLabel} · ${locationLabel}`
+  }, [])
+
+  const sendSystemChatMessage = useCallback(async (content: string) => {
+    if (!currentUserId) return false
+    return sendMessage({
+      senderId: currentUserId,
+      content,
+    })
+  }, [currentUserId, sendMessage])
+
+  const handleProposeAppointment = useCallback(async (params: CreateAppointmentParams) => {
+    const appointmentId = await proposeAppointment(params)
+    const summary = formatAppointmentSummary(params.appointment_date, params.location)
+    await sendSystemChatMessage(`📅 구매약속을 제안했어요.\n${summary}`)
+    return appointmentId
+  }, [formatAppointmentSummary, proposeAppointment, sendSystemChatMessage])
+
+  const handleRespondAppointment = useCallback(async (appointmentId: string, status: 'confirmed' | 'cancelled') => {
+    const result = await respondToAppointment(appointmentId, status)
+    if (!result) return result
+
+    if (status === 'confirmed') {
+      const summary = appointment
+        ? formatAppointmentSummary(appointment.appointment_date, appointment.location)
+        : '약속 일정이 확정되었습니다.'
+      await sendSystemChatMessage(`✅ 구매약속이 확정되었어요.\n${summary}`)
+      return result
+    }
+
+    if (status === 'cancelled') {
+      await sendSystemChatMessage('❌ 구매약속이 거절되었어요.\n필요하면 새로운 시간으로 다시 제안해 주세요.')
+    }
+
+    return result
+  }, [appointment, formatAppointmentSummary, respondToAppointment, sendSystemChatMessage])
+
   async function handleCreateReview(
     postId: string,
     reviewerId: string,
@@ -848,15 +900,31 @@ export default function ChatRoomPage() {
     if (!room?.post || !currentUserId) return
 
     try {
-      // 리뷰 작성 및 판매완료 처리를 동시에 수행
-      await createReviewAndCompleteSale(
-        room.post.id,
-        roomId,
-        room.other_user.id, // buyerId
-        currentUserId, // sellerId
-        rating,
-        comment
-      )
+      const alreadyReviewed = await checkReviewExists(postId, reviewerId, revieweeId)
+      if (alreadyReviewed) {
+        setHasCurrentUserReviewed(true)
+        toast.message('이미 거래 리뷰를 작성했습니다')
+        return
+      }
+
+      if (isSeller && !isSold) {
+        // 판매자: 리뷰 작성 + 판매완료를 한 번에 처리
+        await createReviewAndCompleteSale(
+          room.post.id,
+          roomId,
+          room.other_user.id,
+          currentUserId,
+          rating,
+          comment
+        )
+        await sendSystemChatMessage('✅ 거래가 완료되었고 거래 리뷰가 등록되었습니다.')
+      } else {
+        // 구매자(또는 판매완료 후): 리뷰 작성만 진행
+        await createReview(postId, reviewerId, revieweeId, rating, comment)
+        await sendSystemChatMessage('⭐ 거래 리뷰가 등록되었습니다. 소중한 후기 감사합니다!')
+      }
+
+      setHasCurrentUserReviewed(true)
       // 채팅방 정보 다시 불러오기
       await fetchRoom()
     } catch (error) {
@@ -882,11 +950,46 @@ export default function ChatRoomPage() {
   const isAppointmentConfirmed = appointment?.status === 'confirmed'
   const hasActiveAppointment = appointment?.status === 'proposed' || appointment?.status === 'confirmed'
   const canProposeAppointment = Boolean(isBuyer && !isSold && currentUserId && room?.post && room.post.author_id)
+  const showSellerCompletionCta = Boolean(isSeller && isAppointmentConfirmed && !isSold)
+  const showReviewAfterSaleCta = Boolean(
+    isSold && room?.post && currentUserId && !hasCurrentUserReviewed && !isCheckingReviewState
+  )
+  const reviewPostId = room?.post?.id || null
+  const revieweeUserId = room?.other_user?.id || null
   const postThumbnailUrl = room?.post ? getPostThumbnailUrl(room.post) : null
   const connectionStatusMeta = getConnectionStatusMeta(connectionStatus)
   const ConnectionStatusIcon = connectionStatusMeta.Icon
   const showEnableNotificationButton =
     notificationPermission !== 'unsupported' && notificationPermission !== 'granted'
+
+  useEffect(() => {
+    let isCancelled = false
+
+    async function syncReviewState() {
+      if (!reviewPostId || !currentUserId || !revieweeUserId) {
+        setHasCurrentUserReviewed(false)
+        return
+      }
+
+      try {
+        setIsCheckingReviewState(true)
+        const reviewed = await checkReviewExists(reviewPostId, currentUserId, revieweeUserId)
+        if (!isCancelled) {
+          setHasCurrentUserReviewed(reviewed)
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsCheckingReviewState(false)
+        }
+      }
+    }
+
+    void syncReviewState()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [checkReviewExists, currentUserId, reviewPostId, revieweeUserId])
   const quickMessageTemplates = useMemo(() => {
     const postTitle = room?.post?.title?.trim() || '상품'
     const priceLabel =
@@ -916,6 +1019,25 @@ export default function ChatRoomPage() {
   const activeImageViewerUrl = imageViewer.images[imageViewer.index] || null
   const canMoveImageViewerPrev = imageViewer.index > 0
   const canMoveImageViewerNext = imageViewer.index < imageViewer.images.length - 1
+  const reviewModalCopy = useMemo(() => {
+    if (isSeller && !isSold) {
+      return {
+        title: '거래 평가 및 판매완료',
+        description: `${room?.other_user.full_name || '상대방'}님과의 거래는 어떠셨나요? 리뷰를 작성하면 판매가 완료됩니다.`,
+        submitLabel: '리뷰 남기고 판매완료',
+        successMessage: '판매가 완료되었습니다! 리뷰가 작성되었습니다.',
+        errorMessage: '판매완료 처리에 실패했습니다.',
+      }
+    }
+
+    return {
+      title: '거래 리뷰 작성',
+      description: `${room?.other_user.full_name || '상대방'}님과의 거래 후기를 남겨주세요.`,
+      submitLabel: '리뷰 남기기',
+      successMessage: '거래 리뷰가 등록되었습니다.',
+      errorMessage: '리뷰 작성에 실패했습니다.',
+    }
+  }, [isSeller, isSold, room?.other_user.full_name])
 
   if (isLoading) {
     return (
@@ -1078,10 +1200,35 @@ export default function ChatRoomPage() {
               <AppointmentCard
                 appointment={appointment}
                 currentUserId={currentUserId}
-                onRespond={respondToAppointment}
+                onRespond={handleRespondAppointment}
                 compact
                 className="mx-0"
               />
+            </div>
+          )}
+
+          {(showSellerCompletionCta || showReviewAfterSaleCta || (isSold && hasCurrentUserReviewed)) && (
+            <div className="mb-3">
+              <div className="rounded-xl border border-border/80 bg-background/95 px-3 py-2.5">
+                <p className="text-xs font-medium text-foreground">
+                  {showSellerCompletionCta
+                    ? '거래가 끝났다면 리뷰 작성과 함께 판매완료를 처리해주세요.'
+                    : showReviewAfterSaleCta
+                      ? '거래가 완료되었습니다. 상대방 리뷰를 남겨주세요.'
+                      : '거래 리뷰를 작성했습니다. 감사합니다!'}
+                </p>
+                {(showSellerCompletionCta || showReviewAfterSaleCta) && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="mt-2 h-8 rounded-full px-3 text-xs"
+                    onClick={() => setShowReviewModal(true)}
+                    disabled={isCheckingReviewState}
+                  >
+                    {showSellerCompletionCta ? '거래완료 + 리뷰' : '거래 리뷰 남기기'}
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 
@@ -1311,7 +1458,7 @@ export default function ChatRoomPage() {
                 postId={room.post.id}
                 currentUserId={currentUserId}
                 otherUserId={room.other_user.id}
-                onPropose={proposeAppointment}
+                onPropose={handleProposeAppointment}
                 triggerLabel={hasActiveAppointment ? '약속 다시 제안' : '구매약속 제안'}
                 triggerVariant="secondary"
                 triggerSize="sm"
@@ -1573,6 +1720,11 @@ export default function ChatRoomPage() {
           reviewerId={currentUserId}
           revieweeId={room.other_user.id}
           revieweeName={room.other_user.full_name || '익명'}
+          title={reviewModalCopy.title}
+          description={reviewModalCopy.description}
+          submitLabel={reviewModalCopy.submitLabel}
+          successMessage={reviewModalCopy.successMessage}
+          errorMessage={reviewModalCopy.errorMessage}
           onSubmit={handleCreateReview}
         />
       )}

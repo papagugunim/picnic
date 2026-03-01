@@ -22,6 +22,19 @@ const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
 ]
 const AUTO_RECOVERY_DELAY_MS = 6000
 
+function topicButtonClass(value: RussiaNewsTopic, active: boolean): string {
+  if (!active) {
+    return 'text-muted-foreground hover:text-foreground'
+  }
+
+  if (value === '정치') return 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200'
+  if (value === '경제') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200'
+  if (value === '문화') return 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200'
+  if (value === '날씨') return 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-200'
+  if (value === '사회') return 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-200'
+  return 'bg-muted text-foreground'
+}
+
 export function RussiaNewsSection() {
   const [topic, setTopic] = useState<RussiaNewsTopic>('')
   const [items, setItems] = useState<RussiaNewsItem[]>([])
@@ -59,6 +72,26 @@ export function RussiaNewsSection() {
       clearRecoveryTimer()
     }
   }, [clearRecoveryTimer])
+
+  useEffect(() => {
+    const topicsToWarm = TOPICS
+      .map((entry) => entry.value)
+      .filter((value): value is RussiaNewsTopic => value !== '' && readTodayLocalCachedNews(value, 1).length === 0)
+
+    if (topicsToWarm.length === 0) return
+
+    void Promise.allSettled(
+      topicsToWarm.map(async (value) => {
+        const prefetched = await fetchTodayNewsWithFallback(value, {
+          limit: 8,
+          cacheMode: 'force-cache',
+        })
+        if (prefetched.length > 0) {
+          writeTodayLocalCachedNews(value, prefetched)
+        }
+      })
+    )
+  }, [])
 
   const fetchNews = useCallback(
     async (isManualRefresh: boolean) => {
@@ -148,7 +181,7 @@ export function RussiaNewsSection() {
         </button>
       </div>
 
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 touch-pan-x">
         {TOPICS.map((entry) => {
           const active = topic === entry.value
           return (
@@ -172,7 +205,7 @@ export function RussiaNewsSection() {
                 if (!state || !touch) return
                 const movedX = Math.abs(touch.clientX - state.startX)
                 const movedY = Math.abs(touch.clientY - state.startY)
-                if (movedX > 10 || movedY > 10) {
+                if (movedX > 16 || movedY > 16) {
                   state.moved = true
                 }
               }}
@@ -186,11 +219,7 @@ export function RussiaNewsSection() {
                 topicTouchStateRef.current = null
               }}
               aria-pressed={active}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                active
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${topicButtonClass(entry.value, active)}`}
             >
               {entry.label}
             </button>
@@ -198,7 +227,7 @@ export function RussiaNewsSection() {
         })}
       </div>
 
-      {isLoading ? (
+      {isLoading && items.length === 0 ? (
         <div className="rounded-lg p-3 text-sm text-muted-foreground">
           뉴스를 불러오는 중입니다...
         </div>
@@ -212,6 +241,9 @@ export function RussiaNewsSection() {
         </div>
       ) : (
         <div className="space-y-2">
+          {isLoading && (
+            <div className="px-1 pb-1 text-[11px] text-muted-foreground">카테고리 전환 중...</div>
+          )}
           {items.map((item) => (
             <RussiaNewsCard key={item.id} item={item} compact />
           ))}

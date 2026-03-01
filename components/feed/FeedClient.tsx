@@ -4,7 +4,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('FeedClient')
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Plus, Heart, Bookmark, BarChart2, Loader2, MoreHorizontal } from 'lucide-react'
+import { Plus, Heart, Bookmark, BarChart2, Loader2, MoreHorizontal, Flag } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,7 @@ import { getCityNameInKorean } from '@/lib/constants'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { MILK_BOOST_COST, MILK_BOOST_DURATION_HOURS } from '@/lib/milk-points'
 import { toast } from 'sonner'
+import { ReportDialog } from '@/components/admin/ReportDialog'
 
 interface Post {
   id: string
@@ -92,6 +93,8 @@ function FeedPostItem({
   onBoost,
   onView,
 }: FeedPostItemProps) {
+  void boostedPostId
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
   const isHiddenPost = post.status === 'hidden'
   const isBoostActive = !!post.milk_boost_until && new Date(post.milk_boost_until).getTime() > Date.now()
   const isBoosting = boostingPostId === post.id
@@ -101,6 +104,8 @@ function FeedPostItem({
       ? '밀크 부스트중'
       : '밀크 부스트 적용'
   const canApplyBoost = !isBoostActive && !isBoosting
+  const isOwnPost = post.author_id === currentUserId
+  const showMoreMenu = Boolean(currentUserId)
   const linkRef = useRef<HTMLAnchorElement>(null)
   const viewedRef = useRef(false)
 
@@ -124,12 +129,13 @@ function FeedPostItem({
   }, [onView, post.id, post.author_id])
 
   return (
-    <Link
-      ref={linkRef}
-      href={`/post/${post.id}`}
-      className="relative flex gap-3 p-3 transition-colors hover:bg-muted/30"
-    >
-      {post.author_id === currentUserId && (
+    <>
+      <Link
+        ref={linkRef}
+        href={`/post/${post.id}`}
+        className="relative flex gap-3 p-3 transition-colors hover:bg-muted/30"
+      >
+      {showMoreMenu && (
         <div
           className="absolute right-2 top-2 z-10"
           onClick={(event) => {
@@ -148,18 +154,31 @@ function FeedPostItem({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                disabled={!canApplyBoost}
-                onSelect={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  if (!canApplyBoost) return
-                  onBoost(post.id)
-                }}
-              >
-                <span className="text-base leading-none">🥛</span>
-                {boostMenuLabel}
-              </DropdownMenuItem>
+              {isOwnPost ? (
+                <DropdownMenuItem
+                  disabled={!canApplyBoost}
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    if (!canApplyBoost) return
+                    onBoost(post.id)
+                  }}
+                >
+                  <span className="text-base leading-none">🥛</span>
+                  {boostMenuLabel}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    setIsReportDialogOpen(true)
+                  }}
+                >
+                  <Flag className="h-4 w-4 mr-2" />
+                  신고하기
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -275,7 +294,15 @@ function FeedPostItem({
 
         </div>
       </div>
-    </Link>
+      </Link>
+
+      <ReportDialog
+        open={isReportDialogOpen}
+        onOpenChange={setIsReportDialogOpen}
+        targetType="post"
+        targetId={post.id}
+      />
+    </>
   )
 }
 

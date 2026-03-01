@@ -273,12 +273,12 @@ export default function NotificationsPage() {
               <div
                 key={notification.id}
                 onClick={() => handleNotificationClick(notification)}
-                className={`flex items-start gap-2 px-3 py-2 cursor-pointer transition-colors hover:bg-muted/50 ${
+                className={`flex items-start gap-2 px-3 py-1.5 cursor-pointer transition-colors hover:bg-muted/50 ${
                   !notification.is_read ? 'bg-primary/5' : ''
                 }`}
               >
                 {/* 아바타 */}
-                <Avatar className="w-7 h-7 flex-shrink-0 mt-0.5">
+                <Avatar className="w-6 h-6 flex-shrink-0 mt-0.5">
                   <AvatarImage src={notification.actor?.avatar_url || undefined} />
                   <AvatarFallback>
                     <span className="text-sm">
@@ -289,38 +289,35 @@ export default function NotificationsPage() {
 
                 {/* 내용 */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-[13px] font-medium leading-tight truncate">
-                      {notification.title}
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-[13px] font-medium leading-snug truncate">
+                      {notification.message || notification.title}
                     </p>
-                    <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] leading-none text-muted-foreground flex-shrink-0">
-                      {getNotificationCategoryLabel(notification.type)}
-                    </span>
-                    <p className="text-[11px] text-muted-foreground leading-none flex-shrink-0">
+                    <p className="text-[11px] text-muted-foreground leading-none flex-shrink-0 mt-0.5">
                       {fromNow(notification.created_at)}
                     </p>
                   </div>
-                  <p className="text-xs text-muted-foreground leading-tight truncate mt-0.5">
-                    {notification.message}
-                  </p>
-                  <div className="mt-1.5 flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2 py-1">
+                  <div className="mt-0.5 flex items-center gap-1.5">
                     {notification.context?.image_url ? (
                       <img
                         src={notification.context.image_url}
                         alt=""
                         loading="lazy"
-                        className="h-6 w-6 rounded object-cover flex-shrink-0 border border-border/60"
+                        className="h-4 w-4 rounded object-cover flex-shrink-0 border border-border/60"
                       />
                     ) : (
-                      <span className="text-xs leading-none flex-shrink-0">
+                      <span className="text-[11px] leading-none flex-shrink-0">
                         {getNotificationContextEmoji(notification)}
                       </span>
                     )}
-                    <p className="text-[11px] text-foreground/80 truncate">
+                    <p className="text-[11px] text-muted-foreground truncate">
                       {getNotificationContextText(notification)}
                     </p>
+                    <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] leading-none text-muted-foreground flex-shrink-0">
+                      {getNotificationCategoryLabel(notification.type)}
+                    </span>
                     {notification.link && (
-                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/80 flex-shrink-0" />
                     )}
                   </div>
                 </div>

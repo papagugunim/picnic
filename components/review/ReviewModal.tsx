@@ -26,6 +26,11 @@ interface ReviewModalProps {
   revieweeId: string
   revieweeName: string
   onSubmit: (postId: string, reviewerId: string, revieweeId: string, rating: number, comment?: string) => Promise<void>
+  title?: string
+  description?: string
+  submitLabel?: string
+  successMessage?: string
+  errorMessage?: string
 }
 
 export function ReviewModal({
@@ -35,7 +40,12 @@ export function ReviewModal({
   reviewerId,
   revieweeId,
   revieweeName,
-  onSubmit
+  onSubmit,
+  title = '거래 평가 및 판매완료',
+  description,
+  submitLabel = '리뷰 남기고 판매완료',
+  successMessage = '판매가 완료되었습니다! 리뷰가 작성되었습니다.',
+  errorMessage = '판매완료 처리에 실패했습니다',
 }: ReviewModalProps) {
   const [rating, setRating] = useState(5)
   const [hoveredRating, setHoveredRating] = useState(0)
@@ -53,13 +63,13 @@ export function ReviewModal({
     try {
       setIsSubmitting(true)
       await onSubmit(postId, reviewerId, revieweeId, rating, comment || undefined)
-      toast.success('판매가 완료되었습니다! 리뷰가 작성되었습니다.')
+      toast.success(successMessage)
       onOpenChange(false)
       setRating(5)
       setComment('')
     } catch (error) {
       logger.error('Submit review error:', error)
-      toast.error('판매완료 처리에 실패했습니다')
+      toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -76,9 +86,9 @@ export function ReviewModal({
       <DialogContent className="sm:max-w-[425px] glass">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>거래 평가 및 판매완료</DialogTitle>
+            <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
-              {revieweeName}님과의 거래는 어떠셨나요? 리뷰를 작성하면 판매가 완료됩니다.
+              {description || `${revieweeName}님과의 거래는 어떠셨나요? 리뷰를 작성하면 판매가 완료됩니다.`}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -136,7 +146,7 @@ export function ReviewModal({
               취소
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? '처리 중...' : '리뷰 남기고 판매완료'}
+              {isSubmitting ? '처리 중...' : submitLabel}
             </Button>
           </DialogFooter>
         </form>

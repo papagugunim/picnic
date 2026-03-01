@@ -1,12 +1,13 @@
 'use client'
 
 import { useCallback, useState, useEffect, useRef } from 'react'
-import { Heart, MessageCircle, BarChart2, MoreHorizontal } from 'lucide-react'
+import { Heart, MessageCircle, BarChart2, MoreHorizontal, Flag } from 'lucide-react'
 import Link from 'next/link'
 import { getBreadEmoji } from '@/lib/bread'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { InlineImageCarousel } from '@/components/community/InlineImageCarousel'
 import { toast } from 'sonner'
+import { ReportDialog } from '@/components/admin/ReportDialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,11 +69,15 @@ export function CommunityPostItem({
   getCategoryEmoji,
   getCategoryName,
 }: CommunityPostItemProps) {
+  void boostedPostId
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const articleRef = useRef<HTMLElement>(null)
   const viewedRef = useRef(false)
   const isBoostActive = !!post.milk_boost_until && new Date(post.milk_boost_until).getTime() > Date.now()
   const isBoosting = boostingPostId === post.id
+  const isOwnPost = currentUserId === post.user_id
+  const showMoreMenu = Boolean(currentUserId)
   const boostMenuLabel = isBoosting
     ? '밀크 부스트 적용중'
     : isBoostActive
@@ -108,12 +113,13 @@ export function CommunityPostItem({
   }, [])
 
   return (
-    <article
-      ref={articleRef}
-      className="relative flex gap-3 px-4 py-3 transition-colors cursor-pointer hover:bg-muted/50"
-      onClick={() => onPostClick(post)}
-    >
-      {currentUserId === post.user_id && (
+    <>
+      <article
+        ref={articleRef}
+        className="relative flex gap-3 px-4 py-3 transition-colors cursor-pointer hover:bg-muted/50"
+        onClick={() => onPostClick(post)}
+      >
+      {showMoreMenu && (
         <div
           className="absolute right-3 top-3 z-10"
           onClick={(event) => {
@@ -132,18 +138,31 @@ export function CommunityPostItem({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                disabled={!canApplyBoost}
-                onSelect={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  if (!canApplyBoost) return
-                  onBoost(post.id)
-                }}
-              >
-                <span className="text-base leading-none">🥛</span>
-                {boostMenuLabel}
-              </DropdownMenuItem>
+              {isOwnPost ? (
+                <DropdownMenuItem
+                  disabled={!canApplyBoost}
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    if (!canApplyBoost) return
+                    onBoost(post.id)
+                  }}
+                >
+                  <span className="text-base leading-none">🥛</span>
+                  {boostMenuLabel}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    setIsReportDialogOpen(true)
+                  }}
+                >
+                  <Flag className="w-4 h-4 mr-2" />
+                  신고하기
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -271,6 +290,14 @@ export function CommunityPostItem({
           </div>
         </div>
       </div>
-    </article>
+      </article>
+
+      <ReportDialog
+        open={isReportDialogOpen}
+        onOpenChange={setIsReportDialogOpen}
+        targetType="community_post"
+        targetId={post.id}
+      />
+    </>
   )
 }

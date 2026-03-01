@@ -20,6 +20,19 @@ const LOCAL_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 const ARCHIVE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const PAGE_SIZE = 20
 
+function topicButtonClass(value: RussiaNewsTopic, active: boolean): string {
+  if (!active) {
+    return 'border-border bg-background text-muted-foreground hover:text-foreground'
+  }
+
+  if (value === '정치') return 'border-rose-200 bg-rose-100 text-rose-700 dark:border-rose-400/40 dark:bg-rose-500/20 dark:text-rose-200'
+  if (value === '경제') return 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/20 dark:text-emerald-200'
+  if (value === '문화') return 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/20 dark:text-amber-200'
+  if (value === '날씨') return 'border-sky-200 bg-sky-100 text-sky-700 dark:border-sky-400/40 dark:bg-sky-500/20 dark:text-sky-200'
+  if (value === '사회') return 'border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-400/40 dark:bg-violet-500/20 dark:text-violet-200'
+  return 'border-border bg-muted text-foreground'
+}
+
 function buildLocalCacheKey(topic: RussiaNewsTopic): string {
   return `russia-news:archive:${topic || 'all'}:v${NEWS_CACHE_VERSION}`
 }
@@ -277,7 +290,7 @@ export function RussiaNewsInfinitePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 touch-pan-x">
           {TOPICS.map((entry) => {
             const active = topic === entry.value
             return (
@@ -301,7 +314,7 @@ export function RussiaNewsInfinitePage() {
                   if (!state || !touch) return
                   const movedX = Math.abs(touch.clientX - state.startX)
                   const movedY = Math.abs(touch.clientY - state.startY)
-                  if (movedX > 10 || movedY > 10) {
+                  if (movedX > 16 || movedY > 16) {
                     state.moved = true
                   }
                 }}
@@ -315,11 +328,7 @@ export function RussiaNewsInfinitePage() {
                   topicTouchStateRef.current = null
                 }}
                 aria-pressed={active}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  active
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border bg-background text-muted-foreground hover:text-foreground'
-                }`}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${topicButtonClass(entry.value, active)}`}
               >
                 {entry.label}
               </button>
