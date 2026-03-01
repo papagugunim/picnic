@@ -65,8 +65,8 @@ export async function middleware(request: NextRequest) {
   // 4. Supabase 세션 갱신 및 인증 검증 (비공개 경로만)
   let supabaseResponse = NextResponse.next({ request })
   const applySupabaseCookies = (response: NextResponse) => {
-    supabaseResponse.cookies.getAll().forEach(cookie => {
-      response.cookies.set(cookie.name, cookie.value)
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie)
     })
     return response
   }
@@ -112,35 +112,44 @@ export async function middleware(request: NextRequest) {
 
   if (!onboardingCompleted && !isOnboardingPath) {
     const onboardingUrl = new URL('/onboarding/step/1', request.url)
-    return applySupabaseCookies(NextResponse.redirect(onboardingUrl))
+    const redirectResponse = NextResponse.redirect(onboardingUrl)
+    redirectResponse.headers.set('X-Frame-Options', 'DENY')
+    redirectResponse.headers.set('X-Content-Type-Options', 'nosniff')
+    redirectResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+    redirectResponse.headers.set('X-XSS-Protection', '1; mode=block')
+    const duration = Date.now() - startTime
+    redirectResponse.headers.set('Server-Timing', `middleware;dur=${duration}`)
+    return applySupabaseCookies(redirectResponse)
   }
 
   if (onboardingCompleted && isOnboardingPath) {
     const feedUrl = new URL('/feed', request.url)
-    return applySupabaseCookies(NextResponse.redirect(feedUrl))
+    const redirectResponse = NextResponse.redirect(feedUrl)
+    redirectResponse.headers.set('X-Frame-Options', 'DENY')
+    redirectResponse.headers.set('X-Content-Type-Options', 'nosniff')
+    redirectResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+    redirectResponse.headers.set('X-XSS-Protection', '1; mode=block')
+    const duration = Date.now() - startTime
+    redirectResponse.headers.set('Server-Timing', `middleware;dur=${duration}`)
+    return applySupabaseCookies(redirectResponse)
   }
 
   // 7. 보안 헤더 추가
-  const headers = new Headers(supabaseResponse.headers)
-  headers.set('X-Frame-Options', 'DENY')
-  headers.set('X-Content-Type-Options', 'nosniff')
-  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  headers.set('X-XSS-Protection', '1; mode=block')
+  supabaseResponse.headers.set('X-Frame-Options', 'DENY')
+  supabaseResponse.headers.set('X-Content-Type-Options', 'nosniff')
+  supabaseResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  supabaseResponse.headers.set('X-XSS-Protection', '1; mode=block')
 
   // 캐싱 전략
   if (pathname.startsWith('/api/')) {
-    headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30')
+    supabaseResponse.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30')
   }
 
   // 성능 메트릭
   const duration = Date.now() - startTime
-  headers.set('Server-Timing', `middleware;dur=${duration}`)
+  supabaseResponse.headers.set('Server-Timing', `middleware;dur=${duration}`)
 
-  return new NextResponse(supabaseResponse.body, {
-    status: supabaseResponse.status,
-    statusText: supabaseResponse.statusText,
-    headers,
-  })
+  return supabaseResponse
 }
 
 export const config = {
