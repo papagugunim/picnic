@@ -341,6 +341,32 @@
     box-shadow: none;
   }
 
+  .liquid-glass-card {
+    background:
+      linear-gradient(
+        140deg,
+        hsl(var(--background) / 0.82) 0%,
+        hsl(var(--card) / 0.74) 52%,
+        hsl(var(--background) / 0.8) 100%
+      );
+    border: 1px solid hsl(var(--foreground) / 0.08);
+    backdrop-filter: saturate(180%) blur(16px);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
+    box-shadow: none;
+  }
+
+  .dark .liquid-glass-card {
+    background:
+      linear-gradient(
+        145deg,
+        hsl(var(--card) / 0.7) 0%,
+        hsl(var(--background) / 0.66) 54%,
+        hsl(var(--card) / 0.72) 100%
+      );
+    border-color: hsl(0 0% 100% / 0.1);
+    box-shadow: none;
+  }
+
   .animate-in {
     animation: animateIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }

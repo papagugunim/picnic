@@ -954,6 +954,9 @@ export default function ChatRoomPage() {
   const showReviewAfterSaleCta = Boolean(
     isSold && room?.post && currentUserId && !hasCurrentUserReviewed && !isCheckingReviewState
   )
+  const showFloatingReviewCard = Boolean(
+    showSellerCompletionCta || showReviewAfterSaleCta || (isSold && hasCurrentUserReviewed)
+  )
   const reviewPostId = room?.post?.id || null
   const revieweeUserId = room?.other_user?.id || null
   const postThumbnailUrl = room?.post ? getPostThumbnailUrl(room.post) : null
@@ -1015,6 +1018,7 @@ export default function ChatRoomPage() {
   )
   const canSendMessage = (newMessage.trim().length > 0 || pendingImageFiles.length > 0) && !isSending && !isUploadingImages
   const showFloatingAppointment = Boolean(appointment && currentUserId)
+  const showFloatingCards = Boolean(currentUserId && (showFloatingAppointment || showFloatingReviewCard))
   const imageViewerImageCount = imageViewer.images.length
   const activeImageViewerUrl = imageViewer.images[imageViewer.index] || null
   const canMoveImageViewerPrev = imageViewer.index > 0
@@ -1189,44 +1193,46 @@ export default function ChatRoomPage() {
         <div className="max-w-screen-xl mx-auto px-3 py-3">
           <div ref={topSentinelRef} className="h-px" />
 
-          {showFloatingAppointment && appointment && currentUserId && (
+          {showFloatingCards && (
             <div
               className={`sticky top-2 z-20 overflow-hidden transition-[max-height,opacity,transform,margin] duration-200 ease-out ${
                 isAppointmentCardHidden
                   ? 'pointer-events-none -translate-y-1 max-h-0 opacity-0 mb-0'
-                  : 'translate-y-0 max-h-[180px] opacity-100 mb-3'
+                  : 'translate-y-0 max-h-[320px] opacity-100 mb-3'
               }`}
             >
-              <AppointmentCard
-                appointment={appointment}
-                currentUserId={currentUserId}
-                onRespond={handleRespondAppointment}
-                compact
-                className="mx-0"
-              />
-            </div>
-          )}
+              <div className="space-y-2">
+                {showFloatingAppointment && appointment && currentUserId && (
+                  <AppointmentCard
+                    appointment={appointment}
+                    currentUserId={currentUserId}
+                    onRespond={handleRespondAppointment}
+                    compact
+                    className="mx-0"
+                  />
+                )}
 
-          {(showSellerCompletionCta || showReviewAfterSaleCta || (isSold && hasCurrentUserReviewed)) && (
-            <div className="mb-3">
-              <div className="rounded-xl border border-border/80 bg-background/95 px-3 py-2.5">
-                <p className="text-xs font-medium text-foreground">
-                  {showSellerCompletionCta
-                    ? '거래가 끝났다면 리뷰 작성과 함께 판매완료를 처리해주세요.'
-                    : showReviewAfterSaleCta
-                      ? '거래가 완료되었습니다. 상대방 리뷰를 남겨주세요.'
-                      : '거래 리뷰를 작성했습니다. 감사합니다!'}
-                </p>
-                {(showSellerCompletionCta || showReviewAfterSaleCta) && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="mt-2 h-8 rounded-full px-3 text-xs"
-                    onClick={() => setShowReviewModal(true)}
-                    disabled={isCheckingReviewState}
-                  >
-                    {showSellerCompletionCta ? '거래완료 + 리뷰' : '거래 리뷰 남기기'}
-                  </Button>
+                {showFloatingReviewCard && (
+                  <div className="liquid-glass-card rounded-xl px-3 py-2.5">
+                    <p className="text-xs font-medium text-foreground">
+                      {showSellerCompletionCta
+                        ? '거래가 끝났다면 리뷰 작성과 함께 판매완료를 처리해주세요.'
+                        : showReviewAfterSaleCta
+                          ? '거래가 완료되었습니다. 상대방 리뷰를 남겨주세요.'
+                          : '거래 리뷰를 작성했습니다. 감사합니다!'}
+                    </p>
+                    {(showSellerCompletionCta || showReviewAfterSaleCta) && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="mt-2 h-8 rounded-full px-3 text-xs"
+                        onClick={() => setShowReviewModal(true)}
+                        disabled={isCheckingReviewState}
+                      >
+                        {showSellerCompletionCta ? '거래완료 + 리뷰' : '거래 리뷰 남기기'}
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
