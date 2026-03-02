@@ -809,7 +809,7 @@ export default function PostDetailClient({
           <div className="mb-2.5">
             <h1 className="text-xl font-bold mb-1">{post.title}</h1>
             <div className="flex items-center gap-2">
-              <div className="text-2xl font-bold text-primary">
+              <div className="text-2xl font-normal text-primary">
                 {post.price === 0 || post.price === null
                   ? '무료나눔 ✨'
                   : `${post.price.toLocaleString()}₽`}

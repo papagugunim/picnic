@@ -22,12 +22,12 @@ function formatDateTime(value: string): string {
 }
 
 export function getRussiaNewsTopicBadgeClass(topic: string): string {
-  if (topic === '정치') return 'bg-rose-500/10 text-rose-600 dark:text-rose-300'
-  if (topic === '사회') return 'bg-blue-500/10 text-blue-600 dark:text-blue-300'
-  if (topic === '경제') return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
-  if (topic === '문화') return 'bg-amber-500/10 text-amber-600 dark:text-amber-300'
-  if (topic === '날씨') return 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-300'
-  return 'bg-muted text-muted-foreground'
+  if (topic === '정치') return 'bg-rose-500/18 text-rose-700 dark:text-rose-200'
+  if (topic === '사회') return 'bg-blue-500/18 text-blue-700 dark:text-blue-200'
+  if (topic === '경제') return 'bg-emerald-500/18 text-emerald-700 dark:text-emerald-200'
+  if (topic === '문화') return 'bg-amber-500/20 text-amber-800 dark:text-amber-200'
+  if (topic === '날씨') return 'bg-cyan-500/18 text-cyan-700 dark:text-cyan-200'
+  return 'bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100'
 }
 
 export function RussiaNewsCard({ item, compact = false }: RussiaNewsCardProps) {

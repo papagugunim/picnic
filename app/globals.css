@@ -345,6 +345,32 @@
     box-shadow: none;
   }
 
+  .liquid-glass-chat-float {
+    background:
+      linear-gradient(
+        140deg,
+        hsl(var(--background) / 0.84) 0%,
+        hsl(var(--card) / 0.76) 52%,
+        hsl(var(--background) / 0.82) 100%
+      );
+    border: none;
+    backdrop-filter: saturate(175%) blur(14px);
+    -webkit-backdrop-filter: saturate(175%) blur(14px);
+    box-shadow: none;
+  }
+
+  .dark .liquid-glass-chat-float {
+    background:
+      linear-gradient(
+        145deg,
+        hsl(var(--card) / 0.72) 0%,
+        hsl(var(--background) / 0.68) 54%,
+        hsl(var(--card) / 0.74) 100%
+      );
+    border: none;
+    box-shadow: none;
+  }
+
   .animate-in {
     animation: animateIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }

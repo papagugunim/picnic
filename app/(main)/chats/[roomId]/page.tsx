@@ -242,6 +242,7 @@ export default function ChatRoomPage() {
   })
   const keyboardRafRef = useRef<number | null>(null)
   const scrollRafRef = useRef<number | null>(null)
+  const initialBottomPinnedRef = useRef(false)
   const lastMessagesScrollTopRef = useRef(0)
   const isLoadingOlderRef = useRef(false)
   const isChatInfoHiddenRef = useRef(false)
@@ -343,6 +344,7 @@ export default function ChatRoomPage() {
     setShowComposerTools(false)
     setPendingImageFiles([])
     setImageViewer({ open: false, images: [], index: 0 })
+    initialBottomPinnedRef.current = false
     lastMessagesScrollTopRef.current = 0
     previousMessagesMetaRef.current = { firstId: null, lastId: null, count: 0 }
     fetchRoom()
@@ -363,6 +365,13 @@ export default function ChatRoomPage() {
       isAtBottomRef.current = true
       setIsAtBottom(true)
     }
+  }, [])
+
+  const forceScrollToBottom = useCallback(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+    container.scrollTop = container.scrollHeight
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
   }, [])
 
   const handleLoadOlderMessages = useCallback(async () => {
@@ -519,6 +528,25 @@ export default function ChatRoomPage() {
 
     previousMessagesMetaRef.current = { firstId, lastId, count: messages.length }
   }, [messages, isAtBottom, isInitialLoad, scrollToBottom])
+
+  useEffect(() => {
+    if (messages.length === 0 || isMessagesLoading || initialBottomPinnedRef.current) return
+
+    initialBottomPinnedRef.current = true
+    forceScrollToBottom()
+
+    const frame = requestAnimationFrame(() => {
+      forceScrollToBottom()
+    })
+    const timer = setTimeout(() => {
+      forceScrollToBottom()
+    }, 120)
+
+    return () => {
+      cancelAnimationFrame(frame)
+      clearTimeout(timer)
+    }
+  }, [messages.length, isMessagesLoading, forceScrollToBottom])
 
   // iOS 키보드 대응 - visualViewport 높이 기준 + fallback
   useEffect(() => {
@@ -1017,7 +1045,7 @@ export default function ChatRoomPage() {
     [scrollToBottom]
   )
   const canSendMessage = (newMessage.trim().length > 0 || pendingImageFiles.length > 0) && !isSending && !isUploadingImages
-  const showFloatingAppointment = Boolean(appointment && currentUserId)
+  const showFloatingAppointment = Boolean(appointment && currentUserId && !isSold && !hasCurrentUserReviewed)
   const showFloatingCards = Boolean(currentUserId && (showFloatingAppointment || showFloatingReviewCard))
   const imageViewerImageCount = imageViewer.images.length
   const activeImageViewerUrl = imageViewer.images[imageViewer.index] || null
@@ -1078,74 +1106,91 @@ export default function ChatRoomPage() {
             <ChevronLeft className="h-5 w-5" />
           </Button>
 
-          {room.post ? (
-            <Link
-              href={`/post/${room.post.id}`}
-              className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 transition-colors hover:bg-muted/70"
-            >
-              {postThumbnailUrl ? (
-                <img
-                  src={postThumbnailUrl}
-                  alt={room.post.title}
-                  className="h-9 w-9 shrink-0 rounded-md object-cover"
-                />
-              ) : (
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-secondary">
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{room.post.title}</p>
-                <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <span className="truncate">
-                    {room.post.price === 0 || room.post.price === null
-                      ? '무료나눔'
-                      : `${room.post.price.toLocaleString()}₽`}
-                  </span>
-                  {room.post.status && (
-                    <span
-                      className={`rounded-full px-1.5 py-0.5 font-medium ${getPostStatusInfo(room.post.status as PostStatus).bgColor} ${getPostStatusInfo(room.post.status as PostStatus).textColor}`}
-                    >
-                      {getPostStatusInfo(room.post.status as PostStatus).label}
-                    </span>
+          <div className="min-w-0 flex-1">
+            {room.post ? (
+              <Link
+                href={`/post/${room.post.id}`}
+                className="block rounded-lg px-1 py-1 transition-colors hover:bg-muted/70"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  {postThumbnailUrl ? (
+                    <img
+                      src={postThumbnailUrl}
+                      alt={room.post.title}
+                      className="h-9 w-9 shrink-0 rounded-md object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-secondary">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                    </div>
                   )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{room.post.title}</p>
+                    <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <span className="truncate">
+                        {room.post.price === 0 || room.post.price === null
+                          ? '무료나눔'
+                          : `${room.post.price.toLocaleString()}₽`}
+                      </span>
+                      {room.post.status && (
+                        <span
+                          className={`rounded-full px-1.5 py-0.5 font-medium ${getPostStatusInfo(room.post.status as PostStatus).bgColor} ${getPostStatusInfo(room.post.status as PostStatus).textColor}`}
+                        >
+                          {getPostStatusInfo(room.post.status as PostStatus).label}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ) : (
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">채팅</p>
-            </div>
-          )}
-
-          <div
-            className={`flex shrink-0 items-center gap-1 overflow-hidden transition-[max-width,opacity,transform] duration-200 ease-out ${
-              isChatInfoHidden
-                ? 'pointer-events-none max-w-0 translate-x-2 opacity-0'
-                : 'max-w-[164px] translate-x-0 opacity-100'
-            }`}
-          >
-            <Link href={`/profile/${room.other_user.id}`} className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-1 hover:bg-muted/70">
-              {room.other_user.avatar_url ? (
-                <img
-                  src={room.other_user.avatar_url}
-                  alt={room.other_user.full_name || '사용자'}
-                  className="h-8 w-8 rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-purple-500 text-xs font-bold text-white">
-                  {room.other_user.full_name?.charAt(0).toUpperCase() || '?'}
-                </div>
-              )}
-              <div className="min-w-0">
-                <div className="flex items-center gap-1 text-sm font-semibold leading-none">
-                  <span className="max-w-[74px] truncate">{room.other_user.full_name || '익명'}</span>
+                <div
+                  className={`flex items-center gap-2 overflow-hidden pl-11 pt-1 transition-[max-height,opacity,transform] duration-200 ease-out ${
+                    isChatInfoHidden ? 'max-h-0 -translate-y-1 opacity-0' : 'max-h-8 translate-y-0 opacity-100'
+                  }`}
+                >
+                  {room.other_user.avatar_url ? (
+                    <img
+                      src={room.other_user.avatar_url}
+                      alt={room.other_user.full_name || '사용자'}
+                      className="h-5 w-5 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-purple-500 text-[10px] font-bold text-white">
+                      {room.other_user.full_name?.charAt(0).toUpperCase() || '?'}
+                    </div>
+                  )}
+                  <span className="truncate text-xs font-medium">{room.other_user.full_name || '익명'}</span>
                   <span className="text-sm leading-none">
                     {getBreadEmoji(room.other_user.bread_level || 1, room.other_user.user_role || undefined)}
                   </span>
                 </div>
-              </div>
-            </Link>
+              </Link>
+            ) : (
+              <Link
+                href={`/profile/${room.other_user.id}`}
+                className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-1 hover:bg-muted/70"
+              >
+                {room.other_user.avatar_url ? (
+                  <img
+                    src={room.other_user.avatar_url}
+                    alt={room.other_user.full_name || '사용자'}
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-purple-500 text-xs font-bold text-white">
+                    {room.other_user.full_name?.charAt(0).toUpperCase() || '?'}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1 text-sm font-semibold leading-none">
+                    <span className="truncate">{room.other_user.full_name || '익명'}</span>
+                    <span className="text-sm leading-none">
+                      {getBreadEmoji(room.other_user.bread_level || 1, room.other_user.user_role || undefined)}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">채팅</p>
+                </div>
+              </Link>
+            )}
           </div>
 
           <div className="flex shrink-0 items-center gap-1">
@@ -1213,7 +1258,7 @@ export default function ChatRoomPage() {
                 )}
 
                 {showFloatingReviewCard && (
-                  <div className="liquid-glass-card rounded-xl px-3 py-2.5">
+                  <div className="liquid-glass-chat-float rounded-2xl px-3 py-2.5">
                     <p className="text-xs font-medium text-foreground">
                       {showSellerCompletionCta
                         ? '거래가 끝났다면 리뷰 작성과 함께 판매완료를 처리해주세요.'

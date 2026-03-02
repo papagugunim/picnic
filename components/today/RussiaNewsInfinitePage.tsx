@@ -18,11 +18,13 @@ const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
 const NEWS_CACHE_VERSION = '3'
 const LOCAL_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 const ARCHIVE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
-const PAGE_SIZE = 20
+const PAGE_SIZE = 30
 
 function topicButtonClass(value: RussiaNewsTopic, active: boolean): string {
-  const toneClass = value ? getRussiaNewsTopicBadgeClass(value) : 'bg-muted text-muted-foreground'
-  return `${toneClass} ${active ? 'ring-1 ring-primary/40 opacity-100' : 'opacity-75 hover:opacity-100'}`
+  const toneClass = value
+    ? getRussiaNewsTopicBadgeClass(value)
+    : 'bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100'
+  return `${toneClass} ${active ? 'opacity-100' : 'opacity-80 hover:opacity-100'}`
 }
 
 function buildLocalCacheKey(topic: RussiaNewsTopic): string {
@@ -135,12 +137,12 @@ export function RussiaNewsInfinitePage() {
         writeLocalCachedNews(topic, usableItems)
         const nextCursor = usableItems[usableItems.length - 1].published_at
         setCursor(nextCursor)
-        setHasMore(usableItems.length >= PAGE_SIZE)
+        setHasMore(true)
       } else {
         const cached = readLocalCachedNews(topic)
         setItems(cached)
         setCursor(cached.length > 0 ? cached[cached.length - 1].published_at : null)
-        setHasMore(cached.length >= PAGE_SIZE)
+        setHasMore(cached.length > 0)
       }
     } catch (error) {
       const cached = readLocalCachedNews(topic)
@@ -210,9 +212,6 @@ export function RussiaNewsInfinitePage() {
       }
 
       setCursor(nextCursor)
-      if (nextItems.length < PAGE_SIZE) {
-        setHasMore(false)
-      }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '지난 뉴스를 불러오지 못했습니다.')
     } finally {
@@ -282,7 +281,7 @@ export function RussiaNewsInfinitePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 touch-pan-x">
+        <div className="flex items-center gap-2 overflow-x-auto py-0.5 touch-pan-x">
           {TOPICS.map((entry) => {
             const active = topic === entry.value
             return (
@@ -320,7 +319,7 @@ export function RussiaNewsInfinitePage() {
                   topicTouchStateRef.current = null
                 }}
                 aria-pressed={active}
-                className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] leading-[1.15] font-medium transition ${topicButtonClass(entry.value, active)}`}
+                className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] leading-none font-semibold transition ${topicButtonClass(entry.value, active)}`}
               >
                 {entry.label}
               </button>

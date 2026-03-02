@@ -10,6 +10,31 @@ import { checkUpstashRateLimit, getRateLimitIdentifier } from '@/lib/upstash'
 
 const TOPIC_BUCKETS: RussiaNewsTopic[] = ['정치', '사회', '경제', '문화', '날씨']
 
+function parsePublishedAtMs(value: string): number {
+  const ms = Date.parse(value)
+  return Number.isFinite(ms) ? ms : 0
+}
+
+function toSafeLimit(limit: number): number {
+  if (!Number.isFinite(limit) || limit <= 0) return 20
+  return Math.max(1, Math.min(Math.floor(limit), 50))
+}
+
+function mergeArchiveItems(items: RussiaNewsApiPayload['items'], limit: number): RussiaNewsApiPayload['items'] {
+  const map = new Map<string, RussiaNewsApiPayload['items'][number]>()
+  for (const item of items) {
+    if (!isInArchiveWindow(item.published_at)) continue
+    const key = `${item.id}|${item.published_at}`
+    if (!map.has(key)) {
+      map.set(key, item)
+    }
+  }
+
+  return Array.from(map.values())
+    .sort((a, b) => parsePublishedAtMs(b.published_at) - parsePublishedAtMs(a.published_at))
+    .slice(0, toSafeLimit(limit))
+}
+
 function mergeUniqueItems(payloads: RussiaNewsApiPayload[], limit: number): RussiaNewsApiPayload {
   const map = new Map<string, RussiaNewsApiPayload['items'][number]>()
   for (const payload of payloads) {
@@ -20,7 +45,7 @@ function mergeUniqueItems(payloads: RussiaNewsApiPayload[], limit: number): Russ
     }
   }
   return {
-    items: Array.from(map.values()).slice(0, Math.max(1, Math.min(limit, 20))),
+    items: mergeArchiveItems(Array.from(map.values()), limit),
   }
 }
 
@@ -94,6 +119,47 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // cursor 기반 요청은 저장소/캐시 우선으로 처리해 무한 스크롤이 안정적으로 이어지도록 한다.
+    if (cursor) {
+      const storedItems = await fallbackFromStore()
+      if (storedItems.length > 0) {
+        writeCachedRussiaNews('archive', topic, storedItems)
+        await writeUpstashRussiaNews('archive', topic, limit, cursor, storedItems)
+        return NextResponse.json(
+          { items: mergeArchiveItems(storedItems, limit), stale: true, fallback: 'archive-store-cursor' },
+          {
+            headers: {
+              'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+              'X-Russia-News-Fallback': 'archive-store-cursor',
+            },
+          }
+        )
+      }
+
+      const cachedItems = await fallbackFromCache()
+      if (cachedItems.length > 0) {
+        return NextResponse.json(
+          { items: mergeArchiveItems(cachedItems, limit), stale: true, fallback: 'cache-cursor' },
+          {
+            headers: {
+              'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+              'X-Russia-News-Fallback': 'cache-cursor',
+            },
+          }
+        )
+      }
+
+      return NextResponse.json(
+        { items: [], stale: true, fallback: 'empty-after-cursor' },
+        {
+          headers: {
+            'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+            'X-Russia-News-Fallback': 'empty-after-cursor',
+          },
+        }
+      )
+    }
+
     let payload = filterPayloadToArchiveWindow(filterPayloadByTopic(
       await fetchRussiaNewsFromUpstream({
         endpoint: '/api/archive',
@@ -103,6 +169,16 @@ export async function GET(request: NextRequest) {
       }),
       topic
     ))
+
+    // 업스트림 결과가 부족하면 저장소 데이터를 병합해 7일치 아카이브가 끊기지 않게 보강한다.
+    if (payload.items.length < toSafeLimit(limit)) {
+      const storedItems = await fallbackFromStore()
+      if (storedItems.length > 0) {
+        payload = {
+          items: mergeArchiveItems([...payload.items, ...storedItems], limit),
+        }
+      }
+    }
 
     if (payload.items.length === 0 && !topic && !cursor) {
       const bucketResults = await Promise.allSettled(
@@ -156,10 +232,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (payload.items.length > 0) {
-      await saveRussiaNewsArchiveItems(payload.items)
-      writeCachedRussiaNews('archive', topic, payload.items)
-      await writeUpstashRussiaNews('archive', topic, limit, cursor, payload.items)
-      return NextResponse.json(payload, {
+      const mergedPayload = {
+        items: mergeArchiveItems(payload.items, limit),
+      }
+      await saveRussiaNewsArchiveItems(mergedPayload.items)
+      writeCachedRussiaNews('archive', topic, mergedPayload.items)
+      await writeUpstashRussiaNews('archive', topic, limit, cursor, mergedPayload.items)
+      return NextResponse.json(mergedPayload, {
         headers: {
           'Cache-Control': 'public, s-maxage=180, stale-while-revalidate=120',
         },
@@ -211,19 +290,6 @@ export async function GET(request: NextRequest) {
           }
         )
       }
-    }
-
-    // cursor 기반 무한 스크롤에서는 플레이스홀더 응답 대신 종료 신호를 반환한다.
-    if (cursor) {
-      return NextResponse.json(
-        { items: [], stale: true, fallback: 'empty-after-cursor' },
-        {
-          headers: {
-            'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
-            'X-Russia-News-Fallback': 'empty-after-cursor',
-          },
-        }
-      )
     }
 
     const emergencyItems = getEmergencyFallbackNews(topic, limit)
@@ -282,19 +348,6 @@ export async function GET(request: NextRequest) {
           }
         )
       }
-    }
-
-    // cursor 기반 무한 스크롤에서는 플레이스홀더 응답 대신 종료 신호를 반환한다.
-    if (cursor) {
-      return NextResponse.json(
-        { items: [], stale: true, fallback: 'empty-after-cursor' },
-        {
-          headers: {
-            'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
-            'X-Russia-News-Fallback': 'empty-after-cursor-on-error',
-          },
-        }
-      )
     }
 
     const emergencyItems = getEmergencyFallbackNews(topic, limit)

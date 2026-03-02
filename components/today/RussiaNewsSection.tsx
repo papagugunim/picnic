@@ -23,8 +23,10 @@ const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
 const AUTO_RECOVERY_DELAY_MS = 6000
 
 function topicButtonClass(value: RussiaNewsTopic, active: boolean): string {
-  const toneClass = value ? getRussiaNewsTopicBadgeClass(value) : 'bg-muted text-muted-foreground'
-  return `${toneClass} ${active ? 'ring-1 ring-primary/40 opacity-100' : 'opacity-75 hover:opacity-100'}`
+  const toneClass = value
+    ? getRussiaNewsTopicBadgeClass(value)
+    : 'bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100'
+  return `${toneClass} ${active ? 'opacity-100' : 'opacity-80 hover:opacity-100'}`
 }
 
 export function RussiaNewsSection() {
@@ -173,7 +175,7 @@ export function RussiaNewsSection() {
         </button>
       </div>
 
-      <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 touch-pan-x">
+      <div className="flex items-center gap-2 overflow-x-auto py-0.5 touch-pan-x">
         {TOPICS.map((entry) => {
           const active = topic === entry.value
           return (
@@ -211,7 +213,7 @@ export function RussiaNewsSection() {
                 topicTouchStateRef.current = null
               }}
               aria-pressed={active}
-              className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] leading-[1.15] font-medium transition ${topicButtonClass(entry.value, active)}`}
+              className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] leading-none font-semibold transition ${topicButtonClass(entry.value, active)}`}
             >
               {entry.label}
             </button>
