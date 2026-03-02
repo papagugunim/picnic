@@ -10,6 +10,7 @@ export async function DELETE(
   request: Request,
   context: { params: Promise<{ roomId: string }> }
 ) {
+  void request
   try {
     const supabase = await createServerClient()
 
@@ -28,21 +29,17 @@ export async function DELETE(
     // 채팅방 존재 여부 및 권한 확인
     const { data: room, error: roomError } = await supabase
       .from('chat_rooms')
-      .select('id, user1_id, user2_id, user_id, other_user_id')
+      .select('id, user1_id, user2_id')
       .eq('id', roomId)
       .single()
 
     if (roomError || !room) {
+      logger.error('Chat room lookup error:', roomError)
       return NextResponse.json({ error: '채팅방을 찾을 수 없습니다' }, { status: 404 })
     }
 
     // 채팅방 참여자인지 확인
-    const participants = [
-      room.user1_id,
-      room.user2_id,
-      room.user_id,
-      room.other_user_id,
-    ].filter((participant): participant is string => typeof participant === 'string' && participant.length > 0)
+    const participants = [room.user1_id, room.user2_id]
 
     if (!participants.includes(user.id)) {
       return NextResponse.json({ error: '삭제 권한이 없습니다' }, { status: 403 })
@@ -77,6 +74,17 @@ export async function DELETE(
 
     if (messageDeleteError) {
       logger.error('Chat messages deletion error:', messageDeleteError)
+      return NextResponse.json({ error: '채팅방 삭제에 실패했습니다' }, { status: 500 })
+    }
+
+    // 판매완료 게시글이 해당 채팅방을 참조하고 있으면 먼저 연결 해제
+    const { error: unlinkSoldRoomError } = await client
+      .from('posts')
+      .update({ sold_in_room_id: null })
+      .eq('sold_in_room_id', roomId)
+
+    if (unlinkSoldRoomError) {
+      logger.error('Sold room unlink error:', unlinkSoldRoomError)
       return NextResponse.json({ error: '채팅방 삭제에 실패했습니다' }, { status: 500 })
     }
 
