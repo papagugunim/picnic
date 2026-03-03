@@ -1313,7 +1313,7 @@ export default function ChatRoomPage() {
               </div>
             ) : (
               <div className="space-y-0">
-                {connectionStatus !== 'live' && (
+                {(connectionStatus === 'reconnecting' || connectionStatus === 'offline') && (
                   <div className="mb-3 flex justify-start">
                     <div className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${connectionStatusMeta.textClassName} ${connectionStatusMeta.bgClassName}`}>
                       <ConnectionStatusIcon className={connectionStatusMeta.iconClassName} />

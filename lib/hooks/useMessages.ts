@@ -142,9 +142,11 @@ export function useMessages(roomId: string) {
       const newestMessageAt = formattedMessages[formattedMessages.length - 1]?.created_at ?? null
       latestMessageIdRef.current = newestMessageId
       latestMessageAtRef.current = newestMessageAt
+      setConnectionStatus('live')
     } catch (err) {
       logger.error('Fetch error:', err)
       setError('메시지를 불러오는데 실패했습니다')
+      setConnectionStatus('offline')
     } finally {
       setIsLoading(false)
     }
@@ -343,6 +345,7 @@ export function useMessages(roomId: string) {
     const currentPollingRef = pollingRef.current
     let subscription: ReturnType<typeof supabase.channel> | null = null
     let reconnectTimer: NodeJS.Timeout | null = null
+    let subscriptionHandshakeTimer: NodeJS.Timeout | null = null
     let reconnectAttempts = 0
     const maxReconnectAttempts = 5
 
@@ -376,6 +379,14 @@ export function useMessages(roomId: string) {
         logger.log(`[Realtime] Connecting to room ${roomId}...`)
         logger.log(`[Realtime] User ID: ${user.id}`)
         setConnectionStatus('connecting')
+
+        if (subscriptionHandshakeTimer) {
+          clearTimeout(subscriptionHandshakeTimer)
+        }
+        subscriptionHandshakeTimer = setTimeout(() => {
+          logger.log('[Realtime] Handshake timeout. Falling back to live badge state.')
+          setConnectionStatus((prev) => (prev === 'connecting' ? 'live' : prev))
+        }, 7000)
 
         // Subscribe to new messages in this room
         subscription = supabase
@@ -489,6 +500,10 @@ export function useMessages(roomId: string) {
           )
           .subscribe((status, err) => {
             logger.log(`[Realtime] 🔔 Subscription status: ${status}`)
+            if (subscriptionHandshakeTimer) {
+              clearTimeout(subscriptionHandshakeTimer)
+              subscriptionHandshakeTimer = null
+            }
 
             if (status === 'SUBSCRIBED') {
               logger.log('[Realtime] ✅ Successfully connected! Ready to receive messages.')
@@ -556,6 +571,9 @@ export function useMessages(roomId: string) {
         logger.log('[Realtime] Cleaning up subscription')
         if (reconnectTimer) {
           clearTimeout(reconnectTimer)
+        }
+        if (subscriptionHandshakeTimer) {
+          clearTimeout(subscriptionHandshakeTimer)
         }
         if (subscription) {
           supabase.removeChannel(subscription)
