@@ -1,7 +1,9 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { MILK_BOOST_COST, MILK_BOOST_DURATION_HOURS } from '@/lib/milk-points'
+import { createClient } from '@/lib/supabase/client'
 import {
   Dialog,
   DialogClose,
@@ -10,11 +12,67 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
+interface MilkPointTransaction {
+  id: string
+  amount: number
+  balance_after: number
+  reason: string
+  created_at: string
+}
+
 interface MilkPointModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   currentPoints?: number | null
   isUnlimited?: boolean
+}
+
+function getTransactionReasonLabel(reason: string): string {
+  switch (reason) {
+    case 'welcome_bonus':
+      return '웰컴 보너스'
+    case 'welcome_bonus_adjustment':
+      return '웰컴 보너스 보정'
+    case 'bread_level_up_bonus':
+      return '브레드 등급 상승 보너스'
+    case 'free_share_completion_bonus':
+      return '무료나눔 완료 보너스'
+    case 'post_like_reward':
+      return '내 게시글 좋아요 적립'
+    case 'my_like_action_reward':
+      return '좋아요 누르기 적립'
+    case 'community_like_reward':
+      return '커뮤니티 좋아요 적립'
+    case 'community_comment_reward':
+      return '댓글 적립'
+    case 'my_comment_action_reward':
+      return '댓글 작성 적립'
+    case 'boost_spend':
+      return '밀크 부스트 사용'
+    case 'boost_spend_unlimited':
+      return '밀크 부스트 사용(무제한)'
+    case 'admin_grant':
+      return '관리자 지급'
+    case 'daily_role_bonus':
+      return '일일 등급 보너스'
+    default:
+      return reason
+  }
+}
+
+function formatPoints(value: number): string {
+  return `${value.toLocaleString()}P`
+}
+
+function formatHistoryDate(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  const hour = String(date.getHours()).padStart(2, '0')
+  const minute = String(date.getMinutes()).padStart(2, '0')
+  return `${month}/${day} ${hour}:${minute}`
 }
 
 export function MilkPointModal({
@@ -23,6 +81,54 @@ export function MilkPointModal({
   currentPoints,
   isUnlimited = false,
 }: MilkPointModalProps) {
+  const [history, setHistory] = useState<MilkPointTransaction[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+
+    let cancelled = false
+
+    async function loadHistory() {
+      try {
+        setIsLoadingHistory(true)
+        setHistoryError(null)
+
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('milk_point_transactions')
+          .select('id, amount, balance_after, reason, created_at')
+          .order('created_at', { ascending: false })
+          .limit(20)
+
+        if (cancelled) return
+
+        if (error) {
+          setHistory([])
+          setHistoryError('내역을 불러오지 못했습니다.')
+          return
+        }
+
+        setHistory((data || []) as MilkPointTransaction[])
+      } catch {
+        if (cancelled) return
+        setHistory([])
+        setHistoryError('내역을 불러오지 못했습니다.')
+      } finally {
+        if (!cancelled) {
+          setIsLoadingHistory(false)
+        }
+      }
+    }
+
+    void loadHistory()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open])
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -60,6 +166,44 @@ export function MilkPointModal({
                   <p className="mt-2 text-xs text-muted-foreground">
                     개발자 등급 혜택으로 밀크 부스트를 무제한으로 사용할 수 있습니다.
                   </p>
+                )}
+              </section>
+
+              <section className="rounded-2xl border border-border bg-card p-4">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold">내 밀크 포인트 적립/사용 내역</h3>
+                  <span className="text-xs text-muted-foreground">최근 20건</span>
+                </div>
+                {isLoadingHistory ? (
+                  <p className="text-sm text-muted-foreground">내역을 불러오는 중입니다...</p>
+                ) : historyError ? (
+                  <p className="text-sm text-destructive">{historyError}</p>
+                ) : history.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">아직 포인트 내역이 없습니다.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {history.map((item) => {
+                      const isEarned = item.amount >= 0
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex items-start justify-between gap-3 rounded-xl border border-border/80 px-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">
+                              {getTransactionReasonLabel(item.reason)}
+                            </p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {formatHistoryDate(item.created_at)} · 잔액 {formatPoints(item.balance_after)}
+                            </p>
+                          </div>
+                          <span className={`shrink-0 text-sm font-semibold ${isEarned ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                            {item.amount > 0 ? '+' : ''}{formatPoints(item.amount)}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
                 )}
               </section>
 
