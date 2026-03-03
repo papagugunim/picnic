@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import { MILK_BOOST_COST, MILK_BOOST_DURATION_HOURS } from '@/lib/milk-points'
 import { createClient } from '@/lib/supabase/client'
@@ -84,6 +84,17 @@ export function MilkPointModal({
   const [history, setHistory] = useState<MilkPointTransaction[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
+
+  const historySummary = useMemo(() => {
+    const earned = history.reduce((sum, item) => (
+      item.amount > 0 ? sum + item.amount : sum
+    ), 0)
+    const spent = history.reduce((sum, item) => (
+      item.amount < 0 ? sum + Math.abs(item.amount) : sum
+    ), 0)
+
+    return { earned, spent }
+  }, [history])
 
   useEffect(() => {
     if (!open) return
@@ -182,22 +193,47 @@ export function MilkPointModal({
                   <p className="text-sm text-muted-foreground">아직 포인트 내역이 없습니다.</p>
                 ) : (
                   <div className="space-y-2">
+                    <div className="mb-1 grid grid-cols-2 gap-2">
+                      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+                        <p className="text-[11px] text-muted-foreground">적립 합계</p>
+                        <p className="text-sm font-semibold text-emerald-700">+{formatPoints(historySummary.earned)}</p>
+                      </div>
+                      <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+                        <p className="text-[11px] text-muted-foreground">사용 합계</p>
+                        <p className="text-sm font-semibold text-rose-700">-{formatPoints(historySummary.spent)}</p>
+                      </div>
+                    </div>
                     {history.map((item) => {
-                      const isEarned = item.amount >= 0
+                      const isEarned = item.amount > 0
+                      const isSpent = item.amount < 0
+                      const typeLabel = isEarned ? '적립' : isSpent ? '사용' : '기타'
                       return (
                         <div
                           key={item.id}
                           className="flex items-start justify-between gap-3 rounded-xl border border-border/80 px-3 py-2"
                         >
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-medium">
+                            <p className="flex items-center gap-1.5 truncate text-sm font-medium">
+                              <span
+                                className={`inline-flex shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                                  isEarned
+                                    ? 'bg-emerald-500/15 text-emerald-700'
+                                    : isSpent
+                                      ? 'bg-rose-500/15 text-rose-700'
+                                      : 'bg-muted text-muted-foreground'
+                                }`}
+                              >
+                                {typeLabel}
+                              </span>
                               {getTransactionReasonLabel(item.reason)}
                             </p>
                             <p className="mt-0.5 text-xs text-muted-foreground">
                               {formatHistoryDate(item.created_at)} · 잔액 {formatPoints(item.balance_after)}
                             </p>
                           </div>
-                          <span className={`shrink-0 text-sm font-semibold ${isEarned ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                          <span className={`shrink-0 text-sm font-semibold ${
+                            isEarned ? 'text-emerald-600' : isSpent ? 'text-rose-600' : 'text-muted-foreground'
+                          }`}>
                             {item.amount > 0 ? '+' : ''}{formatPoints(item.amount)}
                           </span>
                         </div>
