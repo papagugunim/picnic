@@ -407,7 +407,6 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
     data: allPosts,
     isLoading,
     isFetchingMore,
-    isRefreshing,
     hasMore,
     sentinelRef,
     refresh,
@@ -740,14 +739,6 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
             ))}
           </div>
         </div>
-
-        {/* Refreshing indicator */}
-        {isRefreshing && (
-          <div className="flex items-center justify-center py-2 text-muted-foreground">
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            <span className="text-sm">새로고침 중...</span>
-          </div>
-        )}
 
         {/* Posts list */}
         {posts.length === 0 ? (
