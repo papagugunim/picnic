@@ -196,15 +196,17 @@ export default function SettingsPage() {
       let nextUploadedFilePath: string | null = null
 
       if (avatarFile) {
-        const fileExt = avatarFile.name.split('.').pop() || 'jpg'
-        const fileName = user.id + '-' + Date.now() + '.' + fileExt
+        // RLS 정책이 `avatars/{userId}.{ext}` 패턴을 요구하므로 user id 기반 파일명으로 고정한다.
+        const normalizedExt = (avatarFile.name.split('.').pop() || 'jpg').toLowerCase()
+        const fileExt = normalizedExt.replace(/[^a-z0-9]/g, '') || 'jpg'
+        const fileName = user.id + '.' + fileExt
         const filePath = 'avatars/' + fileName
         nextUploadedFilePath = filePath
         const previousAvatarPath = extractProfileImageStoragePath(profile?.avatar_url)
 
         const { error: uploadError } = await supabase.storage
           .from('profile-images')
-          .upload(filePath, avatarFile, { upsert: false })
+          .upload(filePath, avatarFile, { upsert: true })
 
         if (uploadError) {
           logger.error('Avatar upload error:', uploadError)
