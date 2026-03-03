@@ -1,11 +1,14 @@
 import { createServerClient } from '@/lib/supabase/server'
 import PostDetailClient from '@/components/post/PostDetailClient'
 import type { Metadata } from 'next'
+import type { ComponentProps } from 'react'
 import { getCityNameInKorean } from '@/lib/constants'
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
+
+type PostDetailInitialPost = ComponentProps<typeof PostDetailClient>['initialPost']
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params
@@ -52,14 +55,14 @@ export default async function PostDetailPage({ params }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser()
   const userId = user?.id || null
 
-  let initialPost: any = null
+  let initialPost: PostDetailInitialPost = null
   let initialLikesCount = 0
   let initialInterestsCount = 0
   let initialUserLiked = false
   let initialUserInterested = false
 
   // 서버에서 게시글 상세 데이터 가져오기
-  const { data: postData, error: postError } = await supabase
+  const { data: postData } = await supabase
     .from('posts')
     .select(`
       id,
@@ -95,25 +98,16 @@ export default async function PostDetailPage({ params }: PageProps) {
       ? postData.profiles[0]
       : postData.profiles
 
-    initialPost = {
-      ...postData,
-      profiles: author,
-    }
-
-    // 좋아요, 관심 수 및 사용자 상태를 병렬로 가져오기
-    const queries: PromiseLike<any>[] = [
-      supabase
-        .from('post_likes')
-        .select('id')
-        .eq('post_id', postId),
-      supabase
-        .from('post_interests')
-        .select('id')
-        .eq('post_id', postId),
-    ]
-
     if (userId) {
-      queries.push(
+      const [likesResult, interestsResult, userLikeResult, userInterestResult] = await Promise.all([
+        supabase
+          .from('post_likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', postId),
+        supabase
+          .from('post_interests')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', postId),
         supabase
           .from('post_likes')
           .select('id')
@@ -125,18 +119,35 @@ export default async function PostDetailPage({ params }: PageProps) {
           .select('id')
           .eq('user_id', userId)
           .eq('post_id', postId)
-          .maybeSingle()
-      )
+          .maybeSingle(),
+      ])
+
+      initialLikesCount = likesResult.count || 0
+      initialInterestsCount = interestsResult.count || 0
+      initialUserLiked = !!userLikeResult.data
+      initialUserInterested = !!userInterestResult.data
+    } else {
+      const [likesResult, interestsResult] = await Promise.all([
+        supabase
+          .from('post_likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', postId),
+        supabase
+          .from('post_interests')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', postId),
+      ])
+      initialLikesCount = likesResult.count || 0
+      initialInterestsCount = interestsResult.count || 0
     }
 
-    const results = await Promise.all(queries)
-
-    initialLikesCount = results[0].data?.length || 0
-    initialInterestsCount = results[1].data?.length || 0
-
-    if (userId) {
-      initialUserLiked = !!results[2]?.data
-      initialUserInterested = !!results[3]?.data
+    initialPost = {
+      ...postData,
+      profiles: author,
+      likes_count: initialLikesCount,
+      interests_count: initialInterestsCount,
+      user_liked: initialUserLiked,
+      user_interested: initialUserInterested,
     }
   }
 

@@ -79,7 +79,7 @@ export default async function CommunityPostDetailPage({ params }: { params: Prom
           .select('id')
           .eq('post_id', postId)
           .eq('user_id', userId)
-          .single(),
+          .maybeSingle(),
         supabase
           .from('community_comments')
           .select('*', { count: 'exact', head: true })

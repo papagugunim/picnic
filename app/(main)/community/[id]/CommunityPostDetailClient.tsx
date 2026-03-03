@@ -244,7 +244,7 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
           .select('id')
           .eq('post_id', postId)
           .eq('user_id', user.id)
-          .single(),
+          .maybeSingle(),
         supabase
           .from('community_comments')
           .select('*', { count: 'exact', head: true })

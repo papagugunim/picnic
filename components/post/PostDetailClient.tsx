@@ -240,33 +240,28 @@ export default function PostDetailClient({
         return
       }
 
-      // Get likes count
-      const { data: likesData } = await supabase
-        .from('post_likes')
-        .select('id')
-        .eq('post_id', postId)
-
-      // Get interests count
-      const { data: interestsData } = await supabase
-        .from('post_interests')
-        .select('id')
-        .eq('post_id', postId)
-
-      // Check if user liked
-      const { data: userLikeData } = await supabase
-        .from('post_likes')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('post_id', postId)
-        .maybeSingle()
-
-      // Check if user interested
-      const { data: userInterestData } = await supabase
-        .from('post_interests')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('post_id', postId)
-        .maybeSingle()
+      const [likesCountResult, interestsCountResult, userLikeResult, userInterestResult] = await Promise.all([
+        supabase
+          .from('post_likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', postId),
+        supabase
+          .from('post_interests')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', postId),
+        supabase
+          .from('post_likes')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('post_id', postId)
+          .maybeSingle(),
+        supabase
+          .from('post_interests')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('post_id', postId)
+          .maybeSingle(),
+      ])
 
       // Extract author profile (Supabase returns it as array)
       const author = Array.isArray(postData.profiles)
@@ -276,10 +271,10 @@ export default function PostDetailClient({
       const postWithDetails = {
         ...postData,
         profiles: author,
-        likes_count: likesData?.length || 0,
-        interests_count: interestsData?.length || 0,
-        user_liked: !!userLikeData,
-        user_interested: !!userInterestData,
+        likes_count: likesCountResult.count || 0,
+        interests_count: interestsCountResult.count || 0,
+        user_liked: !!userLikeResult.data,
+        user_interested: !!userInterestResult.data,
       } as Post
 
       // 캐시에 저장 (5분 TTL)
