@@ -30,6 +30,8 @@ export function CommentSection({
   const [newComment, setNewComment] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const commentIdSetRef = useRef(new Set<string>())
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Use ref to avoid infinite loop with onCommentCountChange callback
   const onCommentCountChangeRef = useRef(onCommentCountChange)
@@ -287,7 +289,7 @@ export function CommentSection({
       await fetchComments(false)
     } catch (err) {
       logger.error('Reply error:', err)
-      if (!(err as any)?.message) {
+      if (!(err instanceof Error && err.message)) {
         toast.error('답글 작성 중 오류가 발생했습니다')
       }
       throw err
@@ -363,6 +365,61 @@ export function CommentSection({
   }, [])
 
   const totalCommentCount = countAllComments(comments)
+
+  useEffect(() => {
+    const ids = new Set<string>()
+    const walk = (nodes: ThreadedComment[]) => {
+      nodes.forEach((node) => {
+        ids.add(node.id)
+        if (node.replies && node.replies.length > 0) {
+          walk(node.replies)
+        }
+      })
+    }
+    walk(comments)
+    commentIdSetRef.current = ids
+  }, [comments])
+
+  useEffect(() => {
+    if (!postId) return
+
+    const supabase = createClient()
+    const scheduleSync = () => {
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current)
+      }
+      syncTimerRef.current = setTimeout(() => {
+        void fetchComments(false)
+      }, 180)
+    }
+
+    const channel = supabase
+      .channel(`comment-section-sync:${postId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'community_comments', filter: `post_id=eq.${postId}` },
+        scheduleSync
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'community_likes' },
+        (payload) => {
+          const commentId = (payload.new as { comment_id?: string } | null)?.comment_id
+            || (payload.old as { comment_id?: string } | null)?.comment_id
+          if (commentId && commentIdSetRef.current.has(commentId)) {
+            scheduleSync()
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current)
+      }
+      void supabase.removeChannel(channel)
+    }
+  }, [fetchComments, postId])
 
   return (
     <div className="flex flex-col">

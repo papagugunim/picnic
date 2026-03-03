@@ -3,7 +3,7 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('CommunityDetailPage')
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Heart, MessageCircle, MoreVertical, Trash2, EyeOff, Eye, BarChart2, Edit, X, Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -103,6 +103,7 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showHiddenConfirm, setShowHiddenConfirm] = useState(false)
   const { particles: likeBurstParticles, burstFromElement: burstLikeFromElement } = useEmojiBurst()
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const openGallery = useCallback((images: string[], index: number) => {
     setGalleryImages(images)
@@ -276,6 +277,82 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
     }
   }
 
+  const syncInteractionState = useCallback(async () => {
+    if (!currentUserId) return
+
+    try {
+      const supabase = createClient()
+      const [likesResult, userLikeResult, commentsResult] = await Promise.all([
+        supabase
+          .from('community_likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', postId),
+        supabase
+          .from('community_likes')
+          .select('id')
+          .eq('post_id', postId)
+          .eq('user_id', currentUserId)
+          .maybeSingle(),
+        supabase
+          .from('community_comments')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', postId),
+      ])
+
+      setPost((prev) => prev ? {
+        ...prev,
+        likes_count: likesResult.count || 0,
+        comments_count: commentsResult.count || 0,
+        is_liked: !!userLikeResult.data,
+      } : prev)
+      setCommentCount(commentsResult.count || 0)
+    } catch (error) {
+      logger.warn('Community interaction sync failed:', error)
+    }
+  }, [currentUserId, postId])
+
+  useEffect(() => {
+    if (!currentUserId) return
+
+    const supabase = createClient()
+    void syncInteractionState()
+    const scheduleSync = () => {
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current)
+      }
+      syncTimerRef.current = setTimeout(() => {
+        void syncInteractionState()
+      }, 180)
+    }
+
+    const channel = supabase
+      .channel(`community-detail-sync:${postId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'community_likes', filter: `post_id=eq.${postId}` },
+        scheduleSync
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'community_comments', filter: `post_id=eq.${postId}` },
+        scheduleSync
+      )
+      .subscribe()
+
+    const onFocus = () => {
+      void syncInteractionState()
+    }
+    window.addEventListener('focus', onFocus)
+
+    return () => {
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current)
+      }
+      window.removeEventListener('focus', onFocus)
+      void supabase.removeChannel(channel)
+    }
+  }, [currentUserId, postId, syncInteractionState])
+
   async function togglePostLike() {
     if (!currentUserId || !post) return
 
@@ -290,19 +367,23 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
       const supabase = createClient()
 
       if (post.is_liked) {
-        await supabase
+        const { error } = await supabase
           .from('community_likes')
           .delete()
           .eq('post_id', postId)
           .eq('user_id', currentUserId)
+        if (error) throw error
       } else {
-        await supabase
+        const { error } = await supabase
           .from('community_likes')
           .insert({
             post_id: postId,
             user_id: currentUserId,
           })
+        if (error) throw error
       }
+
+      void syncInteractionState()
     } catch (err) {
       logger.error('Toggle like error:', err)
       // Revert on error

@@ -168,6 +168,7 @@ export default function PostDetailClient({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showHiddenConfirm, setShowHiddenConfirm] = useState(false)
   const { particles: likeBurstParticles, burstFromElement: burstLikeFromElement } = useEmojiBurst()
+  const reactionSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const currentUserId = user?.id || null
   const currentUserRole = profile?.user_role || null
@@ -291,6 +292,93 @@ export default function PostDetailClient({
       setIsLoading(false)
     }
   }
+
+  const syncReactionState = useCallback(async () => {
+    if (!user) return
+
+    try {
+      const supabase = createClient()
+      const [likesResult, interestsResult, userLikeResult, userInterestResult] = await Promise.all([
+        supabase
+          .from('post_likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', postId),
+        supabase
+          .from('post_interests')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', postId),
+        supabase
+          .from('post_likes')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('post_id', postId)
+          .maybeSingle(),
+        supabase
+          .from('post_interests')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('post_id', postId)
+          .maybeSingle(),
+      ])
+
+      setPost((prev) => {
+        if (!prev) return prev
+        const next = {
+          ...prev,
+          likes_count: likesResult.count || 0,
+          interests_count: interestsResult.count || 0,
+          user_liked: !!userLikeResult.data,
+          user_interested: !!userInterestResult.data,
+        }
+        setCache(`cache_post_detail_${postId}`, next, 5 * 60 * 1000)
+        return next
+      })
+    } catch (error) {
+      logger.warn('Reaction sync failed:', error)
+    }
+  }, [postId, user])
+
+  useEffect(() => {
+    if (!user) return
+
+    const supabase = createClient()
+    void syncReactionState()
+    const scheduleSync = () => {
+      if (reactionSyncTimerRef.current) {
+        clearTimeout(reactionSyncTimerRef.current)
+      }
+      reactionSyncTimerRef.current = setTimeout(() => {
+        void syncReactionState()
+      }, 160)
+    }
+
+    const channel = supabase
+      .channel(`post-detail-reactions:${postId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'post_likes', filter: `post_id=eq.${postId}` },
+        scheduleSync
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'post_interests', filter: `post_id=eq.${postId}` },
+        scheduleSync
+      )
+      .subscribe()
+
+    const onFocus = () => {
+      void syncReactionState()
+    }
+    window.addEventListener('focus', onFocus)
+
+    return () => {
+      if (reactionSyncTimerRef.current) {
+        clearTimeout(reactionSyncTimerRef.current)
+      }
+      window.removeEventListener('focus', onFocus)
+      void supabase.removeChannel(channel)
+    }
+  }, [postId, syncReactionState, user])
 
   async function startChat() {
     if (!post || !user) return
@@ -457,16 +545,20 @@ export default function PostDetailClient({
       const supabase = createClient()
 
       if (currentLiked) {
-        await supabase
+        const { error } = await supabase
           .from('post_likes')
           .delete()
           .eq('user_id', user.id)
           .eq('post_id', postId)
+        if (error) throw error
       } else {
-        await supabase
+        const { error } = await supabase
           .from('post_likes')
           .insert({ user_id: user.id, post_id: postId })
+        if (error) throw error
       }
+
+      void syncReactionState()
     } catch (err) {
       logger.error('Toggle like error:', err)
       // 실패 시 원래 상태로 복구
@@ -496,16 +588,20 @@ export default function PostDetailClient({
       const supabase = createClient()
 
       if (currentInterested) {
-        await supabase
+        const { error } = await supabase
           .from('post_interests')
           .delete()
           .eq('user_id', user.id)
           .eq('post_id', postId)
+        if (error) throw error
       } else {
-        await supabase
+        const { error } = await supabase
           .from('post_interests')
           .insert({ user_id: user.id, post_id: postId })
+        if (error) throw error
       }
+
+      void syncReactionState()
     } catch (err) {
       logger.error('Toggle interest error:', err)
       // 실패 시 원래 상태로 복구

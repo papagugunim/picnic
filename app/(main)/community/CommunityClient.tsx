@@ -94,6 +94,9 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
   const [focusCommentsOnOpen, setFocusCommentsOnOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const postIdSetRef = useRef(new Set<string>())
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hasInitialRevalidatedRef = useRef(false)
   const { particles: likeBurstParticles, burstFromElement: burstLikeFromElement } = useEmojiBurst()
 
   const handleLikeBurst = useCallback((target: HTMLElement, currentlyLiked: boolean) => {
@@ -200,6 +203,77 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
     return allPosts.filter(post => post.category === selectedCategory)
   }, [allPosts, selectedCategory])
 
+  useEffect(() => {
+    postIdSetRef.current = new Set(allPosts.map((post) => post.id))
+  }, [allPosts])
+
+  const scheduleRefresh = useCallback(() => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current)
+    }
+    refreshTimerRef.current = setTimeout(() => {
+      void refresh()
+    }, 220)
+  }, [refresh])
+
+  useEffect(() => {
+    if (!isInitialized || !user || hasInitialRevalidatedRef.current) return
+    hasInitialRevalidatedRef.current = true
+    if (initialPosts.length > 0) {
+      void refresh()
+    }
+  }, [initialPosts.length, isInitialized, refresh, user])
+
+  useEffect(() => {
+    if (!isInitialized || !user) return
+
+    const onFocus = () => {
+      void refresh()
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void refresh()
+      }
+    }
+
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [isInitialized, refresh, user])
+
+  useEffect(() => {
+    if (!isInitialized || !user) return
+
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`community-reactions:${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_likes' }, (payload) => {
+        const postId = (payload.new as { post_id?: string } | null)?.post_id
+          || (payload.old as { post_id?: string } | null)?.post_id
+        if (postId && postIdSetRef.current.has(postId)) {
+          scheduleRefresh()
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_comments' }, (payload) => {
+        const postId = (payload.new as { post_id?: string } | null)?.post_id
+          || (payload.old as { post_id?: string } | null)?.post_id
+        if (postId && postIdSetRef.current.has(postId)) {
+          scheduleRefresh()
+        }
+      })
+      .subscribe()
+
+    return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current)
+      }
+      void supabase.removeChannel(channel)
+    }
+  }, [isInitialized, scheduleRefresh, user])
+
   // Post detail modal functions with browser back button support
   const openPostModal = useCallback(async (post: CommunityPost, e?: React.MouseEvent) => {
     if (e) {
@@ -296,19 +370,23 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
       const supabase = createClient()
 
       if (currentlyLiked) {
-        await supabase
+        const { error } = await supabase
           .from('community_likes')
           .delete()
           .eq('post_id', selectedPost.id)
           .eq('user_id', currentUserId)
+        if (error) throw error
       } else {
-        await supabase
+        const { error } = await supabase
           .from('community_likes')
           .insert({
             post_id: selectedPost.id,
             user_id: currentUserId,
           })
+        if (error) throw error
       }
+
+      scheduleRefresh()
     } catch (err) {
       logger.error('Toggle like error:', err)
       setSelectedPost(prev => prev ? {
@@ -322,7 +400,7 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
         likes_count: currentlyLiked ? post.likes_count + 1 : post.likes_count - 1
       }))
     }
-  }, [currentUserId, selectedPost, updateItem])
+  }, [currentUserId, scheduleRefresh, selectedPost, updateItem])
 
   async function toggleLike(postId: string, currentlyLiked: boolean) {
     if (!currentUserId) return
@@ -337,19 +415,23 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
       const supabase = createClient()
 
       if (currentlyLiked) {
-        await supabase
+        const { error } = await supabase
           .from('community_likes')
           .delete()
           .eq('post_id', postId)
           .eq('user_id', currentUserId)
+        if (error) throw error
       } else {
-        await supabase
+        const { error } = await supabase
           .from('community_likes')
           .insert({
             post_id: postId,
             user_id: currentUserId,
           })
+        if (error) throw error
       }
+
+      scheduleRefresh()
     } catch (err) {
       logger.error('Toggle like error:', err)
       updateItem(postId, (post) => ({

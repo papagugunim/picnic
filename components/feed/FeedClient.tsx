@@ -338,6 +338,9 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
   const userStations = useMemo(() => profile?.preferred_metro_stations ?? [], [profile?.preferred_metro_stations])
   const isInitialized = !userLoading
   const viewedPostIds = useRef(new Set<string>())
+  const postIdSetRef = useRef(new Set<string>())
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hasInitialRevalidatedRef = useRef(false)
   const { particles: likeBurstParticles, burstFromElement: burstLikeFromElement } = useEmojiBurst()
 
   const handleLikeBurst = useCallback((target: HTMLElement, currentlyLiked: boolean) => {
@@ -461,6 +464,77 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
     }
   }, [allPosts, selectedTab, nearbyStationsList])
 
+  useEffect(() => {
+    postIdSetRef.current = new Set(allPosts.map((post) => post.id))
+  }, [allPosts])
+
+  const scheduleRefresh = useCallback(() => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current)
+    }
+    refreshTimerRef.current = setTimeout(() => {
+      void refresh()
+    }, 220)
+  }, [refresh])
+
+  useEffect(() => {
+    if (!isInitialized || !user || hasInitialRevalidatedRef.current) return
+    hasInitialRevalidatedRef.current = true
+    if (initialPosts.length > 0) {
+      void refresh()
+    }
+  }, [initialPosts.length, isInitialized, refresh, user])
+
+  useEffect(() => {
+    if (!isInitialized || !user) return
+
+    const onFocus = () => {
+      void refresh()
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void refresh()
+      }
+    }
+
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [isInitialized, refresh, user])
+
+  useEffect(() => {
+    if (!isInitialized || !user) return
+
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`feed-reactions:${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_likes' }, (payload) => {
+        const next = (payload.new as { post_id?: string } | null)?.post_id
+        const prev = (payload.old as { post_id?: string } | null)?.post_id
+        if ((next && postIdSetRef.current.has(next)) || (prev && postIdSetRef.current.has(prev))) {
+          scheduleRefresh()
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_interests' }, (payload) => {
+        const next = (payload.new as { post_id?: string } | null)?.post_id
+        const prev = (payload.old as { post_id?: string } | null)?.post_id
+        if ((next && postIdSetRef.current.has(next)) || (prev && postIdSetRef.current.has(prev))) {
+          scheduleRefresh()
+        }
+      })
+      .subscribe()
+
+    return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current)
+      }
+      void supabase.removeChannel(channel)
+    }
+  }, [isInitialized, scheduleRefresh, user])
+
   const { boostedPosts, regularPosts } = useMemo(() => {
     if (posts.length === 0) {
       return { boostedPosts: [] as Post[], regularPosts: [] as Post[] }
@@ -507,16 +581,20 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
       const supabase = createClient()
 
       if (currentlyLiked) {
-        await supabase
+        const { error } = await supabase
           .from('post_likes')
           .delete()
           .eq('user_id', user.id)
           .eq('post_id', postId)
+        if (error) throw error
       } else {
-        await supabase
+        const { error } = await supabase
           .from('post_likes')
           .insert({ user_id: user.id, post_id: postId })
+        if (error) throw error
       }
+
+      scheduleRefresh()
     } catch (err) {
       logger.error('Toggle like error:', err)
       // Revert on error
@@ -542,16 +620,20 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
       const supabase = createClient()
 
       if (currentlyInterested) {
-        await supabase
+        const { error } = await supabase
           .from('post_interests')
           .delete()
           .eq('user_id', user.id)
           .eq('post_id', postId)
+        if (error) throw error
       } else {
-        await supabase
+        const { error } = await supabase
           .from('post_interests')
           .insert({ user_id: user.id, post_id: postId })
+        if (error) throw error
       }
+
+      scheduleRefresh()
     } catch (err) {
       logger.error('Toggle interest error:', err)
       // Revert on error
