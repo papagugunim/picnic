@@ -26,7 +26,7 @@ function topicButtonClass(value: RussiaNewsTopic, active: boolean): string {
   const toneClass = value
     ? getRussiaNewsTopicBadgeClass(value)
     : 'bg-zinc-200 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100'
-  return `${toneClass} border border-black/5 dark:border-white/10 ${active ? 'shadow-[inset_0_0_0_1px_rgba(0,0,0,0.25)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)]' : 'hover:brightness-95'}`
+  return `${toneClass} !text-black dark:!text-black border border-black/5 dark:border-white/10 ${active ? 'shadow-[inset_0_0_0_1px_rgba(0,0,0,0.25)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)]' : 'hover:brightness-95'}`
 }
 
 export function RussiaNewsSection() {
