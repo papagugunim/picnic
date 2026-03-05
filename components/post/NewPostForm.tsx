@@ -40,6 +40,7 @@ export default function NewPostForm() {
   const router = useRouter()
   const [images, setImages] = useState<File[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const submitLockRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [freeLabel, setFreeLabel] = useState('무료나눔')
   const [freeBounce, setFreeBounce] = useState(false)
@@ -77,6 +78,11 @@ export default function NewPostForm() {
   })
 
   async function onSubmit(values: PostFormValues) {
+    if (submitLockRef.current || isLoading) {
+      return
+    }
+
+    submitLockRef.current = true
     const supabase = createClient()
     let uploadedImagePaths: string[] = []
 
@@ -157,7 +163,7 @@ export default function NewPostForm() {
 
       logger.log('Inserting post data:', postData)
 
-      const { data: post, error: postError } = await supabase
+      const { error: postError } = await supabase
         .from('posts')
         .insert(postData)
         .select()
@@ -184,6 +190,7 @@ export default function NewPostForm() {
       setSubmitStatusText('⚠️ 다시 시도')
     } finally {
       setIsLoading(false)
+      submitLockRef.current = false
     }
   }
 

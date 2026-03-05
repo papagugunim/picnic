@@ -3,7 +3,7 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('Page')
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -27,12 +27,17 @@ export default function NewCommunityPostPage() {
   const [selectedCategory, setSelectedCategory] = useState('chat')
   const [images, setImages] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const submitLockRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [submitProgress, setSubmitProgress] = useState(0)
   const [submitStatusText, setSubmitStatusText] = useState('🧺 준비 중')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (submitLockRef.current || isSubmitting) {
+      return
+    }
 
     if (!content.trim()) {
       setError('내용을 입력해주세요')
@@ -46,6 +51,7 @@ export default function NewCommunityPostPage() {
     let uploadedImagePaths: string[] = []
 
     try {
+      submitLockRef.current = true
       setIsSubmitting(true)
       setError(null)
       setSubmitProgress(6)
@@ -138,6 +144,7 @@ export default function NewCommunityPostPage() {
       setSubmitStatusText('⚠️ 다시 시도')
     } finally {
       setIsSubmitting(false)
+      submitLockRef.current = false
     }
   }
 
