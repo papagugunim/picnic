@@ -20,6 +20,14 @@ interface MilkPointTransaction {
   created_at: string
 }
 
+interface MilkPointCategorySummary {
+  reason: string
+  label: string
+  count: number
+  earned: number
+  spent: number
+}
+
 interface MilkPointModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -64,17 +72,6 @@ function formatPoints(value: number): string {
   return `${value.toLocaleString()}P`
 }
 
-function formatHistoryDate(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-
-  const month = date.getMonth() + 1
-  const day = date.getDate()
-  const hour = String(date.getHours()).padStart(2, '0')
-  const minute = String(date.getMinutes()).padStart(2, '0')
-  return `${month}/${day} ${hour}:${minute}`
-}
-
 export function MilkPointModal({
   open,
   onOpenChange,
@@ -96,6 +93,36 @@ export function MilkPointModal({
     return { earned, spent }
   }, [history])
 
+  const categorySummary = useMemo(() => {
+    const byReason = new Map<string, MilkPointCategorySummary>()
+
+    for (const item of history) {
+      const reason = item.reason || 'other'
+      const existing = byReason.get(reason) || {
+        reason,
+        label: getTransactionReasonLabel(reason),
+        count: 0,
+        earned: 0,
+        spent: 0,
+      }
+
+      existing.count += 1
+      if (item.amount > 0) {
+        existing.earned += item.amount
+      } else if (item.amount < 0) {
+        existing.spent += Math.abs(item.amount)
+      }
+
+      byReason.set(reason, existing)
+    }
+
+    const rows = Array.from(byReason.values())
+    const earnedRows = rows.filter((row) => row.earned > 0).sort((a, b) => b.earned - a.earned)
+    const spentRows = rows.filter((row) => row.spent > 0).sort((a, b) => b.spent - a.spent)
+
+    return { earnedRows, spentRows }
+  }, [history])
+
   useEffect(() => {
     if (!open) return
 
@@ -111,7 +138,7 @@ export function MilkPointModal({
           .from('milk_point_transactions')
           .select('id, amount, balance_after, reason, created_at')
           .order('created_at', { ascending: false })
-          .limit(20)
+          .limit(200)
 
         if (cancelled) return
 
@@ -183,7 +210,7 @@ export function MilkPointModal({
               <section className="rounded-2xl border border-border bg-card p-4">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <h3 className="text-sm font-semibold">내 밀크 포인트 적립/사용 내역</h3>
-                  <span className="text-xs text-muted-foreground">최근 20건</span>
+                  <span className="text-xs text-muted-foreground">최근 200건 기준</span>
                 </div>
                 {isLoadingHistory ? (
                   <p className="text-sm text-muted-foreground">내역을 불러오는 중입니다...</p>
@@ -203,42 +230,43 @@ export function MilkPointModal({
                         <p className="text-sm font-semibold text-rose-700">-{formatPoints(historySummary.spent)}</p>
                       </div>
                     </div>
-                    {history.map((item) => {
-                      const isEarned = item.amount > 0
-                      const isSpent = item.amount < 0
-                      const typeLabel = isEarned ? '적립' : isSpent ? '사용' : '기타'
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex items-start justify-between gap-3 rounded-xl border border-border/80 px-3 py-2"
-                        >
-                          <div className="min-w-0">
-                            <p className="flex items-center gap-1.5 truncate text-sm font-medium">
-                              <span
-                                className={`inline-flex shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                                  isEarned
-                                    ? 'bg-emerald-500/15 text-emerald-700'
-                                    : isSpent
-                                      ? 'bg-rose-500/15 text-rose-700'
-                                      : 'bg-muted text-muted-foreground'
-                                }`}
-                              >
-                                {typeLabel}
-                              </span>
-                              {getTransactionReasonLabel(item.reason)}
-                            </p>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                              {formatHistoryDate(item.created_at)} · 잔액 {formatPoints(item.balance_after)}
-                            </p>
-                          </div>
-                          <span className={`shrink-0 text-sm font-semibold ${
-                            isEarned ? 'text-emerald-600' : isSpent ? 'text-rose-600' : 'text-muted-foreground'
-                          }`}>
-                            {item.amount > 0 ? '+' : ''}{formatPoints(item.amount)}
-                          </span>
+                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2">
+                      <p className="mb-1 text-[11px] font-semibold text-emerald-700">적립 카테고리</p>
+                      {categorySummary.earnedRows.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">적립 내역이 없습니다.</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {categorySummary.earnedRows.map((row) => (
+                            <div key={`earned-${row.reason}`} className="flex items-center justify-between gap-2 text-sm">
+                              <p className="min-w-0 truncate text-foreground">
+                                {row.label}
+                                <span className="ml-1 text-xs text-muted-foreground">({row.count}회)</span>
+                              </p>
+                              <span className="shrink-0 font-semibold text-emerald-700">+{formatPoints(row.earned)}</span>
+                            </div>
+                          ))}
                         </div>
-                      )
-                    })}
+                      )}
+                    </div>
+
+                    <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.06] px-3 py-2">
+                      <p className="mb-1 text-[11px] font-semibold text-rose-700">사용 카테고리</p>
+                      {categorySummary.spentRows.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">사용 내역이 없습니다.</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {categorySummary.spentRows.map((row) => (
+                            <div key={`spent-${row.reason}`} className="flex items-center justify-between gap-2 text-sm">
+                              <p className="min-w-0 truncate text-foreground">
+                                {row.label}
+                                <span className="ml-1 text-xs text-muted-foreground">({row.count}회)</span>
+                              </p>
+                              <span className="shrink-0 font-semibold text-rose-700">-{formatPoints(row.spent)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </section>
