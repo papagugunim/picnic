@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
         limit,
       }),
       fetchRussiaNewsFromUpstream({
-        endpoint: '/api/today',
+        endpoint: '/api/today-news',
         cursor: null,
         topic,
         limit,
