@@ -34,6 +34,8 @@ export const CATEGORIES = [
   { value: 'vehicles', label: '자동차' },
   { value: 'realestate', label: '부동산' },
   { value: 'jobs', label: '구직/구인' },
+  { value: 'handcarry', label: '핸드캐리' },
+  { value: 'finance', label: '금융' },
   { value: 'other', label: '기타' },
 ] as const
 

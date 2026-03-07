@@ -17,6 +17,8 @@ import {
   Car,
   Home,
   Briefcase,
+  Luggage,
+  Landmark,
   Package,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -36,6 +38,8 @@ const categoryIcons = {
   vehicles: Car,
   realestate: Home,
   jobs: Briefcase,
+  handcarry: Luggage,
+  finance: Landmark,
   other: Package,
 }
 
@@ -51,6 +55,8 @@ const categoryBurstEmojis: Record<string, string[]> = {
   vehicles: ['🚗', '🛵', '✨'],
   realestate: ['🏡', '🪟', '✨'],
   jobs: ['💼', '📈', '✨'],
+  handcarry: ['🧳', '✈️', '✨'],
+  finance: ['💳', '📊', '✨'],
   other: ['🎁', '⭐', '✨'],
 }
 
