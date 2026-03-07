@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/react";
 import PostHogProvider from "@/components/analytics/PostHogProvider";
+import PerformanceTracker from "@/components/analytics/PerformanceTracker";
 
 export const metadata: Metadata = {
   title: "picnic - 해외 한인 커뮤니티",
@@ -82,6 +83,7 @@ export default function RootLayout({
             themes={['light', 'dark']}
           >
             {children}
+            <PerformanceTracker />
             <Toaster position="top-center" richColors />
           </ThemeProvider>
         </PostHogProvider>
