@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { getAuthUserIdFast } from '@/lib/supabase/auth-performance'
 import FeedClient from '@/components/feed/FeedClient'
 import type { Metadata } from 'next'
 import type { ComponentProps } from 'react'
@@ -38,8 +39,7 @@ export default async function FeedPage() {
   const supabase = await createServerClient()
 
   // 서버에서 인증된 사용자 확인
-  const { data: { user } } = await supabase.auth.getUser()
-  const userId = user?.id || null
+  const userId = await getAuthUserIdFast(supabase)
 
   // 서버에서 초기 게시글 목록 가져오기
   let initialPosts: InitialPost[] = []

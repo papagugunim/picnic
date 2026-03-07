@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { getAuthUserIdFast } from '@/lib/supabase/auth-performance'
 
 /**
  * 인증 미들웨어
@@ -90,11 +91,11 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // 실제 토큰 검증 (만료된 토큰 자동 갱신 포함)
-  const { data: { user } } = await supabase.auth.getUser()
+  // 실제 토큰 검증 (claims 우선 + getUser fallback)
+  const userId = await getAuthUserIdFast(supabase)
 
   // 5. 인증되지 않은 사용자 → 로그인으로 리다이렉트 (공개 경로는 이미 위에서 반환됨)
-  if (!user) {
+  if (!userId) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return applySupabaseCookies(NextResponse.redirect(loginUrl))
@@ -105,7 +106,7 @@ export async function middleware(request: NextRequest) {
   const { data: profile } = await supabase
     .from('profiles')
     .select('onboarding_completed')
-    .eq('id', user.id)
+    .eq('id', userId)
     .maybeSingle()
 
   const onboardingCompleted = !!profile?.onboarding_completed

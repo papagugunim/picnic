@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { getAuthUserIdFast } from '@/lib/supabase/auth-performance'
 import CommunityClient from './CommunityClient'
 import type { CommunityPost } from '@/components/community/CommunityPostItem'
 import type { Metadata } from 'next'
@@ -35,8 +36,7 @@ type RankedCommunityPostRow = {
 export default async function CommunityPage() {
   const supabase = await createServerClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  const userId = user?.id || null
+  const userId = await getAuthUserIdFast(supabase)
 
   let initialPosts: CommunityPost[] = []
   let initialCursor: string | null = null

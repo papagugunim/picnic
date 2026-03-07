@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
+import { getAuthUserIdFast } from "@/lib/supabase/auth-performance";
 
 export default async function HomePage() {
   // 로그인한 사용자는 feed로 리다이렉트
   const supabase = await createServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const userId = await getAuthUserIdFast(supabase);
 
-  if (user) {
+  if (userId) {
     redirect('/feed');
   }
   return (
