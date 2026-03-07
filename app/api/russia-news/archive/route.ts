@@ -150,6 +150,32 @@ export async function GET(request: NextRequest) {
         )
       }
 
+      const cursorUpstreamPayload = filterPayloadToArchiveWindow(filterPayloadByTopic(
+        await fetchRussiaNewsFromUpstream({
+          endpoint: '/api/archive',
+          cursor,
+          topic,
+          limit,
+        }),
+        topic
+      ))
+
+      if (cursorUpstreamPayload.items.length > 0) {
+        const mergedCursorItems = mergeArchiveItems(cursorUpstreamPayload.items, limit)
+        await saveRussiaNewsArchiveItems(mergedCursorItems)
+        writeCachedRussiaNews('archive', topic, mergedCursorItems)
+        await writeUpstashRussiaNews('archive', topic, limit, cursor, mergedCursorItems)
+        return NextResponse.json(
+          { items: mergedCursorItems, stale: true, fallback: 'upstream-cursor' },
+          {
+            headers: {
+              'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+              'X-Russia-News-Fallback': 'upstream-cursor',
+            },
+          }
+        )
+      }
+
       return NextResponse.json(
         { items: [], stale: true, fallback: 'empty-after-cursor' },
         {
