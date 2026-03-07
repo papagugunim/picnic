@@ -16,6 +16,7 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import { getLoadingMessage } from '@/lib/loading-messages'
 import { BreadLevelModal } from '@/components/bread-level-modal'
 import { MilkPointModal } from '@/components/milk-point-modal'
+import { toast } from 'sonner'
 import {
   readProfileViewCache,
   writeProfileViewCache,
@@ -201,6 +202,7 @@ export default function ProfilePage() {
   const [isBreadModalOpen, setIsBreadModalOpen] = useState(false)
   const [isMilkModalOpen, setIsMilkModalOpen] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [isContactingDeveloper, setIsContactingDeveloper] = useState(false)
   const [breadScoreBreakdown, setBreadScoreBreakdown] = useState<BreadScoreBreakdown | null>(null)
   const [milkPoints, setMilkPoints] = useState<number | null>(null)
   const [receivedReviews, setReceivedReviews] = useState<ReceivedReview[]>([])
@@ -579,6 +581,80 @@ export default function ProfilePage() {
       logger.error('Logout error:', err)
     } finally {
       setShowLogoutConfirm(false)
+    }
+  }
+
+  async function contactDeveloper() {
+    if (isContactingDeveloper) return
+
+    try {
+      setIsContactingDeveloper(true)
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) {
+        router.push('/login')
+        return
+      }
+
+      const { data: byName, error: byNameError } = await supabase
+        .from('profiles')
+        .select('id, full_name, user_role')
+        .eq('full_name', '피크닉개발자')
+        .limit(1)
+        .maybeSingle()
+
+      if (byNameError) {
+        logger.error('Developer lookup by name error:', byNameError)
+      }
+
+      let developerId = byName?.id || null
+
+      if (!developerId) {
+        const { data: byRole, error: byRoleError } = await supabase
+          .from('profiles')
+          .select('id, full_name, user_role')
+          .eq('user_role', 'developer')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (byRoleError) {
+          logger.error('Developer lookup by role error:', byRoleError)
+        }
+
+        developerId = byRole?.id || null
+      }
+
+      if (!developerId) {
+        toast.error('개발자 계정을 찾을 수 없습니다')
+        return
+      }
+
+      if (developerId === user.id) {
+        toast.message('현재 개발자 계정입니다')
+        router.push('/chats')
+        return
+      }
+
+      const { data: roomId, error: roomError } = await supabase.rpc('get_or_create_chat_room', {
+        p_user1_id: user.id,
+        p_user2_id: developerId,
+        p_post_id: null,
+      })
+
+      if (roomError || !roomId) {
+        logger.error('Developer chat room creation error:', roomError)
+        toast.error('개발자 채팅방 연결에 실패했습니다')
+        return
+      }
+
+      router.push(`/chats/${roomId}`)
+    } catch (error) {
+      logger.error('Contact developer error:', error)
+      toast.error('개발자 채팅방 연결 중 오류가 발생했습니다')
+    } finally {
+      setIsContactingDeveloper(false)
     }
   }
 
@@ -1078,17 +1154,31 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* 로그아웃 버튼 */}
-      {isOwnProfile && (
-        <div className="max-w-4xl mx-auto px-4 pb-24">
+      <div className="max-w-4xl mx-auto px-4 pb-24">
+        {/* 로그아웃 버튼 */}
+        {isOwnProfile && (
           <button
             onClick={requestLogout}
             className="w-full py-4 text-center text-muted-foreground hover:text-destructive transition-colors"
           >
             로그아웃
           </button>
+        )}
+
+        <div className="flex flex-col items-center gap-2 pt-2">
+          <p className="text-xs text-muted-foreground">(주)모스트월드</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={contactDeveloper}
+            disabled={isContactingDeveloper}
+            className="min-w-44"
+          >
+            {isContactingDeveloper ? '연결 중...' : '개발자에게 연락하기'}
+          </Button>
         </div>
-      )}
+      </div>
 
       {/* 브레드 등급 설명 모달 */}
       <BreadLevelModal
