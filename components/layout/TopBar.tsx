@@ -29,6 +29,35 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
   const isAdminOrDeveloper = Boolean(profile?.user_role && ['admin', 'developer'].includes(profile.user_role))
   const { pendingReportCount } = usePendingReportCount(!isFullscreenPage && isAdminOrDeveloper)
 
+  useEffect(() => {
+    if (isFullscreenPage) return
+
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let idleHandle: number | null = null
+
+    const runPrefetch = () => {
+      router.prefetch('/search')
+      router.prefetch('/notifications')
+      router.prefetch('/settings')
+      if (isAdminOrDeveloper) {
+        router.prefetch('/admin')
+      }
+    }
+
+    if ('requestIdleCallback' in window) {
+      idleHandle = window.requestIdleCallback(runPrefetch, { timeout: 1800 })
+    } else {
+      timer = setTimeout(runPrefetch, 700)
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer)
+      if (idleHandle !== null && 'cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleHandle)
+      }
+    }
+  }, [isAdminOrDeveloper, isFullscreenPage, router])
+
   // 스크롤 방향 감지 - 직접 구현
   const [scrollHidden, setScrollHidden] = useState(false)
   const lastScrollY = useRef(0)
@@ -127,55 +156,63 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
         {/* 오른쪽: 검색, 알림, 관리자, 설정 */}
         <div className="flex items-center gap-2">
           <Button
+            asChild
             variant="ghost"
             size="icon"
             className="w-9 h-9"
-            onClick={() => router.push('/search')}
           >
-            <Search className="w-5 h-5" />
-            <span className="sr-only">검색</span>
+            <Link href="/search">
+              <Search className="w-5 h-5" />
+              <span className="sr-only">검색</span>
+            </Link>
           </Button>
 
           <Button
+            asChild
             variant="ghost"
             size="icon"
             className="w-9 h-9 relative"
-            onClick={() => router.push('/notifications')}
           >
-            <Bell className="w-5 h-5" />
-            <span className="sr-only">알림</span>
-            {/* 알림 배지 */}
-            {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
-            )}
+            <Link href="/notifications">
+              <Bell className="w-5 h-5" />
+              <span className="sr-only">알림</span>
+              {/* 알림 배지 */}
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
+              )}
+            </Link>
           </Button>
 
           {/* 관리자 메뉴 (admin/developer만 표시) */}
           {isAdminOrDeveloper && (
             <Button
+              asChild
               variant="ghost"
               size="icon"
               className="w-9 h-9 relative"
-              onClick={() => router.push('/admin')}
             >
-              <Shield className="w-5 h-5" />
-              <span className="sr-only">관리자</span>
-              {pendingReportCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center leading-none">
-                  {pendingReportCount > 99 ? '99+' : pendingReportCount}
-                </span>
-              )}
+              <Link href="/admin">
+                <Shield className="w-5 h-5" />
+                <span className="sr-only">관리자</span>
+                {pendingReportCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center leading-none">
+                    {pendingReportCount > 99 ? '99+' : pendingReportCount}
+                  </span>
+                )}
+              </Link>
             </Button>
           )}
 
           <Button
+            asChild
             variant="ghost"
             size="icon"
             className="w-9 h-9"
-            onClick={() => router.push('/settings')}
           >
-            <Settings className="w-5 h-5" />
-            <span className="sr-only">설정</span>
+            <Link href="/settings">
+              <Settings className="w-5 h-5" />
+              <span className="sr-only">설정</span>
+            </Link>
           </Button>
         </div>
       </div>

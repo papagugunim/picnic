@@ -1,10 +1,19 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { TrendingUp, Calculator, RefreshCw } from 'lucide-react'
 import { ExchangeRates, OHLCData, ChartPeriod, ChartType } from './types'
-import { ExchangeCalculatorModal } from './ExchangeCalculatorModal'
-import { ExchangeChartModal } from './ExchangeChartModal'
+
+const ExchangeCalculatorModal = dynamic(
+  () => import('./ExchangeCalculatorModal').then((module) => module.ExchangeCalculatorModal),
+  { ssr: false }
+)
+
+const ExchangeChartModal = dynamic(
+  () => import('./ExchangeChartModal').then((module) => module.ExchangeChartModal),
+  { ssr: false }
+)
 
 interface ExchangeSectionProps {
   exchangeRates: ExchangeRates | null

@@ -4,6 +4,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useCallback, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { Link2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCache, setCache, clearCache, CACHE_KEYS } from '@/lib/cache'
@@ -11,9 +12,18 @@ import { usePageVisibility } from '@/lib/hooks/usePageVisibility'
 import { WeatherSection } from '@/components/today/WeatherSection'
 import { ExchangeSection } from '@/components/today/ExchangeSection'
 import { NewsSection } from '@/components/today/NewsSection'
-import { RussiaNewsSection } from '@/components/today/RussiaNewsSection'
 import { WEATHER_ICONS, CITY_COORDS, USEFUL_LINKS } from '@/components/today/constants'
 import type { WeatherData, WeatherCondition, ExchangeRates, OHLCData, NewsItem } from '@/components/today/types'
+
+const RussiaNewsSection = dynamic(
+  () => import('@/components/today/RussiaNewsSection').then((module) => module.RussiaNewsSection),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-lg p-2.5 text-sm text-muted-foreground">실시간 뉴스를 불러오는 중...</div>
+    ),
+  }
+)
 
 export default function TodayPage() {
   const isPageVisible = usePageVisibility(true)

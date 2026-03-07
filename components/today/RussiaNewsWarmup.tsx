@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { usePathname } from 'next/navigation'
 
 import { useUser } from '@/lib/contexts/UserContext'
 import { createNamespacedLogger } from '@/lib/logger'
@@ -21,6 +22,7 @@ function isLowBandwidthConnection() {
 
 export function RussiaNewsWarmup() {
   const { user, loading } = useUser()
+  const pathname = usePathname()
   const warmedUserIdRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -28,6 +30,10 @@ export function RussiaNewsWarmup() {
 
     if (!user?.id) {
       warmedUserIdRef.current = null
+      return
+    }
+
+    if (pathname?.startsWith('/today')) {
       return
     }
 
@@ -70,7 +76,7 @@ export function RussiaNewsWarmup() {
         window.cancelIdleCallback(idleHandle)
       }
     }
-  }, [loading, user?.id])
+  }, [loading, pathname, user?.id])
 
   return null
 }

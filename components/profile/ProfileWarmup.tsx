@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 import { useUser } from '@/lib/contexts/UserContext'
 import { createNamespacedLogger } from '@/lib/logger'
@@ -29,6 +29,7 @@ function isLowBandwidthConnection() {
 export function ProfileWarmup() {
   const { user, loading } = useUser()
   const router = useRouter()
+  const pathname = usePathname()
   const warmedUserIdRef = useRef<string | null>(null)
   const prefetchedUserIdRef = useRef<string | null>(null)
 
@@ -38,6 +39,10 @@ export function ProfileWarmup() {
     if (!user?.id) {
       warmedUserIdRef.current = null
       prefetchedUserIdRef.current = null
+      return
+    }
+
+    if (pathname?.startsWith('/profile')) {
       return
     }
 
@@ -124,7 +129,7 @@ export function ProfileWarmup() {
         window.cancelIdleCallback(idleHandle)
       }
     }
-  }, [loading, router, user?.id])
+  }, [loading, pathname, router, user?.id])
 
   return null
 }

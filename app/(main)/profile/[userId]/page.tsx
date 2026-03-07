@@ -1021,6 +1021,7 @@ export default function ProfilePage() {
                   <Link
                     key={post.id}
                     href={`/post/${post.id}`}
+                    prefetch={false}
                     className="group cursor-pointer"
                   >
                     <div className="aspect-square rounded-xl overflow-hidden bg-muted mb-2 relative">
@@ -1089,6 +1090,7 @@ export default function ProfilePage() {
               <Link
                 key={post.id}
                 href={`/post/${post.id}`}
+                prefetch={false}
                 className="group cursor-pointer"
               >
                 <div className="aspect-square rounded-xl overflow-hidden bg-muted mb-2 relative">
@@ -1150,6 +1152,7 @@ export default function ProfilePage() {
                   <Link
                     key={post.id}
                     href={`/community/${post.id}`}
+                    prefetch={false}
                     className="block bg-card border border-border rounded-xl p-4 hover:shadow-md transition-shadow"
                   >
                     <h3 className="font-semibold text-lg mb-2">{post.title}</h3>

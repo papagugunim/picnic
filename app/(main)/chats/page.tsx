@@ -141,6 +141,7 @@ export default function ChatsPage() {
                   >
                     <Link
                       href={`/chats/${room.id}`}
+                      prefetch={false}
                       className="block hover:bg-muted/50 transition-colors"
                     >
                       <div className="flex items-center gap-3 p-4">

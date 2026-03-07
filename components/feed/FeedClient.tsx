@@ -144,6 +144,7 @@ function FeedPostItem({
       <Link
         ref={linkRef}
         href={`/post/${post.id}`}
+        prefetch={false}
         className="relative flex gap-3 p-3 transition-colors hover:bg-muted/30"
       >
       {showMoreMenu && (

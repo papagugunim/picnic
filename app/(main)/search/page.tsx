@@ -359,6 +359,7 @@ export default function SearchPage() {
                   <Link
                     key={`post-${result.id}`}
                     href={`/post/${result.id}`}
+                    prefetch={false}
                     className="block bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow"
                   >
                     <div className="flex gap-4 p-4">
@@ -413,6 +414,7 @@ export default function SearchPage() {
                   <Link
                     key={`community-${result.id}`}
                     href={`/community/${result.id}`}
+                    prefetch={false}
                     className="block bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow"
                   >
                     <div className="p-4">
