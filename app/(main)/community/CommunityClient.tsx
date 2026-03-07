@@ -52,6 +52,7 @@ type RankedCommunityPostRow = {
   category: string
   created_at: string
   user_id: string
+  is_hidden: boolean | null
   view_count: number | null
   author_full_name: string | null
   author_avatar_url: string | null
@@ -81,6 +82,7 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
   const currentUserId = user?.id || null
   const userCity = profile?.city || null
   const currentUserRole = profile?.user_role || null
+  const isDeveloper = currentUserRole === 'developer'
   const isInitialized = !userLoading
 
   // Image gallery state
@@ -129,14 +131,14 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
     }
 
     const supabase = createClient()
-    const isAdminOrDeveloper = profile?.user_role === 'admin' || profile?.user_role === 'developer'
+    const includeHidden = profile?.user_role === 'developer'
     const offset = cursor ? Number.parseInt(cursor, 10) || 0 : 0
 
     const { data: postsData, error: postsError } = await supabase.rpc('get_ranked_community_posts', {
       p_city: userCity,
       p_limit: PAGE_SIZE,
       p_offset: offset,
-      p_include_hidden: isAdminOrDeveloper,
+      p_include_hidden: includeHidden,
     })
 
     if (postsError) {
@@ -153,6 +155,7 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
       category: post.category,
       created_at: post.created_at,
       user_id: post.user_id,
+      is_hidden: Boolean(post.is_hidden),
       view_count: post.view_count || 0,
       profiles: {
         full_name: post.author_full_name || null,
@@ -197,11 +200,21 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
     initialCursor: initialCursor,
   })
 
+  const visibleCategories = useMemo(() => {
+    if (!isDeveloper) return categories
+    return [...categories, { id: 'hidden', name: '숨김', emoji: '🙈' }]
+  }, [isDeveloper])
+
   // Client-side category filtering
   const posts = useMemo(() => {
-    if (selectedCategory === 'all') return allPosts
-    return allPosts.filter(post => post.category === selectedCategory)
-  }, [allPosts, selectedCategory])
+    if (selectedCategory === 'hidden') {
+      return isDeveloper ? allPosts.filter((post) => post.is_hidden) : []
+    }
+
+    const activePosts = allPosts.filter((post) => !post.is_hidden)
+    if (selectedCategory === 'all') return activePosts
+    return activePosts.filter((post) => post.category === selectedCategory)
+  }, [allPosts, isDeveloper, selectedCategory])
 
   useEffect(() => {
     postIdSetRef.current = new Set(allPosts.map((post) => post.id))
@@ -502,6 +515,50 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
     }
   }, [allPosts, boostingPostId, currentUserId, refresh, updateItem])
 
+  const handleToggleHidden = useCallback(async (postId: string, willHide: boolean) => {
+    if (!currentUserId || !isDeveloper) return
+
+    const previous = allPosts.find((post) => post.id === postId)
+    if (!previous) return
+
+    updateItem(postId, (post) => ({
+      ...post,
+      is_hidden: willHide,
+    }))
+
+    setSelectedPost((prev) => (
+      prev && prev.id === postId
+        ? { ...prev, is_hidden: willHide }
+        : prev
+    ))
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('community_posts')
+        .update({
+          is_hidden: willHide,
+          hidden_at: willHide ? new Date().toISOString() : null,
+          hidden_by: willHide ? currentUserId : null,
+        })
+        .eq('id', postId)
+
+      if (error) throw error
+
+      toast.success(willHide ? '게시글을 숨김 처리했습니다' : '숨김 게시글을 복구했습니다')
+      await refresh()
+    } catch (error) {
+      logger.error('Toggle hidden community post error:', error)
+      updateItem(postId, () => previous)
+      setSelectedPost((prev) => (
+        prev && prev.id === postId
+          ? previous
+          : prev
+      ))
+      toast.error('게시글 숨김 처리 중 오류가 발생했습니다')
+    }
+  }, [allPosts, currentUserId, isDeveloper, refresh, updateItem])
+
   // 화면에 노출되면 조회수 증가 (세션당 게시글 1회)
   const viewedPostIds = useRef(new Set<string>())
   const categoryTouchStateRef = useRef<{
@@ -512,8 +569,16 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
   } | null>(null)
 
   const selectCategory = useCallback((categoryId: string) => {
+    if (categoryId === 'hidden' && !isDeveloper) return
     setSelectedCategory((prev) => (prev === categoryId ? prev : categoryId))
-  }, [])
+  }, [isDeveloper])
+
+  useEffect(() => {
+    if (selectedCategory !== 'hidden') return
+    if (!isDeveloper) {
+      setSelectedCategory('all')
+    }
+  }, [isDeveloper, selectedCategory])
 
   const handleCategoryTouchStart = useCallback((categoryId: string, e: React.TouchEvent<HTMLButtonElement>) => {
     const touch = e.touches[0]
@@ -562,11 +627,13 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
   }, [currentUserId, updateItem])
 
   const getCategoryEmoji = (category: string) => {
+    if (category === 'hidden') return '🙈'
     const cat = categories.find((c) => c.id === category)
     return cat?.emoji || '📌'
   }
 
   const getCategoryName = (category: string) => {
+    if (category === 'hidden') return '숨김'
     const cat = categories.find((c) => c.id === category)
     return cat?.name || category
   }
@@ -645,7 +712,7 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
 
               {/* Category Tabs */}
               <div className="flex gap-2 overflow-x-auto scrollbar-hide touch-pan-x">
-                {categories.map((category) => (
+                {visibleCategories.map((category) => (
                   <button
                     key={category.id}
                     type="button"
@@ -705,8 +772,10 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
                     onLikeBurst={handleLikeBurst}
                     onImageClick={openGallery}
                     onBoost={handleBoost}
+                    onToggleHidden={handleToggleHidden}
                     onView={handlePostView}
                     currentUserId={currentUserId}
+                    isDeveloper={isDeveloper}
                     boostingPostId={boostingPostId}
                     boostedPostId={boostedPostId}
                     formatTimeAgo={formatTimeAgo}
@@ -725,8 +794,10 @@ export default function CommunityClient({ initialPosts, initialCursor }: Props) 
                     onLikeBurst={handleLikeBurst}
                     onImageClick={openGallery}
                     onBoost={handleBoost}
+                    onToggleHidden={handleToggleHidden}
                     onView={handlePostView}
                     currentUserId={currentUserId}
+                    isDeveloper={isDeveloper}
                     boostingPostId={boostingPostId}
                     boostedPostId={boostedPostId}
                     formatTimeAgo={formatTimeAgo}

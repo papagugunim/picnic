@@ -23,6 +23,7 @@ export interface CommunityPost {
   category: string
   created_at: string
   user_id: string
+  is_hidden: boolean
   view_count: number
   profiles: {
     full_name: string | null
@@ -46,8 +47,10 @@ interface CommunityPostItemProps {
   onLikeBurst: (target: HTMLElement, currentlyLiked: boolean) => void
   onImageClick: (images: string[], index: number, e: React.MouseEvent) => void
   onBoost: (postId: string) => void
+  onToggleHidden: (postId: string, willHide: boolean) => void
   onView?: (postId: string) => void
   currentUserId?: string | null
+  isDeveloper?: boolean
   boostingPostId?: string | null
   boostedPostId?: string | null
   formatTimeAgo: (dateString: string) => string
@@ -63,8 +66,10 @@ export function CommunityPostItem({
   onLikeBurst,
   onImageClick,
   onBoost,
+  onToggleHidden,
   onView,
   currentUserId,
+  isDeveloper = false,
   boostingPostId,
   boostedPostId,
   formatTimeAgo,
@@ -79,6 +84,7 @@ export function CommunityPostItem({
   const isBoostActive = !!post.milk_boost_until && new Date(post.milk_boost_until).getTime() > Date.now()
   const isBoosting = boostingPostId === post.id
   const isOwnPost = currentUserId === post.user_id
+  const isHiddenPost = Boolean(post.is_hidden)
   const showMoreMenu = Boolean(currentUserId)
   const boostMenuLabel = isBoosting
     ? '밀크 부스트 적용중'
@@ -140,7 +146,7 @@ export function CommunityPostItem({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {isOwnPost ? (
+              {isOwnPost && (
                 <DropdownMenuItem
                   disabled={!canApplyBoost}
                   onSelect={(event) => {
@@ -153,7 +159,19 @@ export function CommunityPostItem({
                   <span className="text-base leading-none">🥛</span>
                   {boostMenuLabel}
                 </DropdownMenuItem>
-              ) : (
+              )}
+              {isDeveloper && (
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    onToggleHidden(post.id, !isHiddenPost)
+                  }}
+                >
+                  {isHiddenPost ? '숨김 복구' : '숨김 처리'}
+                </DropdownMenuItem>
+              )}
+              {!isOwnPost && (
                 <DropdownMenuItem
                   onSelect={(event) => {
                     event.preventDefault()
@@ -234,6 +252,9 @@ export function CommunityPostItem({
 
         {/* Body */}
         <div className="text-[15px] leading-relaxed mb-2">
+          {isHiddenPost && (
+            <div className="mb-1 text-xs font-medium text-muted-foreground">(숨김처리)</div>
+          )}
           {shouldTruncate && !isExpanded ? (
             <>
               <span className="whitespace-pre-wrap">{post.content.slice(0, 150)}...</span>

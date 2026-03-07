@@ -38,6 +38,7 @@ interface Post {
   created_at: string
   images: string[]
   status: string
+  is_hidden: boolean
   view_count: number
   profiles: {
     full_name: string | null
@@ -61,6 +62,7 @@ type RankedPostRow = {
   created_at: string
   images: string[] | null
   status: string
+  is_hidden: boolean | null
   view_count: number | null
   author_full_name: string | null
   likes_count: number | null
@@ -81,6 +83,7 @@ interface FeedPostItemProps {
   onLikeBurst: (target: HTMLElement, currentlyLiked: boolean) => void
   onInterestToggle: (postId: string, currentlyInterested: boolean) => void
   onBoost: (postId: string) => void
+  onToggleHidden: (postId: string, willHide: boolean) => void
   onView?: (postId: string, authorId: string) => void
 }
 
@@ -94,11 +97,12 @@ function FeedPostItem({
   onLikeBurst,
   onInterestToggle,
   onBoost,
+  onToggleHidden,
   onView,
 }: FeedPostItemProps) {
   void boostedPostId
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
-  const isHiddenPost = post.status === 'hidden'
+  const isHiddenPost = post.is_hidden || post.status === 'hidden'
   const normalizedPostStatus: PostStatus =
     post.status === 'reserved' || post.status === 'sold' || post.status === 'hidden'
       ? post.status
@@ -161,7 +165,7 @@ function FeedPostItem({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {isOwnPost ? (
+              {isOwnPost && (
                 <DropdownMenuItem
                   disabled={!canApplyBoost}
                   onSelect={(event) => {
@@ -174,7 +178,19 @@ function FeedPostItem({
                   <span className="text-base leading-none">🥛</span>
                   {boostMenuLabel}
                 </DropdownMenuItem>
-              ) : (
+              )}
+              {isDeveloper && (
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    onToggleHidden(post.id, !isHiddenPost)
+                  }}
+                >
+                  {isHiddenPost ? '숨김 복구' : '숨김 처리'}
+                </DropdownMenuItem>
+              )}
+              {!isOwnPost && (
                 <DropdownMenuItem
                   onSelect={(event) => {
                     event.preventDefault()
@@ -329,13 +345,14 @@ interface FeedClientProps {
 }
 
 export default function FeedClient({ initialPosts, initialCursor, initialCity }: FeedClientProps) {
-  const [selectedTab, setSelectedTab] = useState<'all' | 'nearby' | 'free'>('all')
+  const [selectedTab, setSelectedTab] = useState<'all' | 'nearby' | 'free' | 'hidden'>('all')
   const { user, profile, loading: userLoading } = useUser()
   const [boostingPostId, setBoostingPostId] = useState<string | null>(null)
   const [boostedPostId, setBoostedPostId] = useState<string | null>(null)
 
   const userCity = profile?.city || null
   const userStations = useMemo(() => profile?.preferred_metro_stations ?? [], [profile?.preferred_metro_stations])
+  const isDeveloper = profile?.user_role === 'developer'
   const isInitialized = !userLoading
   const viewedPostIds = useRef(new Set<string>())
   const postIdSetRef = useRef(new Set<string>())
@@ -354,7 +371,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
     }
 
     const supabase = createClient()
-    const isAdminOrDeveloper = profile?.user_role === 'admin' || profile?.user_role === 'developer'
+    const includeHidden = profile?.user_role === 'developer'
 
     const offset = cursor ? Number.parseInt(cursor, 10) || 0 : 0
 
@@ -362,7 +379,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
       p_city: userCity,
       p_limit: PAGE_SIZE,
       p_offset: offset,
-      p_include_hidden: isAdminOrDeveloper,
+      p_include_hidden: includeHidden,
     })
 
     if (error) {
@@ -382,6 +399,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
       created_at: post.created_at,
       images: post.images || [],
       status: post.status,
+      is_hidden: Boolean(post.is_hidden ?? post.status === 'hidden'),
       view_count: post.view_count || 0,
       profiles: { full_name: post.author_full_name || null },
       likes_count: post.likes_count || 0,
@@ -445,23 +463,29 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
   const posts = useMemo(() => {
     if (allPosts.length === 0) return []
 
+    const hiddenPosts = allPosts.filter((post) => post.is_hidden || post.status === 'hidden')
+    const visiblePosts = allPosts.filter((post) => !(post.is_hidden || post.status === 'hidden'))
+
     switch (selectedTab) {
+      case 'hidden':
+        return isDeveloper ? hiddenPosts : []
+
       case 'nearby':
         if (nearbyStationsList.length > 0) {
-          return allPosts.filter(post =>
+          return visiblePosts.filter(post =>
             hasNearbyStation(post.preferred_metro_stations, nearbyStationsList)
           )
         }
-        return allPosts
+        return visiblePosts
 
       case 'free':
-        return allPosts.filter(post => post.price === 0 || post.price === null)
+        return visiblePosts.filter(post => post.price === 0 || post.price === null)
 
       case 'all':
       default:
-        return allPosts
+        return visiblePosts
     }
-  }, [allPosts, selectedTab, nearbyStationsList])
+  }, [allPosts, isDeveloper, selectedTab, nearbyStationsList])
 
   useEffect(() => {
     postIdSetRef.current = new Set(allPosts.map((post) => post.id))
@@ -555,6 +579,18 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
 
     return { boostedPosts: boosted, regularPosts: regular }
   }, [posts])
+
+  const visibleCategories = useMemo(() => {
+    if (!isDeveloper) return categories
+    return [...categories, { id: 'hidden', label: '숨김' }]
+  }, [isDeveloper])
+
+  useEffect(() => {
+    if (selectedTab !== 'hidden') return
+    if (!isDeveloper) {
+      setSelectedTab('all')
+    }
+  }, [isDeveloper, selectedTab])
 
   const handlePostView = useCallback((postId: string, authorId: string) => {
     if (!user || viewedPostIds.current.has(postId) || authorId === user.id) return
@@ -692,6 +728,42 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
     }
   }, [allPosts, boostingPostId, refresh, updateItem, user])
 
+  const handleToggleHidden = useCallback(async (postId: string, willHide: boolean) => {
+    if (!user || !isDeveloper) return
+
+    const previous = allPosts.find((post) => post.id === postId)
+    if (!previous) return
+
+    updateItem(postId, (post) => ({
+      ...post,
+      is_hidden: willHide,
+      status: willHide ? 'hidden' : (post.status === 'hidden' ? 'active' : post.status),
+    }))
+
+    try {
+      const supabase = createClient()
+      const nextStatus = willHide ? 'hidden' : 'active'
+      const { error } = await supabase
+        .from('posts')
+        .update({
+          status: nextStatus,
+          is_hidden: willHide,
+          hidden_at: willHide ? new Date().toISOString() : null,
+          hidden_by: willHide ? user.id : null,
+        })
+        .eq('id', postId)
+
+      if (error) throw error
+
+      toast.success(willHide ? '게시글을 숨김 처리했습니다' : '숨김 게시글을 복구했습니다')
+      await refresh()
+    } catch (error) {
+      logger.error('Toggle hidden post error:', error)
+      updateItem(postId, () => previous)
+      toast.error('게시글 숨김 처리 중 오류가 발생했습니다')
+    }
+  }, [allPosts, isDeveloper, refresh, updateItem, user])
+
   if (isLoading && initialPosts.length === 0) {
     return (
       <div>
@@ -721,10 +793,10 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
         {/* Category filter */}
         <div className="bg-background">
           <div className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide">
-            {categories.map((category) => (
+            {visibleCategories.map((category) => (
               <button
                 key={category.id}
-                onClick={() => setSelectedTab(category.id as 'all' | 'nearby' | 'free')}
+                onClick={() => setSelectedTab(category.id as 'all' | 'nearby' | 'free' | 'hidden')}
                 className={`
                   px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors
                   ${
@@ -761,7 +833,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
               <FeedPostItem
                 key={post.id}
                 post={post}
-                isDeveloper={profile?.user_role === 'developer'}
+                isDeveloper={isDeveloper}
                 currentUserId={user?.id || null}
                 boostingPostId={boostingPostId}
                 boostedPostId={boostedPostId}
@@ -769,6 +841,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
                 onLikeBurst={handleLikeBurst}
                 onInterestToggle={toggleInterest}
                 onBoost={handleBoost}
+                onToggleHidden={handleToggleHidden}
                 onView={handlePostView}
               />
             ))}
@@ -777,7 +850,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
               <FeedPostItem
                 key={post.id}
                 post={post}
-                isDeveloper={profile?.user_role === 'developer'}
+                isDeveloper={isDeveloper}
                 currentUserId={user?.id || null}
                 boostingPostId={boostingPostId}
                 boostedPostId={boostedPostId}
@@ -785,6 +858,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
                 onLikeBurst={handleLikeBurst}
                 onInterestToggle={toggleInterest}
                 onBoost={handleBoost}
+                onToggleHidden={handleToggleHidden}
                 onView={handlePostView}
               />
             ))}

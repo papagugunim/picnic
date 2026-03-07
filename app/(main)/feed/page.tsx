@@ -16,6 +16,7 @@ type RankedPostRow = {
   created_at: string
   images: string[] | null
   status: string
+  is_hidden: boolean | null
   view_count: number | null
   author_full_name: string | null
   likes_count: number | null
@@ -53,13 +54,13 @@ export default async function FeedPage() {
       .eq('id', userId)
       .single()
     initialCity = profile?.city || null
-    const isAdminOrDeveloper = profile?.user_role === 'admin' || profile?.user_role === 'developer'
+    const isDeveloper = profile?.user_role === 'developer'
 
     const { data: postsData, error } = await supabase.rpc('get_ranked_posts', {
       p_city: profile?.city || null,
       p_limit: PAGE_SIZE,
       p_offset: 0,
-      p_include_hidden: isAdminOrDeveloper,
+      p_include_hidden: isDeveloper,
     })
 
     if (error) {
@@ -80,6 +81,7 @@ export default async function FeedPage() {
         view_count: post.view_count || 0,
         likes_count: post.likes_count || 0,
         interests_count: post.interests_count || 0,
+        is_hidden: Boolean(post.is_hidden ?? post.status === 'hidden'),
         user_liked: !!post.user_liked,
         user_interested: !!post.user_interested,
         milk_boost_score: Number(post.milk_boost_score || 0),

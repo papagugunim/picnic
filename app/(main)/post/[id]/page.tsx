@@ -16,11 +16,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const { data: post } = await supabase
     .from('posts')
-    .select('title, description, price, city, images')
+    .select('title, description, price, city, images, is_hidden, status')
     .eq('id', id)
     .single()
 
-  if (!post) {
+  if (!post || post.is_hidden || post.status === 'hidden') {
     return {
       title: '게시글을 찾을 수 없습니다 | Picnic',
     }
@@ -54,6 +54,16 @@ export default async function PostDetailPage({ params }: PageProps) {
   // 서버에서 인증된 사용자 확인
   const { data: { user } } = await supabase.auth.getUser()
   const userId = user?.id || null
+  let currentUserRole: string | null = null
+
+  if (userId) {
+    const { data: viewerProfile } = await supabase
+      .from('profiles')
+      .select('user_role')
+      .eq('id', userId)
+      .maybeSingle()
+    currentUserRole = viewerProfile?.user_role || null
+  }
 
   let initialPost: PostDetailInitialPost = null
   let initialLikesCount = 0
@@ -93,6 +103,21 @@ export default async function PostDetailPage({ params }: PageProps) {
     .single()
 
   if (postData) {
+    const isHiddenPost = Boolean(postData.is_hidden) || postData.status === 'hidden'
+    const isDeveloper = currentUserRole === 'developer'
+    if (isHiddenPost && !isDeveloper) {
+      return (
+        <PostDetailClient
+          postId={postId}
+          initialPost={null}
+          initialLikesCount={0}
+          initialInterestsCount={0}
+          initialUserLiked={false}
+          initialUserInterested={false}
+        />
+      )
+    }
+
     // Extract author profile (Supabase returns it as array)
     const author = Array.isArray(postData.profiles)
       ? postData.profiles[0]

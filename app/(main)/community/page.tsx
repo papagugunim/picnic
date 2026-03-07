@@ -18,6 +18,7 @@ type RankedCommunityPostRow = {
   category: string
   created_at: string
   user_id: string
+  is_hidden: boolean | null
   view_count: number | null
   author_full_name: string | null
   author_avatar_url: string | null
@@ -50,13 +51,13 @@ export default async function CommunityPage() {
 
     const userCity = profile?.city || null
 
-    const isAdminOrDeveloper = profile?.user_role === 'admin' || profile?.user_role === 'developer'
+    const isDeveloper = profile?.user_role === 'developer'
 
     const { data: postsData, error } = await supabase.rpc('get_ranked_community_posts', {
       p_city: userCity,
       p_limit: PAGE_SIZE,
       p_offset: 0,
-      p_include_hidden: isAdminOrDeveloper,
+      p_include_hidden: isDeveloper,
     })
 
     if (!error && postsData && postsData.length > 0) {
@@ -68,6 +69,7 @@ export default async function CommunityPage() {
         category: post.category,
         created_at: post.created_at,
         user_id: post.user_id,
+        is_hidden: Boolean(post.is_hidden),
         view_count: post.view_count || 0,
         profiles: {
           full_name: post.author_full_name || null,

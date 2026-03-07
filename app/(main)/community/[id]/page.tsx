@@ -9,13 +9,15 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
   const { data: post } = await supabase
     .from('community_posts')
-    .select('title, content')
+    .select('title, content, is_hidden')
     .eq('id', id)
     .single()
 
   return {
-    title: post ? `${post.title} | 동네생활 - Picnic` : '동네생활 | Picnic',
-    description: post?.content?.substring(0, 100) || '러시아 한인 동네생활 커뮤니티',
+    title: post && !post.is_hidden ? `${post.title} | 동네생활 - Picnic` : '동네생활 | Picnic',
+    description: post && !post.is_hidden
+      ? post.content?.substring(0, 100) || '러시아 한인 동네생활 커뮤니티'
+      : '러시아 한인 동네생활 커뮤니티',
   }
 }
 
@@ -67,6 +69,17 @@ export default async function CommunityPostDetailPage({ params }: { params: Prom
 
     if (postResult.data) {
       const postData = postResult.data
+      const isDeveloper = userRole === 'developer'
+      if (postData.is_hidden && !isDeveloper) {
+        return (
+          <CommunityPostDetailClient
+            postId={postId}
+            initialPost={null}
+            initialUserId={userId}
+            initialUserRole={userRole}
+          />
+        )
+      }
 
       // 좋아요/댓글 수를 병렬로 가져오기
       const [likesResult, userLikeResult, commentsResult] = await Promise.all([

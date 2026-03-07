@@ -430,12 +430,12 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
   }
 
   function requestToggleHidden() {
-    if (!post || !currentUserId) return
+    if (!post || !currentUserId || currentUserRole !== 'developer') return
     setShowHiddenConfirm(true)
   }
 
   async function confirmToggleHidden() {
-    if (!post || !currentUserId) return
+    if (!post || !currentUserId || currentUserRole !== 'developer') return
 
     const willHide = !post.is_hidden
 
@@ -500,8 +500,8 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
   }
 
   const isAuthor = currentUserId === post.user_id
-  const isAdmin = currentUserRole === 'admin' || currentUserRole === 'developer'
-  const canManage = isAuthor || isAdmin
+  const isModerator = currentUserRole === 'admin' || currentUserRole === 'developer'
+  const isDeveloper = currentUserRole === 'developer'
   const category = categories[post.category as keyof typeof categories]
 
   return (
@@ -541,7 +541,7 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
                       </DropdownMenuItem>
                     </>
                   )}
-                  {isAdmin && (
+                  {isDeveloper && (
                     <>
                       {isAuthor && <DropdownMenuSeparator />}
                       <DropdownMenuItem onClick={requestToggleHidden}>
@@ -564,14 +564,24 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
                           className="text-destructive focus:text-destructive"
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          {isDeleting ? '삭제 중...' : '관리자 삭제'}
+                          {isDeleting ? '삭제 중...' : '개발자 삭제'}
                         </DropdownMenuItem>
                       )}
                     </>
                   )}
+                  {isModerator && !isDeveloper && !isAuthor && (
+                    <DropdownMenuItem
+                      onClick={requestDeletePost}
+                      disabled={isDeleting}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      {isDeleting ? '삭제 중...' : '관리자 삭제'}
+                    </DropdownMenuItem>
+                  )}
                   {!isAuthor && (
                     <>
-                      {(isAdmin || canManage) && <DropdownMenuSeparator />}
+                      {isModerator && <DropdownMenuSeparator />}
                       <DropdownMenuItem onClick={() => setIsReportDialogOpen(true)}>
                         <Flag className="w-4 h-4 mr-2" />
                         신고하기
@@ -625,10 +635,10 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
           </div>
 
           {/* Hidden Badge */}
-          {post.is_hidden && isAdmin && (
+          {post.is_hidden && isDeveloper && (
             <div className="inline-block px-3 py-1 bg-destructive/10 text-destructive rounded-full text-sm font-medium flex items-center gap-1 mb-4">
               <EyeOff className="w-4 h-4" />
-              숨김 (관리자만 표시)
+              숨김 (개발자만 표시)
             </div>
           )}
 
@@ -689,7 +699,7 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
         <CommentSection
           postId={postId}
           currentUserId={currentUserId}
-          isAdmin={isAdmin}
+          isAdmin={isModerator}
           onCommentCountChange={setCommentCount}
         />
       </div>
@@ -813,7 +823,7 @@ export default function CommunityPostDetailClient({ postId, initialPost, initial
             <AlertDialogDescription>
               {post?.is_hidden
                 ? '이 게시글을 다시 표시하시겠습니까?'
-                : '이 게시글을 숨기시겠습니까? 숨긴 게시글은 관리자만 볼 수 있습니다.'}
+                : '이 게시글을 숨기시겠습니까? 숨긴 게시글은 개발자만 볼 수 있습니다.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
