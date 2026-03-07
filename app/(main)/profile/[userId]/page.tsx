@@ -1166,7 +1166,6 @@ export default function ProfilePage() {
         )}
 
         <div className="flex flex-col items-center gap-2 pt-2">
-          <p className="text-xs text-muted-foreground">(주)모스트월드</p>
           <Button
             type="button"
             variant="outline"
@@ -1177,6 +1176,7 @@ export default function ProfilePage() {
           >
             {isContactingDeveloper ? '연결 중...' : '개발자에게 연락하기'}
           </Button>
+          <p className="text-xs text-muted-foreground">(주)모스트월드</p>
         </div>
       </div>
 
