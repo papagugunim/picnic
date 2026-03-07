@@ -29,7 +29,7 @@ type RankedPostRow = {
 
 export const metadata: Metadata = {
   title: '피드 | Picnic',
-  description: '러시아 한인 중고거래 피드 - 내 주변의 중고 물품을 찾아보세요',
+  description: '해외 거주 도시 기반 한국인 교민 플랫폼 중고거래 피드 - 내 주변의 중고 물품을 찾아보세요',
 }
 
 const PAGE_SIZE = 20

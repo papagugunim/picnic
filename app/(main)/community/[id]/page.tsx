@@ -16,8 +16,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title: post && !post.is_hidden ? `${post.title} | 동네생활 - Picnic` : '동네생활 | Picnic',
     description: post && !post.is_hidden
-      ? post.content?.substring(0, 100) || '러시아 한인 동네생활 커뮤니티'
-      : '러시아 한인 동네생활 커뮤니티',
+      ? post.content?.substring(0, 100) || '해외 거주 도시 기반 한국인 교민 커뮤니티'
+      : '해외 거주 도시 기반 한국인 교민 커뮤니티',
   }
 }
 

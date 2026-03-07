@@ -124,7 +124,7 @@ export default function ResetPasswordPage() {
             <h1 className="text-5xl font-bold home-hero-title">피크닉</h1>
           </Link>
           <p className="text-muted-foreground text-lg">
-            러시아 한인 커뮤니티
+            해외 거주 도시 기반 한국인 교민 플랫폼
           </p>
         </div>
 

@@ -5,7 +5,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: '동네생활 | Picnic',
-  description: '러시아 한인 동네생활 커뮤니티 - 이웃들과 소통하세요',
+  description: '해외 거주 도시 기반 한국인 교민 커뮤니티 - 이웃들과 소통하세요',
 }
 
 const PAGE_SIZE = 20

@@ -8,7 +8,7 @@ import PostHogProvider from "@/components/analytics/PostHogProvider";
 
 export const metadata: Metadata = {
   title: "picnic - 해외 한인 커뮤니티",
-  description: "러시아 거주 한인을 위한 중고거래 및 커뮤니티 플랫폼",
+  description: "해외 거주 도시 기반 한국인 교민 플랫폼",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
