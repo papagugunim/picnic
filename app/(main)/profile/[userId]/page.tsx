@@ -54,6 +54,7 @@ interface Post {
   images: string[]
   created_at: string
   status: string
+  is_hidden?: boolean | null
 }
 
 interface CommunityPost {
@@ -63,6 +64,7 @@ interface CommunityPost {
   images: string[] | null
   category: string
   created_at: string
+  is_hidden?: boolean | null
 }
 
 interface BreadScoreBreakdown {
@@ -156,6 +158,14 @@ function createBreadScoreBreakdown(
   }
 }
 
+function isVisibleMarketplacePost(post: Post): boolean {
+  return post.status !== 'hidden' && post.is_hidden !== true
+}
+
+function isVisibleCommunityPost(post: CommunityPost): boolean {
+  return post.is_hidden !== true
+}
+
 function createEmptyProfileCacheData(): ProfileViewCacheData {
   return {
     profile: null,
@@ -240,15 +250,16 @@ export default function ProfilePage() {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('community_posts')
-        .select('id, title, content, images, category, created_at')
+        .select('id, title, content, images, category, created_at, is_hidden')
         .eq('user_id', userId)
+        .eq('is_hidden', false)
         .order('created_at', { ascending: false })
 
       if (error) {
         logger.error('Community posts fetch error:', error)
         setCommunityPosts([])
       } else {
-        const nextItems = (data || []) as CommunityPost[]
+        const nextItems = ((data || []) as CommunityPost[]).filter(isVisibleCommunityPost)
         setCommunityPosts(nextItems)
         setCommunityPostCount(nextItems.length)
         persistCache({
@@ -274,16 +285,19 @@ export default function ProfilePage() {
         .from('post_interests')
         .select(`
           post_id,
-          posts:post_id (
+          posts:post_id!inner (
             id,
             title,
             price,
             images,
             created_at,
-            status
+            status,
+            is_hidden
           )
         `)
         .eq('user_id', userId)
+        .eq('posts.is_hidden', false)
+        .not('posts.status', 'eq', 'hidden')
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -297,6 +311,7 @@ export default function ProfilePage() {
             return candidate && typeof candidate === 'object' ? (candidate as Post) : null
           })
           .filter((item): item is Post => Boolean(item))
+          .filter(isVisibleMarketplacePost)
         setInterestedPosts(nextItems)
         setInterestedPostCount(nextItems.length)
         persistCache({
@@ -342,13 +357,23 @@ export default function ProfilePage() {
 
         const cached = readProfileViewCache(userId)
         if (cached) {
-          cacheSnapshotRef.current = cached
+          const cachedPosts = ((cached.posts || []) as Post[]).filter(isVisibleMarketplacePost)
+          const cachedCommunityPosts = ((cached.communityPosts || []) as CommunityPost[]).filter(isVisibleCommunityPost)
+          const cachedInterestedPosts = ((cached.interestedPosts || []) as Post[]).filter(isVisibleMarketplacePost)
+          const sanitizedCache: ProfileViewCacheData = {
+            ...cached,
+            posts: cachedPosts,
+            communityPosts: cachedCommunityPosts,
+            interestedPosts: cachedInterestedPosts,
+          }
+          cacheSnapshotRef.current = sanitizedCache
+
           setProfile(cached.profile as Profile | null)
-          setPosts((cached.posts || []) as Post[])
-          setCommunityPosts((cached.communityPosts || []) as CommunityPost[])
-          setInterestedPosts((cached.interestedPosts || []) as Post[])
-          setCommunityPostCount((cached.communityPosts || []).length)
-          setInterestedPostCount(ownProfile ? (cached.interestedPosts || []).length : null)
+          setPosts(cachedPosts)
+          setCommunityPosts(cachedCommunityPosts)
+          setInterestedPosts(cachedInterestedPosts)
+          setCommunityPostCount(cachedCommunityPosts.length)
+          setInterestedPostCount(ownProfile ? cachedInterestedPosts.length : null)
           setReceivedReviews((cached.receivedReviews || []) as ReceivedReview[])
           setBreadScoreBreakdown((cached.breadScoreBreakdown as BreadScoreBreakdown | null) || null)
           setLoadedSections({
@@ -375,8 +400,10 @@ export default function ProfilePage() {
             .single(),
           supabase
             .from('posts')
-            .select('id, title, price, images, created_at, status')
+            .select('id, title, price, images, created_at, status, is_hidden')
             .eq('author_id', userId)
+            .eq('is_hidden', false)
+            .not('status', 'eq', 'hidden')
             .order('created_at', { ascending: false }),
           ownProfile
             ? supabase.rpc('get_my_milk_points')
@@ -384,12 +411,15 @@ export default function ProfilePage() {
           supabase
             .from('community_posts')
             .select('*', { count: 'exact', head: true })
-            .eq('user_id', userId),
+            .eq('user_id', userId)
+            .eq('is_hidden', false),
           ownProfile
             ? supabase
                 .from('post_interests')
-                .select('*', { count: 'exact', head: true })
+                .select('post_id, posts!inner(id)', { count: 'exact', head: true })
                 .eq('user_id', userId)
+                .eq('posts.is_hidden', false)
+                .not('posts.status', 'eq', 'hidden')
             : Promise.resolve({ count: null, error: null } as { count: number | null; error: null }),
         ])
 
@@ -437,7 +467,7 @@ export default function ProfilePage() {
         }
 
         const nextProfile = profileResult.data as Profile
-        const nextPosts = ((postsResult.data || []) as Post[])
+        const nextPosts = ((postsResult.data || []) as Post[]).filter(isVisibleMarketplacePost)
         const previousCache = cacheSnapshotRef.current || createEmptyProfileCacheData()
 
         setProfile(nextProfile)
@@ -450,9 +480,9 @@ export default function ProfilePage() {
         persistCache({
           profile: nextProfile,
           posts: nextPosts,
-          communityPosts: previousCache.communityPosts,
+          communityPosts: (previousCache.communityPosts as CommunityPost[]).filter(isVisibleCommunityPost),
           likedPosts: previousCache.likedPosts,
-          interestedPosts: previousCache.interestedPosts,
+          interestedPosts: (previousCache.interestedPosts as Post[]).filter(isVisibleMarketplacePost),
           breadScoreBreakdown: previousCache.breadScoreBreakdown,
           receivedReviews: previousCache.receivedReviews,
           loadedSections: {
