@@ -160,15 +160,25 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    let payload = filterPayloadToArchiveWindow(filterPayloadByTopic(
-      await fetchRussiaNewsFromUpstream({
+    const [archiveUpstream, todayUpstream] = await Promise.all([
+      fetchRussiaNewsFromUpstream({
         endpoint: '/api/archive',
         cursor,
         topic,
         limit,
       }),
-      topic
-    ))
+      fetchRussiaNewsFromUpstream({
+        endpoint: '/api/today',
+        cursor: null,
+        topic,
+        limit,
+      }).catch(() => ({ items: [] })),
+    ])
+
+    let payload = filterPayloadToArchiveWindow(mergeUniqueItems([
+      filterPayloadByTopic(archiveUpstream, topic),
+      filterPayloadByTopic(todayUpstream, topic),
+    ], limit))
 
     // 업스트림 결과가 부족하면 저장소 데이터를 병합해 7일치 아카이브가 끊기지 않게 보강한다.
     if (payload.items.length < toSafeLimit(limit)) {

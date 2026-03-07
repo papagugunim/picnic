@@ -277,7 +277,7 @@ export function RussiaNewsInfinitePage() {
         <div className="flex items-start gap-2">
           <div>
             <h1 className="text-base font-bold">{sectionTitle}</h1>
-            <p className="mt-1 text-xs text-muted-foreground">최근 7일 아카이브 · 무한 스크롤</p>
+            <p className="mt-1 text-xs text-muted-foreground">최근 7일 아카이브</p>
           </div>
         </div>
 
