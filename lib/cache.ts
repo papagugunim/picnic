@@ -29,8 +29,9 @@ export function getCache<T>(key: string, ttl: number = 30 * 60 * 1000): T | null
     const item: CacheItem<T> = JSON.parse(cached)
     const now = Date.now()
 
-    // TTL 확인
-    if (now - item.timestamp > item.ttl) {
+    // TTL 확인 (구버전 캐시에는 ttl 필드가 없을 수 있어 함수 인자를 fallback으로 사용)
+    const effectiveTtl = typeof item.ttl === 'number' && Number.isFinite(item.ttl) ? item.ttl : ttl
+    if (now - item.timestamp > effectiveTtl) {
       localStorage.removeItem(key)
       return null
     }
@@ -101,8 +102,8 @@ export function clearAllCache(): void {
 export const CACHE_KEYS = {
   WEATHER: (city: string) => `cache_weather_${city}`,
   EXCHANGE_RATES: 'cache_exchange_rates',
-  // v2: USD/RUB 히스토리 정규화 로직 도입으로 기존 로컬 캐시 무효화
-  EXCHANGE_HISTORY: (currency: string) => `cache_exchange_history_v2_${currency}`,
+  // v3: 환율 카드 기준값(동일 소스) 보정 로직 도입으로 기존 로컬 캐시 무효화
+  EXCHANGE_HISTORY: (currency: string) => `cache_exchange_history_v3_${currency}`,
   TODAY_NOTICES: 'cache_today_notices',
   POSTS: (page: number) => `cache_posts_page_${page}`,
   USER_PROFILE: (userId: string) => `cache_user_profile_${userId}`,

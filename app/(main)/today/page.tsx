@@ -311,10 +311,37 @@ export default function TodayPage() {
     return filtered.filter((_, index) => index % interval === 0)
   }, [])
 
+  const normalizeHistoryToCurrentSpot = useCallback((data: OHLCData[], type: 'rub' | 'usd') => {
+    if (!exchangeRates || data.length === 0) return data
+
+    const targetSpot = type === 'rub'
+      ? (exchangeRates.krwToRub > 0 ? 1 / exchangeRates.krwToRub : null)
+      : (exchangeRates.rubToUsd > 0 ? 1 / exchangeRates.rubToUsd : null)
+
+    if (!targetSpot || !Number.isFinite(targetSpot) || targetSpot <= 0) return data
+
+    const lastClose = data[data.length - 1]?.close
+    if (!lastClose || !Number.isFinite(lastClose) || lastClose <= 0) return data
+
+    const factor = targetSpot / lastClose
+    if (!Number.isFinite(factor) || factor <= 0 || Math.abs(factor - 1) < 0.0001) return data
+
+    const round2 = (value: number) => Number.parseFloat(value.toFixed(2))
+
+    return data.map((point) => ({
+      ...point,
+      open: round2(point.open * factor),
+      high: round2(point.high * factor),
+      low: round2(point.low * factor),
+      close: round2(point.close * factor),
+    }))
+  }, [exchangeRates])
+
   // 환율 그래프 데이터 로드
   const loadChartData = useCallback(async (type: 'rub' | 'usd', period: 'week' | 'month' | 'quarter' | 'year') => {
     if (yearlyChartData[type].length > 0) {
-      const filtered = filterDataByPeriod(yearlyChartData[type], period)
+      const normalized = normalizeHistoryToCurrentSpot(yearlyChartData[type], type)
+      const filtered = filterDataByPeriod(normalized, period)
       setChartData(filtered)
       return
     }
@@ -325,15 +352,26 @@ export default function TodayPage() {
     )
     if (cached && cached.length > 0) {
       logger.log('환율 히스토리 캐시 히트:', type)
-      setYearlyChartData(prev => ({ ...prev, [type]: cached }))
-      const filtered = filterDataByPeriod(cached, period)
+      const normalized = normalizeHistoryToCurrentSpot(cached, type)
+      setYearlyChartData(prev => ({ ...prev, [type]: normalized }))
+      const filtered = filterDataByPeriod(normalized, period)
       setChartData(filtered)
       return
     }
 
     setIsLoadingChart(true)
     try {
-      const response = await fetch(`/api/exchange-rates/history?currency=${type}&v=2`)
+      const query = new URLSearchParams({
+        currency: type,
+        v: '3',
+      })
+
+      if (exchangeRates?.krwToRub && exchangeRates?.rubToUsd) {
+        query.set('spot_krw_to_rub', String(exchangeRates.krwToRub))
+        query.set('spot_rub_to_usd', String(exchangeRates.rubToUsd))
+      }
+
+      const response = await fetch(`/api/exchange-rates/history?${query.toString()}`)
 
       if (!response.ok) {
         throw new Error('환율 히스토리 데이터를 가져올 수 없습니다')
@@ -341,11 +379,12 @@ export default function TodayPage() {
 
       const result = await response.json()
       const yearData = result.data || []
+      const normalized = normalizeHistoryToCurrentSpot(yearData, type)
 
-      setYearlyChartData(prev => ({ ...prev, [type]: yearData }))
-      setCache(CACHE_KEYS.EXCHANGE_HISTORY(type), yearData, 24 * 60 * 60 * 1000)
+      setYearlyChartData(prev => ({ ...prev, [type]: normalized }))
+      setCache(CACHE_KEYS.EXCHANGE_HISTORY(type), normalized, 24 * 60 * 60 * 1000)
 
-      const filtered = filterDataByPeriod(yearData, period)
+      const filtered = filterDataByPeriod(normalized, period)
       setChartData(filtered)
 
       if (result.fallback || result.error) {
@@ -357,7 +396,7 @@ export default function TodayPage() {
     } finally {
       setIsLoadingChart(false)
     }
-  }, [yearlyChartData, filterDataByPeriod])
+  }, [yearlyChartData, filterDataByPeriod, exchangeRates, normalizeHistoryToCurrentSpot])
 
   return (
     <div className="bg-background">
