@@ -25,8 +25,8 @@ const AUTO_RECOVERY_DELAY_MS = 6000
 function topicButtonClass(value: RussiaNewsTopic, active: boolean): string {
   const toneClass = value
     ? getRussiaNewsTopicBadgeClass(value)
-    : 'bg-zinc-200 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100'
-  return `${toneClass} !text-black dark:!text-black border border-black/5 dark:border-white/10 ${active ? 'shadow-[inset_0_0_0_1px_rgba(0,0,0,0.25)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)]' : 'hover:brightness-95'}`
+    : 'bg-zinc-200 text-zinc-900'
+  return `${toneClass} border border-black/5 ${active ? 'shadow-[inset_0_0_0_1px_rgba(0,0,0,0.25)]' : 'hover:brightness-95'}`
 }
 
 export function RussiaNewsSection() {
@@ -175,7 +175,7 @@ export function RussiaNewsSection() {
         </button>
       </div>
 
-      <div className="flex items-center gap-2 overflow-x-auto py-0.5 touch-pan-x">
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-0.5 touch-pan-x">
         {TOPICS.map((entry) => {
           const active = topic === entry.value
           return (
