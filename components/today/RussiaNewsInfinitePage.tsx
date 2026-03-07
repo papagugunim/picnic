@@ -15,7 +15,7 @@ const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '문화', value: '문화' },
   { label: '날씨', value: '날씨' },
 ]
-const NEWS_CACHE_VERSION = '3'
+const NEWS_CACHE_VERSION = '4'
 const LOCAL_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 const ARCHIVE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const PAGE_SIZE = 30
