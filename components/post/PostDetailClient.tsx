@@ -468,15 +468,25 @@ export default function PostDetailClient({
 
     try {
       const supabase = createClient()
+      const updatePayload: {
+        is_hidden: boolean
+        hidden_at: string | null
+        hidden_by: string | null
+        status?: string
+      } = {
+        is_hidden: willHide,
+        hidden_at: willHide ? new Date().toISOString() : null,
+        hidden_by: willHide ? currentUserId : null,
+      }
+
+      // Legacy data compatibility: if an old hidden post had status='hidden', restore to active.
+      if (!willHide && post.status === 'hidden') {
+        updatePayload.status = 'active'
+      }
 
       const { error } = await supabase
         .from('posts')
-        .update({
-          status: willHide ? 'hidden' : 'active',
-          is_hidden: willHide,
-          hidden_at: willHide ? new Date().toISOString() : null,
-          hidden_by: willHide ? currentUserId : null,
-        })
+        .update(updatePayload)
         .eq('id', postId)
 
       if (error) {

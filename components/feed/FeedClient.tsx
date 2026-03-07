@@ -737,20 +737,30 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
     updateItem(postId, (post) => ({
       ...post,
       is_hidden: willHide,
-      status: willHide ? 'hidden' : (post.status === 'hidden' ? 'active' : post.status),
+      status: !willHide && post.status === 'hidden' ? 'active' : post.status,
     }))
 
     try {
       const supabase = createClient()
-      const nextStatus = willHide ? 'hidden' : 'active'
+      const updatePayload: {
+        is_hidden: boolean
+        hidden_at: string | null
+        hidden_by: string | null
+        status?: string
+      } = {
+        is_hidden: willHide,
+        hidden_at: willHide ? new Date().toISOString() : null,
+        hidden_by: willHide ? user.id : null,
+      }
+
+      // Legacy data compatibility: if an old hidden post had status='hidden', restore to active.
+      if (!willHide && previous.status === 'hidden') {
+        updatePayload.status = 'active'
+      }
+
       const { error } = await supabase
         .from('posts')
-        .update({
-          status: nextStatus,
-          is_hidden: willHide,
-          hidden_at: willHide ? new Date().toISOString() : null,
-          hidden_by: willHide ? user.id : null,
-        })
+        .update(updatePayload)
         .eq('id', postId)
 
       if (error) throw error
