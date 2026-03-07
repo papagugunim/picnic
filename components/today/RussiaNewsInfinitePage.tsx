@@ -84,10 +84,14 @@ function writeLocalCachedNews(topic: RussiaNewsTopic, items: RussiaNewsItem[]): 
   )
 }
 
+function getNewsMergeKey(item: RussiaNewsItem): string {
+  return `${item.id}|${item.published_at}|${item.link}`
+}
+
 function mergeUnique(prev: RussiaNewsItem[], next: RussiaNewsItem[]): RussiaNewsItem[] {
   const map = new Map<string, RussiaNewsItem>()
-  for (const item of prev) map.set(item.id, item)
-  for (const item of next) map.set(item.id, item)
+  for (const item of prev) map.set(getNewsMergeKey(item), item)
+  for (const item of next) map.set(getNewsMergeKey(item), item)
   return keepLastWeek(Array.from(map.values()))
 }
 

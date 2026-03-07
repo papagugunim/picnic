@@ -39,8 +39,9 @@ function mergeUniqueItems(payloads: RussiaNewsApiPayload[], limit: number): Russ
   const map = new Map<string, RussiaNewsApiPayload['items'][number]>()
   for (const payload of payloads) {
     for (const item of payload.items) {
-      if (!map.has(item.id)) {
-        map.set(item.id, item)
+      const key = `${item.id}|${item.published_at}|${item.link}`
+      if (!map.has(key)) {
+        map.set(key, item)
       }
     }
   }
