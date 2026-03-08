@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import LoginForm from '@/components/auth/LoginForm'
 import SocialLogin from '@/components/auth/SocialLogin'
+import OAuthAutoRetry from '@/components/auth/OAuthAutoRetry'
 
 export const metadata = {
   title: '로그인 - picnic',
@@ -30,9 +31,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
         <div className="space-y-6">
           {message && (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {message}
-            </div>
+            <>
+              <OAuthAutoRetry message={message} />
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {message}
+              </div>
+            </>
           )}
 
           <Suspense fallback={<div className="h-32" />}>
