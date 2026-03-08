@@ -11,7 +11,6 @@ const logger = createNamespacedLogger('SocialLogin')
 interface SocialLoginProps {
   mode?: 'login' | 'signup'
   providers?: Provider[]
-  showGoogleTrustNotice?: boolean
 }
 
 type Provider = 'google' | 'apple' | 'kakao'
@@ -19,7 +18,6 @@ type Provider = 'google' | 'apple' | 'kakao'
 export default function SocialLogin({
   mode = 'signup',
   providers = ['google', 'apple', 'kakao'],
-  showGoogleTrustNotice = false,
 }: SocialLoginProps) {
   const [isLoading, setIsLoading] = useState<Provider | null>(null)
   const actionText = mode === 'login' ? '로그인하기' : '가입하기'
@@ -29,20 +27,11 @@ export default function SocialLogin({
       setIsLoading(provider)
       logger.log(`Starting ${provider} OAuth login`)
 
-      // Kakao는 커스텀 OAuth 플로우 사용 (현재 비활성화)
-      // if (provider === 'kakao') {
-      //   window.location.href = '/api/auth/kakao'
-      //   return
-      // }
-
       if (provider === 'google') {
-        // OAuth 시작을 서버 라우트로 옮겨 code_verifier/cookie 컨텍스트를 일치시킴
-        // (클라이언트 시작 + 서버 교환 조합에서 발생하던 인증 실패 방지)
         window.location.href = '/api/auth/google?next=/feed'
         return
       }
 
-      // Apple 등 나머지는 Supabase OAuth 사용
       const supabase = createClient()
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -57,7 +46,6 @@ export default function SocialLogin({
         toast.error(`${providerLabel} 로그인에 실패했습니다. 다시 시도해주세요.`)
         setIsLoading(null)
       }
-      // 성공 시 자동으로 리다이렉트되므로 로딩 상태는 유지
     } catch (error) {
       logger.error(`${provider} OAuth unexpected error:`, error)
       toast.error('로그인 중 오류가 발생했습니다.')
@@ -96,12 +84,6 @@ export default function SocialLogin({
             </svg>
             {isLoading === 'google' ? 'Google로 로그인 중...' : `Google로 ${actionText}`}
           </Button>
-          {showGoogleTrustNotice && (
-            <p className="text-xs text-muted-foreground/70 px-1 leading-relaxed">
-              Google 인증 화면에 <span className="font-medium">supabase.co</span> 주소가 표시될 수 있으며,
-              피크닉 공식 로그인 절차의 정상 동작입니다.
-            </p>
-          )}
         </div>
       )}
 

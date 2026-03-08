@@ -42,7 +42,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <p className="text-center text-sm text-muted-foreground">또는</p>
 
           <Suspense fallback={<div className="h-16" />}>
-            <SocialLogin mode="login" providers={['google']} showGoogleTrustNotice />
+            <SocialLogin mode="login" providers={['google']} />
           </Suspense>
 
           <div className="text-center text-sm text-muted-foreground">
