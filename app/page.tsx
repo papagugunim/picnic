@@ -13,8 +13,8 @@ export default async function HomePage() {
     redirect('/feed');
   }
   return (
-    <div className="min-h-screen flex flex-col items-center justify-between px-8 pt-10 pb-7">
-      <div className="max-w-2xl w-full text-center space-y-8 mt-6">
+    <div className="min-h-screen flex items-center justify-center px-8 py-8">
+      <div className="max-w-2xl w-full text-center space-y-8">
         <div className="space-y-4">
           <h1 className="text-6xl font-bold home-hero-title">피크닉</h1>
           <p className="text-xl text-muted-foreground">
@@ -39,17 +39,17 @@ export default async function HomePage() {
             회원가입
           </Link>
         </div>
-      </div>
 
-      <div className="w-full flex justify-center pb-1">
-        <Image
-          src="/branding/external/bread-from-user-transparent.png"
-          alt="피크닉 브레드 아이콘"
-          width={86}
-          height={86}
-          className="block"
-          priority
-        />
+        <div className="w-full flex justify-center pt-1">
+          <Image
+            src="/branding/external/bread-from-user-transparent.png"
+            alt="피크닉 브레드 아이콘"
+            width={44}
+            height={44}
+            className="block"
+            priority
+          />
+        </div>
       </div>
     </div>
   );
