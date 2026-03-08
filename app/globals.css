@@ -449,7 +449,7 @@
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
-  animation: hero-title-shimmer 1.55s linear infinite;
+  animation: hero-title-shimmer 3.6s linear infinite;
   will-change: background-position;
 }
 
