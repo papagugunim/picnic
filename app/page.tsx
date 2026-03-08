@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
@@ -12,8 +13,8 @@ export default async function HomePage() {
     redirect('/feed');
   }
   return (
-    <div className="min-h-screen flex items-center justify-center p-8">
-      <div className="max-w-2xl w-full text-center space-y-8">
+    <div className="min-h-screen flex flex-col items-center justify-between px-8 pt-10 pb-7">
+      <div className="max-w-2xl w-full text-center space-y-8 mt-6">
         <div className="space-y-4">
           <h1 className="text-6xl font-bold home-hero-title">피크닉</h1>
           <p className="text-xl text-muted-foreground">
@@ -38,6 +39,17 @@ export default async function HomePage() {
             회원가입
           </Link>
         </div>
+      </div>
+
+      <div className="w-full flex justify-center pb-1">
+        <Image
+          src="/branding/source/bread-color-original.jpg"
+          alt="피크닉 브레드 아이콘"
+          width={120}
+          height={120}
+          className="rounded-2xl shadow-sm"
+          priority
+        />
       </div>
     </div>
   );
