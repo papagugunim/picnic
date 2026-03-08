@@ -41,13 +41,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
           <p className="text-center text-sm text-muted-foreground">또는</p>
 
-          <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-            Google 로그인 시 Google 인증 정책에 따라 주소에 <span className="font-medium">supabase.co</span>가 표시될 수 있으며,
-            피크닉 공식 인증 절차의 정상 동작입니다.
-          </div>
-
           <Suspense fallback={<div className="h-16" />}>
-            <SocialLogin mode="login" providers={['google']} />
+            <SocialLogin mode="login" providers={['google']} showGoogleTrustNotice />
           </Suspense>
 
           <div className="text-center text-sm text-muted-foreground">
