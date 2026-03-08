@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 
 function resolveRequestOrigin(request: NextRequest) {
+  const requestedOrigin = request.nextUrl.searchParams.get('origin')
+
+  if (requestedOrigin) {
+    try {
+      const parsed = new URL(requestedOrigin)
+      const allowedHosts = new Set(['mypicnic.vercel.app', 'picnic-wheat.vercel.app'])
+
+      if (allowedHosts.has(parsed.host)) {
+        return parsed.origin
+      }
+    } catch {
+      // fallback below
+    }
+  }
+
   const forwardedHost = request.headers.get('x-forwarded-host')
   const host = forwardedHost || request.headers.get('host')
   const proto = request.headers.get('x-forwarded-proto') || 'https'

@@ -28,7 +28,9 @@ export default function SocialLogin({
       logger.log(`Starting ${provider} OAuth login`)
 
       if (provider === 'google') {
-        window.location.href = '/api/auth/google?next=/feed'
+        const currentOrigin = window.location.origin
+        const q = new URLSearchParams({ next: '/feed', origin: currentOrigin })
+        window.location.href = `/api/auth/google?${q.toString()}`
         return
       }
 
