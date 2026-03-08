@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-export default function AuthCallbackClientPage() {
+function CallbackClientContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -36,5 +36,19 @@ export default function AuthCallbackClientPage() {
     <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
       로그인 인증을 처리하고 있습니다...
     </div>
+  )
+}
+
+export default function AuthCallbackClientPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
+          로그인 인증을 준비하고 있습니다...
+        </div>
+      }
+    >
+      <CallbackClientContent />
+    </Suspense>
   )
 }
