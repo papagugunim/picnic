@@ -97,7 +97,7 @@ export default function SocialLogin({
             {isLoading === 'google' ? 'Google로 로그인 중...' : `Google로 ${actionText}`}
           </Button>
           {showGoogleTrustNotice && (
-            <p className="text-xs text-muted-foreground px-1 leading-relaxed">
+            <p className="text-xs text-muted-foreground/70 px-1 leading-relaxed">
               Google 인증 화면에 <span className="font-medium">supabase.co</span> 주소가 표시될 수 있으며,
               피크닉 공식 로그인 절차의 정상 동작입니다.
             </p>
