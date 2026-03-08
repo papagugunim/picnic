@@ -15,6 +15,7 @@ type ProfileSnapshot = {
 type SupabaseServerClient = ReturnType<typeof createSupabaseServerClient>
 
 const ONBOARDING_START_PATH = '/onboarding/step/1'
+const OAUTH_TRACE_COOKIE = 'picnic_oauth_trace'
 
 function createRedirect(url: string) {
   return NextResponse.redirect(url)
@@ -161,6 +162,9 @@ export async function GET(request: NextRequest) {
   const oauthError = requestUrl.searchParams.get('error')
   const oauthErrorDescription = requestUrl.searchParams.get('error_description')
   const oauthRetry = requestUrl.searchParams.get('oauth_retry') === '1'
+  const oauthTrace = requestUrl.searchParams.get('oauth_trace')
+  const cookieTrace = request.cookies.get(OAUTH_TRACE_COOKIE)?.value
+  const traceMismatch = Boolean(oauthTrace && cookieTrace && oauthTrace !== cookieTrace)
   const origin = resolveRequestOrigin(request, requestUrl.origin)
 
   if (oauthError || oauthErrorDescription) {
@@ -204,14 +208,22 @@ export async function GET(request: NextRequest) {
 
       const lowerMessage = error.message.toLowerCase()
       const isBrowserSessionIssue =
+        traceMismatch ||
         lowerMessage.includes('code verifier') ||
         lowerMessage.includes('both auth code and code verifier should be non-empty') ||
-        lowerMessage.includes('flow_state_not_found')
+        lowerMessage.includes('flow_state_not_found') ||
+        lowerMessage.includes('flow state not found') ||
+        lowerMessage.includes('invalid flow state')
 
       if (isBrowserSessionIssue) {
         if (!oauthRetry) {
           const retryUrl = `${origin}/api/auth/google?next=${encodeURIComponent(next || '/feed')}&origin=${encodeURIComponent(origin)}&retry=1`
-          logger.warn('OAuth session issue detected. Retrying once automatically.', { retryUrl })
+          logger.warn('OAuth session issue detected. Retrying once automatically.', {
+            retryUrl,
+            traceMismatch,
+            oauthTrace,
+            hasCookieTrace: Boolean(cookieTrace),
+          })
           return applySupabaseCookies(createRedirect(retryUrl))
         }
 
@@ -234,7 +246,15 @@ export async function GET(request: NextRequest) {
     const redirectUrl = resolvePostAuthRedirect(origin, safeNextPath, profile)
 
     logger.log('Code flow redirect:', redirectUrl)
-    return applySupabaseCookies(createRedirect(redirectUrl))
+    const successRedirect = createRedirect(redirectUrl)
+    successRedirect.cookies.set(OAUTH_TRACE_COOKIE, '', {
+      path: '/',
+      maxAge: 0,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    })
+    return applySupabaseCookies(successRedirect)
   }
 
   return applySupabaseCookies(redirectToLoginWithMessage(origin, '인증 정보가 유효하지 않습니다'))

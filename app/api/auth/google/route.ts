@@ -38,11 +38,14 @@ function resolveRequestOrigin(request: NextRequest) {
   return request.nextUrl.origin
 }
 
+const OAUTH_TRACE_COOKIE = 'picnic_oauth_trace'
+
 export async function GET(request: NextRequest) {
   const origin = resolveRequestOrigin(request)
   const next = request.nextUrl.searchParams.get('next') || '/feed'
   const retry = request.nextUrl.searchParams.get('retry') === '1' ? '1' : '0'
   const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/feed'
+  const trace = crypto.randomUUID()
 
   let supabaseResponse = NextResponse.next({ request })
 
@@ -68,7 +71,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(safeNext)}&oauth_retry=${retry}`,
+      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(safeNext)}&oauth_retry=${retry}&oauth_trace=${encodeURIComponent(trace)}`,
       queryParams: {
         prompt: 'select_account',
         access_type: 'offline',
@@ -82,6 +85,15 @@ export async function GET(request: NextRequest) {
     : data.url
 
   const redirectResponse = NextResponse.redirect(redirectTo)
+
+  redirectResponse.cookies.set(OAUTH_TRACE_COOKIE, trace, {
+    path: '/',
+    maxAge: 60 * 10,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  })
+  redirectResponse.headers.set('Cache-Control', 'no-store')
 
   // PKCE(code_verifier) 쿠키 속성(max-age/sameSite/secure/path)을 보존해서 전달
   return copySetCookieHeaders(supabaseResponse, redirectResponse)
