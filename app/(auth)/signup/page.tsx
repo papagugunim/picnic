@@ -20,7 +20,7 @@ export default function SignupPage() {
             해외 거주 도시 기반 한국인 교민 플랫폼
           </p>
           <p className="text-muted-foreground text-lg">
-            피크닉에 오신 것을 환영합니다
+            피크닉 회원 가입을 진행 하겠습니다.
           </p>
         </div>
 
