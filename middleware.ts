@@ -24,6 +24,7 @@ export async function middleware(request: NextRequest) {
     '/verify-email',
     '/reset-password',
     '/auth/callback',
+    '/logo-effects',
   ]
 
   // 공개 API 경로 (명시적으로 나열)
