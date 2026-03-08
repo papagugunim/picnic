@@ -94,9 +94,6 @@ export default function SocialLogin({
             </svg>
             {isLoading === 'google' ? 'Google로 로그인 중...' : `Google로 ${actionText}`}
           </Button>
-          <p className="text-[11px] text-muted-foreground px-1">
-            보안 인증 페이지에서 서비스 연동 도메인이 표시될 수 있습니다.
-          </p>
         </div>
       )}
 
