@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic'
 import { Link2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCache, setCache, clearCache, CACHE_KEYS } from '@/lib/cache'
+import { useUser } from '@/lib/contexts/UserContext'
 import { usePageVisibility } from '@/lib/hooks/usePageVisibility'
 import { WeatherSection } from '@/components/today/WeatherSection'
 import { ExchangeSection } from '@/components/today/ExchangeSection'
@@ -28,13 +29,15 @@ const RussiaNewsSection = dynamic(
 export default function TodayPage() {
   const isPageVisible = usePageVisibility(true)
   const wasPageVisibleRef = useRef<boolean>(isPageVisible)
+  const { profile, loading: userLoading } = useUser()
   const [userCity, setUserCity] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null)
   const [isRefreshingWeather, setIsRefreshingWeather] = useState(false)
   const [isRefreshingExchangeRates, setIsRefreshingExchangeRates] = useState(false)
-  const [canManageNotices, setCanManageNotices] = useState(false)
+
+  const canManageNotices = profile?.user_role === 'admin' || profile?.user_role === 'developer'
+  const loading = userLoading
 
   // 뉴스 상태
   const [newsList, setNewsList] = useState<NewsItem[]>([])
@@ -216,33 +219,14 @@ export default function TodayPage() {
   }, [])
 
   useEffect(() => {
-    const fetchUserCity = async () => {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('city, user_role')
-          .eq('id', user.id)
-          .single()
-
-        if (profile?.city) {
-          setUserCity(profile.city)
-          fetchWeatherData(profile.city)
-        }
-
-        if (profile?.user_role === 'admin' || profile?.user_role === 'developer') {
-          setCanManageNotices(true)
-        }
-      }
-      setLoading(false)
+    if (profile?.city) {
+      setUserCity(profile.city)
+      void fetchWeatherData(profile.city)
     }
 
-    void fetchUserCity()
     void fetchExchangeRates()
     void fetchNews()
-  }, [fetchWeatherData, fetchExchangeRates, fetchNews])
+  }, [profile?.city, fetchWeatherData, fetchExchangeRates, fetchNews])
 
   useEffect(() => {
     if (!userCity || !isPageVisible) return

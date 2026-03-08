@@ -13,6 +13,7 @@ import { getAuthUserIdFast } from '@/lib/supabase/auth-performance'
 export async function middleware(request: NextRequest) {
   const startTime = Date.now()
   const pathname = request.nextUrl.pathname
+  const ONBOARDING_COOKIE = 'picnic_onboarding_completed'
 
   // 1. 공개 페이지 정의 (로그인 없이 접근 가능한 페이지만 나열)
   const publicPaths = [
@@ -103,13 +104,32 @@ export async function middleware(request: NextRequest) {
 
   // 6. 온보딩 가드
   const isOnboardingPath = pathname.startsWith('/onboarding')
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('onboarding_completed')
-    .eq('id', userId)
-    .maybeSingle()
 
-  const onboardingCompleted = !!profile?.onboarding_completed
+  // 온보딩 완료는 단방향(false -> true) 값이라 완료 상태만 쿠키 캐시
+  // 페이지 전환 시 DB 조회를 줄여 체감 속도를 개선
+  const onboardingCachedDone = request.cookies.get(ONBOARDING_COOKIE)?.value === '1'
+  let onboardingCompleted = onboardingCachedDone
+
+  if (!onboardingCachedDone) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('onboarding_completed')
+      .eq('id', userId)
+      .maybeSingle()
+
+    onboardingCompleted = !!profile?.onboarding_completed
+
+    if (onboardingCompleted) {
+      // 7일 캐시 (완료 상태는 다시 false로 내려가지 않음)
+      supabaseResponse.cookies.set(ONBOARDING_COOKIE, '1', {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: false,
+      })
+    }
+  }
 
   if (!onboardingCompleted && !isOnboardingPath) {
     const onboardingUrl = new URL('/onboarding/step/1', request.url)

@@ -1,8 +1,8 @@
 'use client'
 
-import { memo } from 'react'
+import { memo, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Home, Users, Calendar, MessageCircle, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUnreadCount } from '@/lib/hooks/useUnreadCount'
@@ -39,10 +39,38 @@ const navItems = [
 
 function BottomNav() {
   const pathname = usePathname()
+  const router = useRouter()
   const isFullscreenPage = pathname?.match(/^\/chats\/[^/]+$/) || pathname?.match(/^\/post\/[^/]+$/) || pathname?.match(/^\/community\/[^/]+$/) || pathname === '/settings'
   const { profile } = useUser()
   const { unreadCount } = useUnreadCount(!isFullscreenPage)
   const scrollHidden = useScrollDirection({ threshold: 10, topOffset: 50, enabled: !isFullscreenPage })
+
+  useEffect(() => {
+    if (isFullscreenPage) return
+
+    const profileHref = profile?.id ? `/profile/${profile.id}` : '/profile'
+    const targets = ['/feed', '/community', '/today', '/chats', profileHref]
+
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let idleHandle: number | null = null
+
+    const prefetchNavTargets = () => {
+      targets.forEach((target) => router.prefetch(target))
+    }
+
+    if ('requestIdleCallback' in window) {
+      idleHandle = window.requestIdleCallback(prefetchNavTargets, { timeout: 1800 })
+    } else {
+      timer = setTimeout(prefetchNavTargets, 700)
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer)
+      if (idleHandle !== null && 'cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleHandle)
+      }
+    }
+  }, [isFullscreenPage, profile?.id, router])
 
   // 채팅방, 게시글 상세 페이지에서는 네비게이션바 숨기기
   if (isFullscreenPage) {
