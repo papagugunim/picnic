@@ -27,8 +27,6 @@ export default function SocialLogin({
       setIsLoading(provider)
       logger.log(`Starting ${provider} OAuth login`)
 
-      const supabase = createClient()
-
       if (provider === 'google') {
         const currentOrigin = window.location.origin
         const q = new URLSearchParams({ next: '/feed', origin: currentOrigin })
@@ -36,6 +34,7 @@ export default function SocialLogin({
         return
       }
 
+      const supabase = createClient()
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {

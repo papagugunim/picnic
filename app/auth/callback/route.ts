@@ -65,10 +65,7 @@ function createRouteSupabase(request: NextRequest) {
   )
 
   const applySupabaseCookies = (response: NextResponse) => {
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      response.cookies.set(cookie)
-    })
-    return response
+    return copySetCookieHeaders(supabaseResponse, response)
   }
 
   return { supabase, applySupabaseCookies }
