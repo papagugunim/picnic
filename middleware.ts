@@ -24,6 +24,7 @@ export async function middleware(request: NextRequest) {
     '/verify-email',
     '/reset-password',
     '/auth/callback',
+    '/auth/callback-client',
     '/logo-effects',
   ]
 

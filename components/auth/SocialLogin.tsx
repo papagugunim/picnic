@@ -27,14 +27,31 @@ export default function SocialLogin({
       setIsLoading(provider)
       logger.log(`Starting ${provider} OAuth login`)
 
+      const supabase = createClient()
+
       if (provider === 'google') {
-        const currentOrigin = window.location.origin
-        const q = new URLSearchParams({ next: '/feed', origin: currentOrigin })
-        window.location.href = `/api/auth/google?${q.toString()}`
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            // 브라우저 PKCE(localStorage) 기반 콜백으로 처리해 code_verifier mismatch 방지
+            redirectTo: `${window.location.origin}/auth/callback-client?next=/feed`,
+            queryParams: {
+              prompt: 'select_account',
+              access_type: 'offline',
+              scope: 'openid email profile',
+            },
+          },
+        })
+
+        if (error) {
+          logger.error('google OAuth error:', error)
+          toast.error('Google 로그인에 실패했습니다. 다시 시도해주세요.')
+          setIsLoading(null)
+        }
+
         return
       }
 
-      const supabase = createClient()
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
