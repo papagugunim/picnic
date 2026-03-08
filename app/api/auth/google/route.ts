@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient as createSupabaseServerClient } from '@supabase/ssr'
 
+function copySetCookieHeaders(from: NextResponse, to: NextResponse) {
+  const setCookie = from.headers.getSetCookie?.() ?? []
+
+  setCookie.forEach((cookie) => {
+    to.headers.append('set-cookie', cookie)
+  })
+
+  return to
+}
+
 function resolveRequestOrigin(request: NextRequest) {
   const requestedOrigin = request.nextUrl.searchParams.get('origin')
 
@@ -31,6 +41,7 @@ function resolveRequestOrigin(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const origin = resolveRequestOrigin(request)
   const next = request.nextUrl.searchParams.get('next') || '/feed'
+  const retry = request.nextUrl.searchParams.get('retry') === '1' ? '1' : '0'
   const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/feed'
 
   let supabaseResponse = NextResponse.next({ request })
@@ -57,7 +68,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(safeNext)}`,
+      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(safeNext)}&oauth_retry=${retry}`,
       queryParams: {
         prompt: 'select_account',
         access_type: 'offline',
@@ -72,10 +83,6 @@ export async function GET(request: NextRequest) {
 
   const redirectResponse = NextResponse.redirect(redirectTo)
 
-  // Supabase가 만든 code-verifier 쿠키를 리다이렉트 응답에 반드시 전달
-  supabaseResponse.cookies.getAll().forEach((cookie) => {
-    redirectResponse.cookies.set(cookie)
-  })
-
-  return redirectResponse
+  // PKCE(code_verifier) 쿠키 속성(max-age/sameSite/secure/path)을 보존해서 전달
+  return copySetCookieHeaders(supabaseResponse, redirectResponse)
 }

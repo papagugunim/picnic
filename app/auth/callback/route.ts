@@ -32,6 +32,16 @@ function resolveRequestOrigin(request: NextRequest, fallbackOrigin: string) {
   return fallbackOrigin
 }
 
+function copySetCookieHeaders(from: NextResponse, to: NextResponse) {
+  const setCookie = from.headers.getSetCookie?.() ?? []
+
+  setCookie.forEach((cookie) => {
+    to.headers.append('set-cookie', cookie)
+  })
+
+  return to
+}
+
 function createRouteSupabase(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -153,6 +163,7 @@ export async function GET(request: NextRequest) {
   const next = requestUrl.searchParams.get('next')
   const oauthError = requestUrl.searchParams.get('error')
   const oauthErrorDescription = requestUrl.searchParams.get('error_description')
+  const oauthRetry = requestUrl.searchParams.get('oauth_retry') === '1'
   const origin = resolveRequestOrigin(request, requestUrl.origin)
 
   if (oauthError || oauthErrorDescription) {
@@ -201,8 +212,14 @@ export async function GET(request: NextRequest) {
         lowerMessage.includes('flow_state_not_found')
 
       if (isBrowserSessionIssue) {
+        if (!oauthRetry) {
+          const retryUrl = `${origin}/api/auth/google?next=${encodeURIComponent(next || '/feed')}&origin=${encodeURIComponent(origin)}&retry=1`
+          logger.warn('OAuth session issue detected. Retrying once automatically.', { retryUrl })
+          return applySupabaseCookies(createRedirect(retryUrl))
+        }
+
         return applySupabaseCookies(
-          redirectToLoginWithMessage(origin, '인증 세션이 만료되었어요. Safari/Chrome에서 다시 시도해주세요.')
+          redirectToLoginWithMessage(origin, '인증 세션이 만료되었어요. 다시 시도해주세요.')
         )
       }
 
