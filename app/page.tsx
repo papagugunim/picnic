@@ -4,7 +4,37 @@ import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { getAuthUserIdFast } from "@/lib/supabase/auth-performance";
 
-export default async function HomePage() {
+type HomePageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const resolvedSearchParams = (await searchParams) || {}
+
+  // 일부 OAuth 환경에서 code가 '/'로 돌아올 수 있어 콜백 라우트로 강제 전달
+  const hasAuthParams = Boolean(
+    resolvedSearchParams.code ||
+    resolvedSearchParams.token_hash ||
+    resolvedSearchParams.error ||
+    resolvedSearchParams.error_description
+  )
+
+  if (hasAuthParams) {
+    const callbackParams = new URLSearchParams()
+
+    Object.entries(resolvedSearchParams).forEach(([key, value]) => {
+      if (!value) return
+      if (Array.isArray(value)) {
+        value.forEach((item) => callbackParams.append(key, item))
+      } else {
+        callbackParams.append(key, value)
+      }
+    })
+
+    const query = callbackParams.toString()
+    redirect(query ? `/auth/callback?${query}` : '/auth/callback')
+  }
+
   // 로그인한 사용자는 feed로 리다이렉트
   const supabase = await createServerClient();
   const userId = await getAuthUserIdFast(supabase);
