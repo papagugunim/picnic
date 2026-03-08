@@ -4,6 +4,7 @@ const logger = createNamespacedLogger('Route')
 
 import { createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import type { EmailOtpType, User } from '@supabase/supabase-js'
 
 type ProfileSnapshot = {
   full_name: string | null
@@ -11,10 +12,16 @@ type ProfileSnapshot = {
   onboarding_completed: boolean | null
 }
 
+type SupabaseServerClient = Awaited<ReturnType<typeof createServerClient>>
+
 const ONBOARDING_START_PATH = '/onboarding/step/1'
 
 function createRedirect(url: string) {
   return NextResponse.redirect(url)
+}
+
+function redirectToLoginWithMessage(origin: string, message: string) {
+  return createRedirect(`${origin}/login?message=${encodeURIComponent(message)}`)
 }
 
 function getSafeNextPath(nextParam: string | null): string | null {
@@ -27,7 +34,7 @@ function needsOnboarding(profile: ProfileSnapshot | null): boolean {
   return !profile?.onboarding_completed || !profile?.full_name || !profile?.city
 }
 
-async function fetchProfile(supabase: any, userId: string): Promise<ProfileSnapshot | null> {
+async function fetchProfile(supabase: SupabaseServerClient, userId: string): Promise<ProfileSnapshot | null> {
   const { data, error } = await supabase
     .from('profiles')
     .select('full_name, city, onboarding_completed')
@@ -42,7 +49,7 @@ async function fetchProfile(supabase: any, userId: string): Promise<ProfileSnaps
   return data ?? null
 }
 
-async function ensureProfile(supabase: any, user: any): Promise<ProfileSnapshot | null> {
+async function ensureProfile(supabase: SupabaseServerClient, user: User): Promise<ProfileSnapshot | null> {
   const existingProfile = await fetchProfile(supabase, user.id)
   if (existingProfile) {
     return existingProfile
@@ -100,7 +107,15 @@ export async function GET(request: Request) {
   const type = requestUrl.searchParams.get('type')
   const code = requestUrl.searchParams.get('code')
   const next = requestUrl.searchParams.get('next')
+  const oauthError = requestUrl.searchParams.get('error')
+  const oauthErrorDescription = requestUrl.searchParams.get('error_description')
   const origin = requestUrl.origin
+
+  if (oauthError || oauthErrorDescription) {
+    const message = oauthErrorDescription || oauthError || '소셜 로그인 인증이 취소되었거나 실패했습니다'
+    logger.error('OAuth provider returned error:', { oauthError, oauthErrorDescription })
+    return redirectToLoginWithMessage(origin, message)
+  }
 
   const supabase = await createServerClient()
 
@@ -108,18 +123,18 @@ export async function GET(request: Request) {
   if (token_hash && type) {
     const { data, error } = await supabase.auth.verifyOtp({
       token_hash,
-      type: type as any,
+      type: type as EmailOtpType,
     })
 
     if (error) {
       logger.error('Email verification error:', error)
-      return createRedirect(`${origin}/login?message=이메일 인증에 실패했습니다`)
+      return redirectToLoginWithMessage(origin, '이메일 인증에 실패했습니다')
     }
 
     const user = data?.user
     if (!user) {
       logger.error('No user in verification response')
-      return createRedirect(`${origin}/login?message=사용자 정보를 찾을 수 없습니다`)
+      return redirectToLoginWithMessage(origin, '사용자 정보를 찾을 수 없습니다')
     }
 
     const profile = await ensureProfile(supabase, user)
@@ -136,13 +151,13 @@ export async function GET(request: Request) {
 
     if (error) {
       logger.error('Auth callback error:', error)
-      return createRedirect(`${origin}/login?message=인증에 실패했습니다`)
+      return redirectToLoginWithMessage(origin, `인증에 실패했습니다: ${error.message}`)
     }
 
     const user = data?.user
     if (!user) {
       logger.error('No user in auth code response')
-      return createRedirect(`${origin}/login?message=사용자 정보를 찾을 수 없습니다`)
+      return redirectToLoginWithMessage(origin, '사용자 정보를 찾을 수 없습니다')
     }
 
     const profile = await ensureProfile(supabase, user)
@@ -154,5 +169,5 @@ export async function GET(request: Request) {
   }
 
   // token_hash나 code가 없는 경우 로그인 페이지로
-  return createRedirect(`${origin}/login?message=인증 정보가 유효하지 않습니다`)
+  return redirectToLoginWithMessage(origin, '인증 정보가 유효하지 않습니다')
 }

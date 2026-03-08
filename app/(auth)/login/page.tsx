@@ -8,7 +8,14 @@ export const metadata = {
   description: '피크닉에 로그인하세요',
 }
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams?: Promise<{ message?: string }>
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const resolvedSearchParams = (await searchParams) || {}
+  const message = resolvedSearchParams.message
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md space-y-8">
@@ -19,6 +26,12 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-6">
+          {message && (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {message}
+            </div>
+          )}
+
           <Suspense fallback={<div className="h-32" />}>
             <LoginForm />
           </Suspense>

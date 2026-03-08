@@ -33,12 +33,18 @@ export default function SocialLogin({
       //   return
       // }
 
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
+      const safeAppUrl = appUrl && /^https?:\/\//.test(appUrl)
+        ? appUrl.replace(/\/$/, '')
+        : window.location.origin
+
       // Google, Apple은 Supabase OAuth 사용
       const supabase = createClient()
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          // 도메인 별 허용 URL 불일치 이슈를 줄이기 위해 고정 APP URL 우선 사용
+          redirectTo: `${safeAppUrl}/auth/callback?next=/feed`,
           queryParams: {
             ...(provider === 'google' && {
               prompt: 'select_account',
