@@ -252,7 +252,7 @@ export default function LoginForm() {
                 {getRandomLoadingMessage()}
               </>
             ) : (
-              '로그인'
+              '이메일 로그인'
             )}
           </Button>
         )}

@@ -23,6 +23,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <Link href="/" className="inline-block">
             <h1 className="text-5xl font-bold home-hero-title">피크닉</h1>
           </Link>
+          <p className="text-sm font-medium text-primary">
+            해외 거주 도시 기반 한국인 교민 플랫폼
+          </p>
         </div>
 
         <div className="space-y-6">
