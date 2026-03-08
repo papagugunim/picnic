@@ -12,6 +12,14 @@ function CallbackClientContent() {
     const run = async () => {
       const code = searchParams.get('code')
       const next = searchParams.get('next') || '/feed'
+      const query = searchParams.toString()
+
+      console.log('[OAuth Debug] callback-client landed', {
+        hasCode: Boolean(code),
+        next,
+        path: window.location.pathname,
+        host: window.location.host,
+      })
 
       if (!code) {
         router.replace('/login?message=인증 코드가 없습니다. 다시 시도해주세요.')
@@ -22,10 +30,19 @@ function CallbackClientContent() {
       const { error } = await supabase.auth.exchangeCodeForSession(code)
 
       if (error) {
-        router.replace(`/login?message=${encodeURIComponent(`인증에 실패했습니다: ${error.message}`)}`)
+        console.error('[OAuth Debug] client exchange failed, fallback to server callback', {
+          message: error.message,
+          name: error.name,
+          host: window.location.host,
+          href: window.location.href,
+        })
+
+        // 브라우저 PKCE 교환 실패 시 서버 콜백으로 한번 더 시도
+        router.replace(query ? `/auth/callback?${query}` : '/auth/callback')
         return
       }
 
+      console.log('[OAuth Debug] client exchange success, redirecting', { next })
       router.replace(next.startsWith('/') ? next : '/feed')
     }
 
