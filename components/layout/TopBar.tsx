@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Bell, Settings, Search, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -148,8 +149,15 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <Link href="/feed">
-            <h1 className="text-lg font-bold hover:opacity-70 transition-opacity cursor-pointer">피크닉</h1>
+          <Link href="/feed" className="flex items-center gap-1.5 hover:opacity-70 transition-opacity cursor-pointer">
+            <Image
+              src="/branding/external/bread-from-user-transparent.png"
+              alt="피크닉 아이콘"
+              width={20}
+              height={20}
+              className="block"
+            />
+            <h1 className="text-lg font-bold">피크닉</h1>
           </Link>
         )}
 
