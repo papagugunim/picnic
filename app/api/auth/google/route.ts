@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 
+function resolveRequestOrigin(request: NextRequest) {
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  const host = forwardedHost || request.headers.get('host')
+  const proto = request.headers.get('x-forwarded-proto') || 'https'
+
+  if (host) {
+    return `${proto}://${host}`
+  }
+
+  return request.nextUrl.origin
+}
+
 export async function GET(request: NextRequest) {
-  const origin = request.nextUrl.origin
+  const origin = resolveRequestOrigin(request)
   const next = request.nextUrl.searchParams.get('next') || '/feed'
 
   const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/feed'
@@ -16,6 +28,7 @@ export async function GET(request: NextRequest) {
       queryParams: {
         prompt: 'select_account',
         access_type: 'offline',
+        scope: 'openid email profile',
       },
     },
   })

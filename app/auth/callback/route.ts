@@ -20,6 +20,18 @@ function createRedirect(url: string) {
   return NextResponse.redirect(url)
 }
 
+function resolveRequestOrigin(request: Request, fallbackOrigin: string) {
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  const host = forwardedHost || request.headers.get('host')
+  const proto = request.headers.get('x-forwarded-proto') || 'https'
+
+  if (host) {
+    return `${proto}://${host}`
+  }
+
+  return fallbackOrigin
+}
+
 function redirectToLoginWithMessage(origin: string, message: string) {
   return createRedirect(`${origin}/login?message=${encodeURIComponent(message)}`)
 }
@@ -109,7 +121,7 @@ export async function GET(request: Request) {
   const next = requestUrl.searchParams.get('next')
   const oauthError = requestUrl.searchParams.get('error')
   const oauthErrorDescription = requestUrl.searchParams.get('error_description')
-  const origin = requestUrl.origin
+  const origin = resolveRequestOrigin(request, requestUrl.origin)
 
   if (oauthError || oauthErrorDescription) {
     const message = oauthErrorDescription || oauthError || '소셜 로그인 인증이 취소되었거나 실패했습니다'
@@ -151,6 +163,20 @@ export async function GET(request: Request) {
 
     if (error) {
       logger.error('Auth callback error:', error)
+
+      const lowerMessage = error.message.toLowerCase()
+      const isBrowserSessionIssue =
+        lowerMessage.includes('code verifier') ||
+        lowerMessage.includes('both auth code and code verifier should be non-empty') ||
+        lowerMessage.includes('flow_state_not_found')
+
+      if (isBrowserSessionIssue) {
+        return redirectToLoginWithMessage(
+          origin,
+          '인증 세션이 만료되었어요. Safari/Chrome에서 다시 시도해주세요.'
+        )
+      }
+
       return redirectToLoginWithMessage(origin, `인증에 실패했습니다: ${error.message}`)
     }
 
