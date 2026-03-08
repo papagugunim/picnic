@@ -436,18 +436,19 @@
 /* 랜딩 페이지 타이틀 애니메이션 */
 .home-hero-title {
   background-image: linear-gradient(
-    105deg,
+    100deg,
     hsl(var(--foreground)) 0%,
-    hsl(var(--foreground)) 34%,
-    hsl(var(--primary)) 48%,
-    hsl(var(--foreground)) 62%,
+    hsl(var(--foreground)) 28%,
+    hsl(var(--primary) / 0.98) 46%,
+    hsl(var(--foreground)) 64%,
     hsl(var(--foreground)) 100%
   );
-  background-size: 240% 100%;
+  background-size: 260% 100%;
   -webkit-background-clip: text;
   background-clip: text;
+  -webkit-text-fill-color: transparent;
   color: transparent;
-  animation: hero-title-shimmer 4.2s ease-in-out infinite;
+  animation: hero-title-shimmer 3.2s linear infinite;
   will-change: background-position;
 }
 
@@ -457,12 +458,11 @@
 }
 
 @keyframes hero-title-shimmer {
-  0%,
-  100% {
-    background-position: 0% 50%;
+  0% {
+    background-position: 120% 50%;
   }
-  50% {
-    background-position: 100% 50%;
+  100% {
+    background-position: -120% 50%;
   }
 }
 
