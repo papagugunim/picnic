@@ -2,8 +2,8 @@ import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('Route')
 
-import { createServerClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { createServerClient as createSupabaseServerClient } from '@supabase/ssr'
+import { NextRequest, NextResponse } from 'next/server'
 import type { EmailOtpType, User } from '@supabase/supabase-js'
 
 type ProfileSnapshot = {
@@ -12,7 +12,7 @@ type ProfileSnapshot = {
   onboarding_completed: boolean | null
 }
 
-type SupabaseServerClient = Awaited<ReturnType<typeof createServerClient>>
+type SupabaseServerClient = ReturnType<typeof createSupabaseServerClient>
 
 const ONBOARDING_START_PATH = '/onboarding/step/1'
 
@@ -20,7 +20,7 @@ function createRedirect(url: string) {
   return NextResponse.redirect(url)
 }
 
-function resolveRequestOrigin(request: Request, fallbackOrigin: string) {
+function resolveRequestOrigin(request: NextRequest, fallbackOrigin: string) {
   const forwardedHost = request.headers.get('x-forwarded-host')
   const host = forwardedHost || request.headers.get('host')
   const proto = request.headers.get('x-forwarded-proto') || 'https'
@@ -30,6 +30,38 @@ function resolveRequestOrigin(request: Request, fallbackOrigin: string) {
   }
 
   return fallbackOrigin
+}
+
+function createRouteSupabase(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request })
+
+  const supabase = createSupabaseServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  const applySupabaseCookies = (response: NextResponse) => {
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie)
+    })
+    return response
+  }
+
+  return { supabase, applySupabaseCookies }
 }
 
 function redirectToLoginWithMessage(origin: string, message: string) {
@@ -113,7 +145,7 @@ function resolvePostAuthRedirect(origin: string, safeNextPath: string | null, pr
   return onboardingRequired ? `${origin}${ONBOARDING_START_PATH}` : `${origin}/feed`
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const token_hash = requestUrl.searchParams.get('token_hash')
   const type = requestUrl.searchParams.get('type')
@@ -129,9 +161,8 @@ export async function GET(request: Request) {
     return redirectToLoginWithMessage(origin, message)
   }
 
-  const supabase = await createServerClient()
+  const { supabase, applySupabaseCookies } = createRouteSupabase(request)
 
-  // 이메일 확인 플로우 (token_hash + type)
   if (token_hash && type) {
     const { data, error } = await supabase.auth.verifyOtp({
       token_hash,
@@ -140,13 +171,13 @@ export async function GET(request: Request) {
 
     if (error) {
       logger.error('Email verification error:', error)
-      return redirectToLoginWithMessage(origin, '이메일 인증에 실패했습니다')
+      return applySupabaseCookies(redirectToLoginWithMessage(origin, '이메일 인증에 실패했습니다'))
     }
 
     const user = data?.user
     if (!user) {
       logger.error('No user in verification response')
-      return redirectToLoginWithMessage(origin, '사용자 정보를 찾을 수 없습니다')
+      return applySupabaseCookies(redirectToLoginWithMessage(origin, '사용자 정보를 찾을 수 없습니다'))
     }
 
     const profile = await ensureProfile(supabase, user)
@@ -154,10 +185,9 @@ export async function GET(request: Request) {
     const redirectUrl = resolvePostAuthRedirect(origin, safeNextPath, profile)
 
     logger.log('Email verification redirect:', redirectUrl)
-    return createRedirect(redirectUrl)
+    return applySupabaseCookies(createRedirect(redirectUrl))
   }
 
-  // OAuth 플로우 (code) - 이메일 인증도 code로 올 수 있음
   if (code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
@@ -171,19 +201,18 @@ export async function GET(request: Request) {
         lowerMessage.includes('flow_state_not_found')
 
       if (isBrowserSessionIssue) {
-        return redirectToLoginWithMessage(
-          origin,
-          '인증 세션이 만료되었어요. Safari/Chrome에서 다시 시도해주세요.'
+        return applySupabaseCookies(
+          redirectToLoginWithMessage(origin, '인증 세션이 만료되었어요. Safari/Chrome에서 다시 시도해주세요.')
         )
       }
 
-      return redirectToLoginWithMessage(origin, `인증에 실패했습니다: ${error.message}`)
+      return applySupabaseCookies(redirectToLoginWithMessage(origin, `인증에 실패했습니다: ${error.message}`))
     }
 
     const user = data?.user
     if (!user) {
       logger.error('No user in auth code response')
-      return redirectToLoginWithMessage(origin, '사용자 정보를 찾을 수 없습니다')
+      return applySupabaseCookies(redirectToLoginWithMessage(origin, '사용자 정보를 찾을 수 없습니다'))
     }
 
     const profile = await ensureProfile(supabase, user)
@@ -191,9 +220,8 @@ export async function GET(request: Request) {
     const redirectUrl = resolvePostAuthRedirect(origin, safeNextPath, profile)
 
     logger.log('Code flow redirect:', redirectUrl)
-    return createRedirect(redirectUrl)
+    return applySupabaseCookies(createRedirect(redirectUrl))
   }
 
-  // token_hash나 code가 없는 경우 로그인 페이지로
-  return redirectToLoginWithMessage(origin, '인증 정보가 유효하지 않습니다')
+  return applySupabaseCookies(redirectToLoginWithMessage(origin, '인증 정보가 유효하지 않습니다'))
 }

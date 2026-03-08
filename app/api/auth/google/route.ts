@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient as createSupabaseServerClient } from '@supabase/ssr'
 
 function resolveRequestOrigin(request: NextRequest) {
   const requestedOrigin = request.nextUrl.searchParams.get('origin')
@@ -31,10 +31,28 @@ function resolveRequestOrigin(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const origin = resolveRequestOrigin(request)
   const next = request.nextUrl.searchParams.get('next') || '/feed'
-
   const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/feed'
 
-  const supabase = await createServerClient()
+  let supabaseResponse = NextResponse.next({ request })
+
+  const supabase = createSupabaseServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -48,10 +66,16 @@ export async function GET(request: NextRequest) {
     },
   })
 
-  if (error || !data.url) {
-    const message = error?.message || 'Google 로그인 시작에 실패했습니다'
-    return NextResponse.redirect(`${origin}/login?message=${encodeURIComponent(message)}`)
-  }
+  const redirectTo = error || !data.url
+    ? `${origin}/login?message=${encodeURIComponent(error?.message || 'Google 로그인 시작에 실패했습니다')}`
+    : data.url
 
-  return NextResponse.redirect(data.url)
+  const redirectResponse = NextResponse.redirect(redirectTo)
+
+  // Supabase가 만든 code-verifier 쿠키를 리다이렉트 응답에 반드시 전달
+  supabaseResponse.cookies.getAll().forEach((cookie) => {
+    redirectResponse.cookies.set(cookie)
+  })
+
+  return redirectResponse
 }
