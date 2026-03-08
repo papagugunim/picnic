@@ -438,17 +438,18 @@
   display: inline-block;
   background-image: linear-gradient(
     100deg,
-    hsl(var(--foreground)) 34%,
-    hsl(var(--primary)) 45%,
-    hsl(var(--primary) / 0.92) 50%,
-    hsl(var(--foreground)) 61%
+    hsl(var(--foreground)) 30%,
+    hsl(var(--foreground)) 40%,
+    hsl(var(--primary) / 0.98) 47%,
+    hsl(var(--foreground)) 54%,
+    hsl(var(--foreground)) 64%
   );
-  background-size: 320% 100%;
+  background-size: 360% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
-  animation: hero-title-shimmer 2.2s linear infinite;
+  animation: hero-title-shimmer 1.55s linear infinite;
   will-change: background-position;
 }
 
@@ -459,10 +460,10 @@
 
 @keyframes hero-title-shimmer {
   0% {
-    background-position: 180% 50%;
+    background-position: 220% 50%;
   }
   100% {
-    background-position: -180% 50%;
+    background-position: -220% 50%;
   }
 }
 
