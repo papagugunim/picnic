@@ -50,6 +50,9 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      auth: {
+        detectSessionInUrl: false,
+      },
       realtime: {
         params: {
           eventsPerSecond: 10, // 초당 최대 10개 이벤트
