@@ -32,8 +32,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     })
 
     const query = callbackParams.toString()
-    // 우선 브라우저 PKCE 콜백으로 처리하고, 필요 시 내부적으로 서버 콜백으로 fallback
-    redirect(query ? `/auth/callback-client?${query}` : '/auth/callback-client')
+    redirect(query ? `/auth/callback?${query}` : '/auth/callback')
   }
 
   // 로그인한 사용자는 feed로 리다이렉트
