@@ -43,11 +43,11 @@ export default async function HomePage() {
 
       <div className="w-full flex justify-center pb-1">
         <Image
-          src="/branding/source/bread-color-original.jpg"
+          src="/branding/external/bread-from-user-transparent.png"
           alt="피크닉 브레드 아이콘"
-          width={120}
-          height={120}
-          className="rounded-2xl shadow-sm"
+          width={86}
+          height={86}
+          className="block"
           priority
         />
       </div>
