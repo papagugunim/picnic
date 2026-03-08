@@ -33,30 +33,26 @@ export default function SocialLogin({
       //   return
       // }
 
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
-      const safeAppUrl = appUrl && /^https?:\/\//.test(appUrl)
-        ? appUrl.replace(/\/$/, '')
-        : window.location.origin
+      if (provider === 'google') {
+        // OAuth 시작을 서버 라우트로 옮겨 code_verifier/cookie 컨텍스트를 일치시킴
+        // (클라이언트 시작 + 서버 교환 조합에서 발생하던 인증 실패 방지)
+        window.location.href = '/api/auth/google?next=/feed'
+        return
+      }
 
-      // Google, Apple은 Supabase OAuth 사용
+      // Apple 등 나머지는 Supabase OAuth 사용
       const supabase = createClient()
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          // 도메인 별 허용 URL 불일치 이슈를 줄이기 위해 고정 APP URL 우선 사용
-          redirectTo: `${safeAppUrl}/auth/callback?next=/feed`,
-          queryParams: {
-            ...(provider === 'google' && {
-              prompt: 'select_account',
-              access_type: 'offline',
-            }),
-          },
+          redirectTo: `${window.location.origin}/auth/callback?next=/feed`,
         },
       })
 
       if (error) {
         logger.error(`${provider} OAuth error:`, error)
-        toast.error(`${provider === 'google' ? 'Google' : 'Apple'} 로그인에 실패했습니다. 다시 시도해주세요.`)
+        const providerLabel = provider === 'apple' ? 'Apple' : '소셜'
+        toast.error(`${providerLabel} 로그인에 실패했습니다. 다시 시도해주세요.`)
         setIsLoading(null)
       }
       // 성공 시 자동으로 리다이렉트되므로 로딩 상태는 유지
