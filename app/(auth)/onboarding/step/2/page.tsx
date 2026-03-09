@@ -6,6 +6,7 @@ const logger = createNamespacedLogger('Page')
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { Loader2 } from 'lucide-react'
 import OnboardingLayout from '@/components/onboarding/OnboardingLayout'
 import { collectGeoSamples } from '@/lib/location/geo-sampler'
 
@@ -53,9 +54,7 @@ export default function OnboardingStep2() {
       }
 
       if (!payload.result?.pass) {
-        setError(
-          `선택한 도시와 현재 위치가 멀어요. (거리 ${payload.result?.distanceKm ?? '-'}km / 허용 ${payload.result?.effectiveRadiusKm ?? '-'}km)`
-        )
+        setError('선택한 도시와 현재 위치가 맞지 않습니다.')
         setVerificationMessage(null)
         return false
       }
@@ -189,14 +188,28 @@ export default function OnboardingStep2() {
               disabled={isVerifyingLocation}
               className="w-full rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/15 disabled:opacity-60"
             >
-              {isVerifyingLocation ? '위치 검증 중...' : isCityVerified ? '위치 검증 완료됨 ✅ (다시 검증)' : '현재 위치로 도시 인증'}
+              {isVerifyingLocation ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  위치 검증중...
+                </span>
+              ) : isCityVerified ? '위치 검증 완료됨 ✅ (다시 검증)' : '현재 위치로 도시 인증'}
             </button>
           </div>
         )}
 
         {verificationMessage && (
           <div className="glass-strong rounded-lg border-0 p-3 text-center text-sm text-primary mb-3">
-            {verificationMessage}
+            <div className="inline-flex items-center gap-2">
+              {isVerifyingLocation && (
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary/80 animate-bounce [animation-delay:-0.3s]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary/80 animate-bounce [animation-delay:-0.15s]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary/80 animate-bounce" />
+                </span>
+              )}
+              <span>{verificationMessage}</span>
+            </div>
           </div>
         )}
 
