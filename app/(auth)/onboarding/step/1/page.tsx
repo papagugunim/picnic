@@ -328,7 +328,6 @@ export default function OnboardingStep1() {
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">닉네임 선택 방식</p>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
