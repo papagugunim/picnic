@@ -131,6 +131,11 @@ export default function OnboardingStep2() {
   const canProceed = Boolean(selectedCity) && !isVerifyingLocation
 
   const handleSkip = () => {
+    const confirmed = window.confirm('거주 도시 미인증 시, 서비스에 제한이 있을 수 있습니다. 계속 진행하시겠습니까?')
+    if (!confirmed) {
+      return
+    }
+
     router.push('/onboarding/step/3')
   }
 
