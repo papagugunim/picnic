@@ -7,7 +7,6 @@ const logger = createNamespacedLogger('OnboardingStep1')
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { RefreshCw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 import OnboardingLayout from '@/components/onboarding/OnboardingLayout'
@@ -185,11 +184,6 @@ export default function OnboardingStep1() {
     return emergency
   }
 
-  const handleUseSuggested = () => {
-    setNickname(suggestedNickname)
-    setError(null)
-  }
-
   const handleRefreshSuggestion = async () => {
     try {
       setIsCheckingDuplicate(true)
@@ -215,6 +209,11 @@ export default function OnboardingStep1() {
 
     if (nickname.length > 20) {
       setError('닉네임은 최대 20자까지 가능합니다')
+      return
+    }
+
+    const confirmed = window.confirm(`정말 "${nickname.trim()}" 닉네임을 사용하시겠습니까?`)
+    if (!confirmed) {
       return
     }
 
@@ -307,15 +306,6 @@ export default function OnboardingStep1() {
               </div>
               <div className="space-y-3">
                 <p className="text-center text-lg font-bold text-primary truncate">{suggestedNickname}</p>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="w-full bg-[#8BA888] hover:bg-[#7a9777] text-white"
-                  onClick={handleUseSuggested}
-                  disabled={isLoading}
-                >
-                  사용
-                </Button>
                 <button
                   type="button"
                   onClick={handleRefreshSuggestion}
