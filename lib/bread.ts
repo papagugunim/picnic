@@ -5,13 +5,13 @@
  */
 
 export const BREAD_LEVELS = {
-  1: { name: '식빵', emoji: '🍞', color: '#FFF8DC', icon: '/icons/bread-1.svg' },
-  2: { name: '바게트', emoji: '🥖', color: '#F5DEB3', icon: '/icons/bread-2.svg' },
-  3: { name: '크로아상', emoji: '🥐', color: '#FFD700', icon: '/icons/bread-3.svg' },
-  4: { name: '쁘레첼', emoji: '🥨', color: '#DAA520', icon: '/icons/bread-4.svg' },
-  5: { name: '베이글', emoji: '🥯', color: '#CD853F', icon: '/icons/bread-5.svg' },
-  6: { name: '샌드위치', emoji: '🥪', color: '#6366F1', icon: '/icons/bread-6.svg', role: 'admin' },
-  7: { name: '햄버거', emoji: '🍔', color: '#A855F7', icon: '/icons/bread-7.svg', role: 'developer' },
+  1: { name: '식빵', emoji: '🍞', color: '#FFF8DC', icon: '/branding/external/bread-from-user-transparent.png' },
+  2: { name: '바게트', emoji: '🥖', color: '#F5DEB3', icon: '/branding/external/bread-from-user-transparent.png' },
+  3: { name: '크로아상', emoji: '🥐', color: '#FFD700', icon: '/branding/external/bread-from-user-transparent.png' },
+  4: { name: '쁘레첼', emoji: '🥨', color: '#DAA520', icon: '/branding/external/bread-from-user-transparent.png' },
+  5: { name: '베이글', emoji: '🥯', color: '#CD853F', icon: '/branding/external/bread-from-user-transparent.png' },
+  6: { name: '샌드위치', emoji: '🥪', color: '#6366F1', icon: '/branding/external/bread-from-user-transparent.png', role: 'admin' },
+  7: { name: '햄버거', emoji: '🍔', color: '#A855F7', icon: '/branding/external/bread-from-user-transparent.png', role: 'developer' },
 } as const
 
 export type BreadLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7
