@@ -18,6 +18,7 @@ export default function OnboardingStep2() {
   const [error, setError] = useState<string | null>(null)
   const [verificationMessage, setVerificationMessage] = useState<string | null>(null)
   const [isCityVerified, setIsCityVerified] = useState(false)
+  const [isRequestingLocationPermission, setIsRequestingLocationPermission] = useState(false)
   const [verificationProgress, setVerificationProgress] = useState(0)
 
   const handleCitySelect = (city: string) => {
@@ -45,11 +46,45 @@ export default function OnboardingStep2() {
     }
   }, [isVerifyingLocation])
 
+  const requestLocationPermission = async () => {
+    await new Promise<void>((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('geolocation-not-supported'))
+        return
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        () => resolve(),
+        (permissionError) => reject(permissionError),
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        }
+      )
+    })
+  }
+
   const verifyCurrentLocationForCity = async (cityValue: 'moscow' | 'spb') => {
+    setError(null)
+    setVerificationProgress(0)
+    setVerificationMessage('위치 권한을 확인하고 있어요...')
+    setIsRequestingLocationPermission(true)
+
+    try {
+      await requestLocationPermission()
+    } catch (permissionError) {
+      logger.warn('Location permission error:', permissionError)
+      setVerificationMessage(null)
+      setError('위치 권한이 필요합니다. 위치 접근을 허용한 뒤 다시 시도해주세요.')
+      return false
+    } finally {
+      setIsRequestingLocationPermission(false)
+    }
+
     setIsVerifyingLocation(true)
     setVerificationProgress(8)
     setVerificationMessage('현재 위치를 확인하고 있어요...')
-    setError(null)
 
     try {
       const samples = await collectGeoSamples({ sampleCount: 4, timeoutMs: 12000, intervalMs: 5000 })
@@ -154,7 +189,7 @@ export default function OnboardingStep2() {
     }
   }
 
-  const canProceed = Boolean(selectedCity) && !isVerifyingLocation
+  const canProceed = Boolean(selectedCity) && !isVerifyingLocation && !isRequestingLocationPermission
 
   const handleSkip = () => {
     const confirmed = window.confirm('거주 도시 미인증 시, 서비스에 제한이 있을 수 있습니다. 계속 진행하시겠습니까?')
@@ -212,29 +247,38 @@ export default function OnboardingStep2() {
         </div>
 
         {selectedCity && (
-          <div className="mb-3 space-y-2">
+          <div className="mb-3">
             <button
               type="button"
               onClick={() => verifyCurrentLocationForCity(selectedCity === 'Moscow' ? 'moscow' : 'spb')}
-              disabled={isVerifyingLocation}
-              className="w-full rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/15 disabled:opacity-60"
+              disabled={isVerifyingLocation || isRequestingLocationPermission}
+              className="relative w-full overflow-hidden rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/15 disabled:opacity-60"
             >
-              {isVerifyingLocation ? (
-                <span className="inline-flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  위치 검증중...
-                </span>
-              ) : isCityVerified ? '위치 검증 완료됨 ✅ (다시 검증)' : '현재 위치로 도시 인증'}
-            </button>
-
-            {isVerifyingLocation && (
-              <div className="relative overflow-hidden rounded-full bg-primary/10 h-2.5">
+              {isVerifyingLocation && (
                 <span
-                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500 via-lime-400 to-cyan-400 transition-[width] duration-500 ease-out"
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500/90 via-lime-400/90 to-cyan-400/90 transition-[width] duration-500 ease-out"
                   style={{ width: `${Math.max(0, Math.min(100, verificationProgress))}%` }}
                 />
-              </div>
-            )}
+              )}
+
+              <span className="relative z-10 inline-flex items-center gap-2">
+                {isRequestingLocationPermission ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    위치 권한 확인중...
+                  </>
+                ) : isVerifyingLocation ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    위치 검증중...
+                  </>
+                ) : isCityVerified ? (
+                  '위치 검증 완료됨 ✅ (다시 검증)'
+                ) : (
+                  '현재 위치로 도시 인증'
+                )}
+              </span>
+            </button>
           </div>
         )}
 
