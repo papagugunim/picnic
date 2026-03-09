@@ -104,7 +104,21 @@ export async function middleware(request: NextRequest) {
     return applySupabaseCookies(NextResponse.redirect(loginUrl))
   }
 
-  // 6. 온보딩 가드
+  // 6. 이메일 가입 사용자는 이메일 인증 전까지 verify-email로 유도
+  const { data: authData } = await supabase.auth.getUser()
+  const authUser = authData.user
+  const isEmailSignupUser = authUser?.app_metadata?.provider === 'email'
+  const isEmailVerified = Boolean(authUser?.email_confirmed_at)
+
+  if (isEmailSignupUser && !isEmailVerified) {
+    const verifyUrl = new URL('/verify-email', request.url)
+    if (authUser?.email) {
+      verifyUrl.searchParams.set('email', authUser.email)
+    }
+    return applySupabaseCookies(NextResponse.redirect(verifyUrl))
+  }
+
+  // 7. 온보딩 가드
   const isOnboardingPath = pathname.startsWith('/onboarding')
 
   // 온보딩 완료는 단방향(false -> true) 값이라 완료 상태만 쿠키 캐시
@@ -157,7 +171,7 @@ export async function middleware(request: NextRequest) {
     return applySupabaseCookies(redirectResponse)
   }
 
-  // 7. 보안 헤더 추가
+  // 8. 보안 헤더 추가
   supabaseResponse.headers.set('X-Frame-Options', 'DENY')
   supabaseResponse.headers.set('X-Content-Type-Options', 'nosniff')
   supabaseResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
