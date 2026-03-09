@@ -51,8 +51,11 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isVerifyingLocation, setIsVerifyingLocation] = useState(false)
+  const [isRequestingLocationPermission, setIsRequestingLocationPermission] = useState(false)
+  const [verificationProgress, setVerificationProgress] = useState(0)
   const [saveButtonState, setSaveButtonState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [cityVerificationError, setCityVerificationError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   const saveStateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -147,6 +150,7 @@ export default function SettingsPage() {
   const handleCityChange = (city: string) => {
     setSelectedCity(city)
     setSelectedStations([])
+    setCityVerificationError(null)
   }
 
   const extractProfileImageStoragePath = (url: string | null | undefined) => {
@@ -166,6 +170,39 @@ export default function SettingsPage() {
     }
   }
 
+  useEffect(() => {
+    if (!isVerifyingLocation) return
+
+    setVerificationProgress(6)
+    const timer = window.setInterval(() => {
+      setVerificationProgress((prev) => {
+        const next = prev + Math.max(2, Math.round((96 - prev) * 0.08))
+        return Math.min(96, next)
+      })
+    }, 450)
+
+    return () => window.clearInterval(timer)
+  }, [isVerifyingLocation])
+
+  const requestLocationPermission = async () => {
+    await new Promise<void>((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('geolocation-not-supported'))
+        return
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        () => resolve(),
+        (permissionError) => reject(permissionError),
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        }
+      )
+    })
+  }
+
   const handleStationToggle = (stationValue: string) => {
     if (selectedStations.includes(stationValue)) {
       setSelectedStations(selectedStations.filter((s) => s !== stationValue))
@@ -180,13 +217,28 @@ export default function SettingsPage() {
   }
 
   const verifyCurrentLocationForCity = async (cityValue: 'moscow' | 'spb') => {
+    setCityVerificationError(null)
+    setVerificationProgress(0)
+    setIsRequestingLocationPermission(true)
+
+    try {
+      await requestLocationPermission()
+    } catch (permissionError) {
+      logger.warn('Location permission error:', permissionError)
+      setCityVerificationError('위치 권한이 필요합니다. 위치 접근을 허용한 뒤 다시 시도해주세요.')
+      return false
+    } finally {
+      setIsRequestingLocationPermission(false)
+    }
+
     setIsVerifyingLocation(true)
-    setError(null)
+    setVerificationProgress(8)
 
     try {
       const samples = await collectGeoSamples({ sampleCount: 4, timeoutMs: 12000, intervalMs: 5000 })
       if (samples.length < 2) {
-        setError('위치 신호가 약해요. 실외에서 다시 시도해주세요.')
+        setVerificationProgress(0)
+        setCityVerificationError('위치 신호가 약해요. 실외에서 다시 시도해주세요.')
         return false
       }
 
@@ -202,24 +254,27 @@ export default function SettingsPage() {
       }
 
       if (!response.ok) {
-        setError(payload.error || '위치 검증에 실패했습니다.')
+        setVerificationProgress(0)
+        setCityVerificationError(payload.error || '위치 검증에 실패했습니다.')
         return false
       }
 
       if (!payload.result?.pass) {
-        setError(
-          `현재 위치가 선택 도시와 멀어요. (거리 ${payload.result?.distanceKm ?? '-'}km / 허용 ${payload.result?.effectiveRadiusKm ?? '-'}km)`
-        )
+        setVerificationProgress(0)
+        setCityVerificationError('현재 위치와 선택 도시가 맞지 않습니다.')
         return false
       }
 
+      setVerificationProgress(100)
       return true
     } catch (verifyError) {
       logger.error('Location verification error:', verifyError)
-      setError('위치 검증 중 오류가 발생했습니다.')
+      setVerificationProgress(0)
+      setCityVerificationError('위치 검증 중 오류가 발생했습니다.')
       return false
     } finally {
       setIsVerifyingLocation(false)
+      window.setTimeout(() => setVerificationProgress(0), 500)
     }
   }
 
@@ -228,6 +283,7 @@ export default function SettingsPage() {
       setIsSaving(true)
       setSaveButtonState('saving')
       setError(null)
+      setCityVerificationError(null)
 
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
@@ -478,6 +534,9 @@ export default function SettingsPage() {
                 <span>상트페테르부르크</span>
               </button>
             </div>
+            {cityVerificationError && (
+              <div className="mt-2 text-sm text-destructive">{cityVerificationError}</div>
+            )}
           </div>
 
           {/* 지하철역 */}
@@ -553,22 +612,38 @@ export default function SettingsPage() {
           <div className="pt-1">
             <Button
               onClick={handleSave}
-              disabled={isSaving || isVerifyingLocation}
-              className="w-full h-11 text-sm font-semibold transition-all"
+              disabled={isSaving || isVerifyingLocation || isRequestingLocationPermission}
+              className="relative w-full h-11 overflow-hidden text-sm font-semibold transition-all"
             >
-              {saveButtonState === 'saving' && (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  설정 저장중
-                </>
+              {isVerifyingLocation && (
+                <span
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500 via-lime-400 to-cyan-400 transition-[width] duration-500 ease-out"
+                  style={{ width: `${Math.max(0, Math.min(100, verificationProgress))}%` }}
+                />
               )}
-              {saveButtonState === 'saved' && (
-                <>
-                  <Check className="w-4 h-4 mr-2" />
-                  설정 저장 완료
-                </>
-              )}
-              {saveButtonState === 'idle' && (isVerifyingLocation ? '위치 검증 중...' : '설정 저장')}
+
+              <span className="relative z-10 inline-flex items-center">
+                {isRequestingLocationPermission ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    위치 권한 확인중
+                  </>
+                ) : saveButtonState === 'saving' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    설정 저장중
+                  </>
+                ) : saveButtonState === 'saved' ? (
+                  <>
+                    <Check className="w-4 h-4 mr-2" />
+                    설정 저장 완료
+                  </>
+                ) : isVerifyingLocation ? (
+                  '위치 검증 중...'
+                ) : (
+                  '설정 저장'
+                )}
+              </span>
             </Button>
           </div>
 
