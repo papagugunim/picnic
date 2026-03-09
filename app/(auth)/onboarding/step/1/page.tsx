@@ -135,6 +135,7 @@ export default function OnboardingStep1() {
   const [nickname, setNickname] = useState('')
   const [suggestedNickname, setSuggestedNickname] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [nicknameMode, setNicknameMode] = useState<'random' | 'manual'>('random')
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -154,6 +155,7 @@ export default function OnboardingStep1() {
       const initialSuggestion = await generateUniqueNickname()
       setSuggestedNickname(initialSuggestion)
       setNickname((prev) => (prev.trim().length > 0 ? prev : initialSuggestion))
+      setNicknameMode('random')
     }
 
     loadCurrentProfile()
@@ -215,6 +217,7 @@ export default function OnboardingStep1() {
       const nextSuggestion = await generateUniqueNickname()
       setSuggestedNickname(nextSuggestion)
       setNickname(nextSuggestion)
+      setNicknameMode('random')
       setError(null)
     } finally {
       setIsCheckingDuplicate(false)
@@ -321,10 +324,36 @@ export default function OnboardingStep1() {
           <div className="text-center space-y-1">
             <div className="text-3xl">😊</div>
             <p className="text-sm font-semibold">닉네임으로 안전하게 활동해요</p>
-            <p className="text-xs text-muted-foreground">닉네임 변경은 관리자 승인 후 가능합니다.</p>
+            <p className="text-xs text-muted-foreground">추후 닉네임 변경은 관리자에게 요청 시 가능합니다.</p>
           </div>
 
-          {suggestedNickname && (
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">닉네임 선택 방식</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setNicknameMode('random')
+                  if (suggestedNickname) setNickname(suggestedNickname)
+                }}
+                className={`rounded-lg px-3 py-2 text-sm transition-all \${nicknameMode === 'random' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}`}
+              >
+                랜덤 추천
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNicknameMode('manual')
+                  setNickname('')
+                }}
+                className={`rounded-lg px-3 py-2 text-sm transition-all \${nicknameMode === 'manual' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}`}
+              >
+                직접 입력
+              </button>
+            </div>
+          </div>
+
+          {nicknameMode === 'random' && suggestedNickname && (
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
               <div className="mb-2 text-center">
                 <p className="text-xs font-medium text-primary">추천 닉네임</p>
@@ -346,12 +375,12 @@ export default function OnboardingStep1() {
 
           <div className="space-y-2">
             <label htmlFor="nickname" className="text-sm font-medium">
-              닉네임
+              닉네임 {nicknameMode === 'manual' ? '(직접 입력)' : '(랜덤 추천 수정 가능)'}
             </label>
             <Input
               id="nickname"
               type="text"
-              placeholder="닉네임을 입력하세요"
+              placeholder={nicknameMode === 'manual' ? '원하는 닉네임을 입력하세요' : '추천 닉네임 또는 수정'}
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               maxLength={20}
