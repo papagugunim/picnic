@@ -10,6 +10,7 @@ type ProfileSnapshot = {
   full_name: string | null
   city: string | null
   onboarding_completed: boolean | null
+  deleted_at: string | null
 }
 
 type SupabaseServerClient = ReturnType<typeof createSupabaseServerClient>
@@ -83,13 +84,14 @@ function getSafeNextPath(nextParam: string | null): string | null {
 }
 
 function needsOnboarding(profile: ProfileSnapshot | null): boolean {
+  if (profile?.deleted_at) return true
   return !profile?.onboarding_completed || !profile?.full_name || !profile?.city
 }
 
 async function fetchProfile(supabase: SupabaseServerClient, userId: string): Promise<ProfileSnapshot | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('full_name, city, onboarding_completed')
+    .select('full_name, city, onboarding_completed, deleted_at')
     .eq('id', userId)
     .maybeSingle()
 
@@ -104,6 +106,34 @@ async function fetchProfile(supabase: SupabaseServerClient, userId: string): Pro
 async function ensureProfile(supabase: SupabaseServerClient, user: User): Promise<ProfileSnapshot | null> {
   const existingProfile = await fetchProfile(supabase, user.id)
   if (existingProfile) {
+    if (existingProfile.deleted_at) {
+      logger.warn('Deleted profile detected on OAuth login. Reactivating and forcing onboarding.')
+      const fallbackName =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email?.split('@')[0] ||
+        '새사용자'
+
+      const { error: reviveError } = await supabase
+        .from('profiles')
+        .update({
+          deleted_at: null,
+          onboarding_completed: false,
+          onboarding_completed_at: null,
+          city: null,
+          full_name: fallbackName,
+          avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id)
+
+      if (reviveError) {
+        logger.error('Failed to reactivate deleted profile:', reviveError)
+      }
+
+      return fetchProfile(supabase, user.id)
+    }
+
     return existingProfile
   }
 

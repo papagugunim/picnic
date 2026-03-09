@@ -74,7 +74,19 @@ export default function DeleteAccountPage() {
 
       if (deleteError) {
         logger.error('Failed to delete auth user:', deleteError)
-        // Auth 삭제 실패 시에도 로그아웃은 진행
+
+        // Auth 삭제 실패 시 soft delete 상태를 롤백해서
+        // "탈퇴된 것처럼 보이지만 실제 계정은 남아있는" 상태를 방지한다.
+        await supabase
+          .from('profiles')
+          .update({
+            deleted_at: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id)
+
+        setError('계정 삭제 처리에 실패했습니다. 잠시 후 다시 시도해주세요.')
+        return
       }
 
       // 로그아웃
