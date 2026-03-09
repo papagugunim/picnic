@@ -292,7 +292,7 @@ export default function OnboardingStep1() {
       hidePrevious
     >
       <div className="mb-4">
-        <div className="glass-strong rounded-lg p-4 space-y-4">
+        <div className="glass-strong rounded-lg border-0 p-4 space-y-4">
           <div className="text-center space-y-1">
             <div className="text-3xl">😊</div>
             <p className="text-sm font-semibold">닉네임으로 안전하게 활동해요</p>

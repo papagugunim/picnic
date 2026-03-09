@@ -182,10 +182,10 @@ export default function OnboardingStep4() {
                 key={category.value}
                 onClick={() => handleCategoryToggle(category.value)}
                 data-emoji-burst={categoryBurstEmojis[category.value]?.join(',') ?? '✨,🍞'}
-                className={`onboarding-choice h-auto py-4 px-2 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
+                className={`onboarding-choice h-auto py-4 px-2 flex flex-col items-center gap-2 rounded-lg border border-transparent transition-all ${
                   isSelected
-                    ? 'onboarding-choice-selected border-primary bg-primary text-primary-foreground ring-2 ring-primary/50 shadow-[0_6px_18px_rgba(84,122,94,0.26)]'
-                    : 'border-border hover:border-primary/50 hover:bg-primary/5'
+                    ? 'onboarding-choice-selected bg-primary text-primary-foreground ring-2 ring-primary/50 shadow-[0_6px_18px_rgba(84,122,94,0.26)]'
+                    : 'border-transparent hover:bg-primary/5'
                 }`}
               >
                 <Icon className="w-5 h-5" />
@@ -196,7 +196,7 @@ export default function OnboardingStep4() {
         </div>
 
         {error && (
-          <div className="glass-strong rounded-lg p-3 text-center text-sm text-destructive">
+          <div className="glass-strong rounded-lg border-0 p-3 text-center text-sm text-destructive">
             {error}
           </div>
         )}

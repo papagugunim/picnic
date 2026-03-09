@@ -87,7 +87,7 @@ export default function OnboardingStep5() {
                 {regularLevels.map((level) => (
                   <div
                     key={level.name}
-                    className="rounded-md border border-border bg-background/90 px-1 py-1.5 text-center"
+                    className="rounded-md bg-background/90 px-1 py-1.5 text-center"
                   >
                     <div className="text-base leading-none">{level.emoji}</div>
                     <div className="text-[10px] mt-1 truncate">{level.name}</div>
@@ -96,14 +96,14 @@ export default function OnboardingStep5() {
               </div>
             </div>
 
-            <div className="text-center rounded-lg border border-border bg-background/80 p-2.5">
+            <div className="text-center rounded-lg bg-background/80 p-2.5">
               <p className="text-[11px] text-muted-foreground">
                 거래/커뮤니티 활동이 쌓일수록 자동 승급됩니다.
               </p>
             </div>
 
             {error && (
-              <div className="glass-strong rounded-lg p-2.5 text-center text-sm text-destructive">
+              <div className="glass-strong rounded-lg border-0 p-2.5 text-center text-sm text-destructive">
                 {error}
               </div>
             )}

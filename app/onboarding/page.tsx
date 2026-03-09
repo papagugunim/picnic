@@ -68,10 +68,10 @@ export default function OnboardingPage() {
                     <button
                       key={option.key}
                       onClick={() => handleThemeSelect(option.key)}
-                      className={`h-auto py-5 px-3 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
+                      className={`h-auto py-5 px-3 flex flex-col items-center gap-2 rounded-lg border border-transparent transition-all ${
                         active
                           ? 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/50'
-                          : 'border-border hover:border-primary/50 hover:bg-primary/5'
+                          : 'border-transparent hover:bg-primary/5'
                       }`}
                     >
                       <Icon className="w-6 h-6" />

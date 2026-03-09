@@ -151,10 +151,10 @@ export default function OnboardingStep2() {
           <button
             onClick={() => handleCitySelect('Moscow')}
             data-emoji-burst="🏛️,❄️,✨"
-            className={`onboarding-choice w-full h-auto py-6 px-4 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
+            className={`onboarding-choice w-full h-auto py-6 px-4 flex flex-col items-center gap-2 rounded-lg border border-transparent transition-all ${
               selectedCity === 'Moscow'
-                ? 'onboarding-choice-selected border-primary bg-primary text-primary-foreground ring-2 ring-primary/50 shadow-[0_6px_18px_rgba(84,122,94,0.26)]'
-                : 'border-border hover:border-primary/50 hover:bg-primary/5'
+                ? 'onboarding-choice-selected bg-primary text-primary-foreground ring-2 ring-primary/50 shadow-[0_6px_18px_rgba(84,122,94,0.26)]'
+                : 'border-transparent hover:bg-primary/5'
             }`}
           >
             <div className="text-4xl">🏛️</div>
@@ -167,10 +167,10 @@ export default function OnboardingStep2() {
           <button
             onClick={() => handleCitySelect('Saint Petersburg')}
             data-emoji-burst="⛲,🌉,✨"
-            className={`onboarding-choice w-full h-auto py-6 px-4 flex flex-col items-center gap-2 rounded-lg border-2 transition-all ${
+            className={`onboarding-choice w-full h-auto py-6 px-4 flex flex-col items-center gap-2 rounded-lg border border-transparent transition-all ${
               selectedCity === 'Saint Petersburg'
-                ? 'onboarding-choice-selected border-primary bg-primary text-primary-foreground ring-2 ring-primary/50 shadow-[0_6px_18px_rgba(84,122,94,0.26)]'
-                : 'border-border hover:border-primary/50 hover:bg-primary/5'
+                ? 'onboarding-choice-selected bg-primary text-primary-foreground ring-2 ring-primary/50 shadow-[0_6px_18px_rgba(84,122,94,0.26)]'
+                : 'border-transparent hover:bg-primary/5'
             }`}
           >
             <div className="text-4xl">⛲</div>
@@ -195,13 +195,13 @@ export default function OnboardingStep2() {
         )}
 
         {verificationMessage && (
-          <div className="glass-strong rounded-lg p-3 text-center text-sm text-primary mb-3">
+          <div className="glass-strong rounded-lg border-0 p-3 text-center text-sm text-primary mb-3">
             {verificationMessage}
           </div>
         )}
 
         {error && (
-          <div className="glass-strong rounded-lg p-3 text-center text-sm text-destructive">
+          <div className="glass-strong rounded-lg border-0 p-3 text-center text-sm text-destructive">
             {error}
           </div>
         )}

@@ -140,7 +140,7 @@ export default function OnboardingStep3() {
     >
       <div className="mb-6">
         {selectedStations.length > 0 && (
-          <div className="mb-4 glass-strong rounded-lg p-4">
+          <div className="mb-4 glass-strong rounded-lg border-0 p-4">
             <div className="text-sm font-medium mb-2">
               선택 ({selectedStations.length}/5)
             </div>
@@ -177,7 +177,7 @@ export default function OnboardingStep3() {
           </div>
         </div>
 
-        <div className="mb-6 glass-strong rounded-lg p-3 max-h-[300px] overflow-y-auto">
+        <div className="mb-6 glass-strong rounded-lg border-0 p-3 max-h-[300px] overflow-y-auto">
           {filteredStations.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               검색 결과가 없습니다
@@ -233,7 +233,7 @@ export default function OnboardingStep3() {
         </div>
 
         {error && (
-          <div className="glass-strong rounded-lg p-3 text-center text-sm text-destructive">
+          <div className="glass-strong rounded-lg border-0 p-3 text-center text-sm text-destructive">
             {error}
           </div>
         )}
