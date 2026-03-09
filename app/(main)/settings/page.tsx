@@ -14,6 +14,7 @@ import Link from 'next/link'
 import { useMetroStations } from '@/lib/hooks/useMetroStations'
 import { getLoadingMessage } from '@/lib/loading-messages'
 import { useUser } from '@/lib/contexts/UserContext'
+import { collectGeoSamples } from '@/lib/location/geo-sampler'
 
 interface Profile {
   id: string
@@ -49,6 +50,7 @@ export default function SettingsPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isVerifyingLocation, setIsVerifyingLocation] = useState(false)
   const [saveButtonState, setSaveButtonState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
@@ -177,6 +179,50 @@ export default function SettingsPage() {
     }
   }
 
+  const verifyCurrentLocationForCity = async (cityValue: 'moscow' | 'spb') => {
+    setIsVerifyingLocation(true)
+    setError(null)
+
+    try {
+      const samples = await collectGeoSamples({ sampleCount: 4, timeoutMs: 12000, intervalMs: 5000 })
+      if (samples.length < 2) {
+        setError('위치 신호가 약해요. 실외에서 다시 시도해주세요.')
+        return false
+      }
+
+      const response = await fetch('/api/location/verify-city', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city: cityValue, samples }),
+      })
+
+      const payload = (await response.json()) as {
+        error?: string
+        result?: { pass: boolean; distanceKm: number; effectiveRadiusKm: number }
+      }
+
+      if (!response.ok) {
+        setError(payload.error || '위치 검증에 실패했습니다.')
+        return false
+      }
+
+      if (!payload.result?.pass) {
+        setError(
+          `현재 위치가 선택 도시와 멀어요. (거리 ${payload.result?.distanceKm ?? '-'}km / 허용 ${payload.result?.effectiveRadiusKm ?? '-'}km)`
+        )
+        return false
+      }
+
+      return true
+    } catch (verifyError) {
+      logger.error('Location verification error:', verifyError)
+      setError('위치 검증 중 오류가 발생했습니다.')
+      return false
+    } finally {
+      setIsVerifyingLocation(false)
+    }
+  }
+
   const handleSave = async () => {
     try {
       setIsSaving(true)
@@ -232,6 +278,16 @@ export default function SettingsPage() {
       }
 
       const cityValue = selectedCity === 'Moscow' ? 'moscow' : 'spb'
+      const currentCityValue = profile?.city || null
+      const isCityChanged = currentCityValue !== cityValue
+
+      if (isCityChanged) {
+        const verified = await verifyCurrentLocationForCity(cityValue)
+        if (!verified) {
+          setSaveButtonState('idle')
+          return
+        }
+      }
 
       const { error: updateError } = await supabase
         .from('profiles')
@@ -497,7 +553,7 @@ export default function SettingsPage() {
           <div className="pt-1">
             <Button
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || isVerifyingLocation}
               className="w-full h-11 text-sm font-semibold transition-all"
             >
               {saveButtonState === 'saving' && (
@@ -512,7 +568,7 @@ export default function SettingsPage() {
                   설정 저장 완료
                 </>
               )}
-              {saveButtonState === 'idle' && '설정 저장'}
+              {saveButtonState === 'idle' && (isVerifyingLocation ? '위치 검증 중...' : '설정 저장')}
             </Button>
           </div>
 
