@@ -532,6 +532,20 @@
   animation: free-bounce 0.6s ease-in-out;
 }
 
+/* 온보딩 전용 깔끔 UI (회색 테두리 제거) */
+.onboarding-clean .glass-strong {
+  border: none !important;
+  box-shadow: none;
+}
+
+.onboarding-clean .onboarding-choice {
+  border-color: transparent !important;
+}
+
+.onboarding-clean .onboarding-choice:hover {
+  border-color: transparent !important;
+}
+
 /* 온보딩 버튼 인터랙션 */
 .onboarding-choice {
   transform: translateZ(0);

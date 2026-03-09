@@ -75,7 +75,7 @@ export default function OnboardingLayout({
 
   return (
     <div
-      className="min-h-screen bg-background px-4 py-4"
+      className="onboarding-clean min-h-screen bg-background px-4 py-4"
       onClickCapture={handleButtonClickCapture}
     >
       <div className="w-full max-w-md mx-auto">
