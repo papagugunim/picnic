@@ -3,7 +3,7 @@
 import { createNamespacedLogger } from '@/lib/logger'
 
 const logger = createNamespacedLogger('Page')
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2 } from 'lucide-react'
@@ -18,6 +18,7 @@ export default function OnboardingStep2() {
   const [error, setError] = useState<string | null>(null)
   const [verificationMessage, setVerificationMessage] = useState<string | null>(null)
   const [isCityVerified, setIsCityVerified] = useState(false)
+  const [verificationProgress, setVerificationProgress] = useState(0)
 
   const handleCitySelect = (city: string) => {
     setSelectedCity(city)
@@ -25,8 +26,28 @@ export default function OnboardingStep2() {
     setVerificationMessage(null)
   }
 
+  useEffect(() => {
+    if (!isVerifyingLocation) {
+      return
+    }
+
+    setVerificationProgress(6)
+
+    const timer = window.setInterval(() => {
+      setVerificationProgress((prev) => {
+        const next = prev + Math.max(2, Math.round((96 - prev) * 0.08))
+        return Math.min(96, next)
+      })
+    }, 450)
+
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [isVerifyingLocation])
+
   const verifyCurrentLocationForCity = async (cityValue: 'moscow' | 'spb') => {
     setIsVerifyingLocation(true)
+    setVerificationProgress(8)
     setVerificationMessage('현재 위치를 확인하고 있어요...')
     setError(null)
 
@@ -49,25 +70,30 @@ export default function OnboardingStep2() {
       }
 
       if (!response.ok) {
+        setVerificationProgress(0)
         setError(payload.error || '위치 검증에 실패했습니다.')
         return false
       }
 
       if (!payload.result?.pass) {
+        setVerificationProgress(0)
         setError('선택한 도시와 현재 위치가 맞지 않습니다.')
         setVerificationMessage(null)
         return false
       }
 
+      setVerificationProgress(100)
       setIsCityVerified(true)
       setVerificationMessage('위치 검증이 완료됐어요 ✅')
       return true
     } catch (verifyError) {
       logger.error('Location verification error:', verifyError)
+      setVerificationProgress(0)
       setError('위치 검증 중 오류가 발생했습니다.')
       return false
     } finally {
       setIsVerifyingLocation(false)
+      window.setTimeout(() => setVerificationProgress(0), 500)
     }
   }
 
@@ -186,7 +212,7 @@ export default function OnboardingStep2() {
         </div>
 
         {selectedCity && (
-          <div className="mb-3">
+          <div className="mb-3 space-y-2">
             <button
               type="button"
               onClick={() => verifyCurrentLocationForCity(selectedCity === 'Moscow' ? 'moscow' : 'spb')}
@@ -200,6 +226,15 @@ export default function OnboardingStep2() {
                 </span>
               ) : isCityVerified ? '위치 검증 완료됨 ✅ (다시 검증)' : '현재 위치로 도시 인증'}
             </button>
+
+            {isVerifyingLocation && (
+              <div className="relative overflow-hidden rounded-full bg-primary/10 h-2.5">
+                <span
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500 via-lime-400 to-cyan-400 transition-[width] duration-500 ease-out"
+                  style={{ width: `${Math.max(0, Math.min(100, verificationProgress))}%` }}
+                />
+              </div>
+            )}
           </div>
         )}
 
