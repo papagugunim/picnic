@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
   const next = requestUrl.searchParams.get('next')
   const oauthError = requestUrl.searchParams.get('error')
   const oauthErrorDescription = requestUrl.searchParams.get('error_description')
-  const oauthRetry = requestUrl.searchParams.get('oauth_retry') === '1'
+  const oauthRetryCount = Number(requestUrl.searchParams.get('oauth_retry') || '0')
   const oauthTrace = requestUrl.searchParams.get('oauth_trace')
   const cookieTrace = request.cookies.get(OAUTH_TRACE_COOKIE)?.value
   const traceMismatch = Boolean(oauthTrace && cookieTrace && oauthTrace !== cookieTrace)
@@ -201,6 +201,20 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
+    const hasCodeVerifierCookie = request.cookies
+      .getAll()
+      .some((cookie) => cookie.name.endsWith('-auth-token-code-verifier'))
+
+    logger.log('OAuth callback received', {
+      host: request.headers.get('host'),
+      forwardedHost: request.headers.get('x-forwarded-host'),
+      oauthRetryCount,
+      traceMismatch,
+      hasCodeVerifierCookie,
+      hasCookieTrace: Boolean(cookieTrace),
+      hasOAuthTrace: Boolean(oauthTrace),
+    })
+
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (error) {
@@ -215,18 +229,28 @@ export async function GET(request: NextRequest) {
         lowerMessage.includes('flow state not found') ||
         lowerMessage.includes('invalid flow state')
 
-      if (isBrowserSessionIssue) {
-        if (!oauthRetry) {
-          const retryUrl = `${origin}/api/auth/google?next=${encodeURIComponent(next || '/feed')}&origin=${encodeURIComponent(origin)}&retry=1`
-          logger.warn('OAuth session issue detected. Retrying once automatically.', {
-            retryUrl,
-            traceMismatch,
-            oauthTrace,
-            hasCookieTrace: Boolean(cookieTrace),
-          })
-          return applySupabaseCookies(createRedirect(retryUrl))
-        }
+      // 실사용에서 "첫 클릭 실패 → 두 번째 클릭 성공" 패턴을 줄이기 위해
+      // code 교환 단계 오류는 유형과 무관하게 1회 자동 재시도한다.
+      // (oauth_retry=1이면 재귀 루프 방지)
+      const MAX_AUTO_RETRY = 2
 
+      if (oauthRetryCount < MAX_AUTO_RETRY) {
+        const nextRetry = oauthRetryCount + 1
+        const retryUrl = `${origin}/api/auth/google?next=${encodeURIComponent(next || '/feed')}&origin=${encodeURIComponent(origin)}&retry=${nextRetry}`
+        logger.warn('OAuth code exchange failed. Retrying automatically.', {
+          retryUrl,
+          nextRetry,
+          maxRetry: MAX_AUTO_RETRY,
+          traceMismatch,
+          oauthTrace,
+          hasCookieTrace: Boolean(cookieTrace),
+          isBrowserSessionIssue,
+          errorMessage: error.message,
+        })
+        return applySupabaseCookies(createRedirect(retryUrl))
+      }
+
+      if (isBrowserSessionIssue) {
         return applySupabaseCookies(
           redirectToLoginWithMessage(origin, '인증 세션이 만료되었어요. 다시 시도해주세요.')
         )

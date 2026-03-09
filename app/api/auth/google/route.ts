@@ -43,9 +43,19 @@ const OAUTH_TRACE_COOKIE = 'picnic_oauth_trace'
 export async function GET(request: NextRequest) {
   const origin = resolveRequestOrigin(request)
   const next = request.nextUrl.searchParams.get('next') || '/feed'
-  const retry = request.nextUrl.searchParams.get('retry') === '1' ? '1' : '0'
+  const retryRaw = Number(request.nextUrl.searchParams.get('retry') || '0')
+  const retry = Number.isFinite(retryRaw) && retryRaw > 0 ? String(Math.min(retryRaw, 2)) : '0'
   const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/feed'
   const trace = crypto.randomUUID()
+
+  console.log('[api/auth/google] start', {
+    host: request.headers.get('host'),
+    forwardedHost: request.headers.get('x-forwarded-host'),
+    origin,
+    retry,
+    safeNext,
+    trace,
+  })
 
   let supabaseResponse = NextResponse.next({ request })
 
