@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Suspense } from 'react'
 import SignupForm from '@/components/auth/SignupForm'
 import SocialLogin from '@/components/auth/SocialLogin'
@@ -13,7 +14,14 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center p-4 py-12 bg-background">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-3">
-          <Link href="/" className="inline-block">
+          <Link href="/" className="inline-flex items-center gap-3">
+            <Image
+              src="/icons/bread-1.svg"
+              alt="식빵 아이콘"
+              width={44}
+              height={44}
+              priority
+            />
             <h1 className="text-5xl font-bold home-hero-title">피크닉</h1>
           </Link>
           <p className="text-sm font-medium text-primary">
