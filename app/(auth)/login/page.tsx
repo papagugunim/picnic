@@ -24,8 +24,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <div className="text-center space-y-3">
           <Link href="/" className="inline-flex items-center gap-3">
             <Image
-              src="/icons/bread-1.svg"
-              alt="식빵 아이콘"
+              src="/branding/external/bread-from-user-transparent.png"
+              alt="피크닉 브레드 아이콘"
               width={44}
               height={44}
               priority
