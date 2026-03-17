@@ -297,12 +297,8 @@ export function RussiaNewsInfinitePage() {
         </button>
       </div>
 
-      <section className="glass-strong rounded-xl p-4 space-y-3">
-        <div className="flex items-start gap-2">
-          <div>
-            <h1 className="text-base font-bold">{sectionTitle}</h1>
-          </div>
-        </div>
+      <section className="space-y-3">
+        <h1 className="text-base font-bold">{sectionTitle}</h1>
 
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-0.5 touch-pan-x">
           {TOPICS.map((entry) => {
