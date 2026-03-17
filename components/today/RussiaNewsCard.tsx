@@ -32,7 +32,7 @@ export function getRussiaNewsTopicBadgeClass(topic: string): string {
 
 export function RussiaNewsCard({ item, compact = false }: RussiaNewsCardProps) {
   return (
-    <article className="rounded-lg p-2.5 transition-opacity hover:opacity-85">
+    <article className="rounded-xl border border-border bg-card p-3 transition-opacity hover:opacity-85">
       <div className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
         <span className={`rounded-full px-2 py-0.5 font-medium ${getRussiaNewsTopicBadgeClass(item.topic)}`}>
           {item.topic || '기타'}

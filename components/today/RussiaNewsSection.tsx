@@ -77,7 +77,7 @@ export function RussiaNewsSection() {
     void Promise.allSettled(
       topicsToWarm.map(async (value) => {
         const prefetched = await fetchTodayNewsWithFallback(value, {
-          limit: 8,
+          limit: 10,
           cacheMode: 'force-cache',
         })
         if (prefetched.length > 0) {
@@ -91,7 +91,7 @@ export function RussiaNewsSection() {
     async (isManualRefresh: boolean) => {
       const requestId = ++requestIdRef.current
       clearRecoveryTimer()
-      const cachedOnStart = isManualRefresh ? [] : readTodayLocalCachedNews(topic, 8)
+      const cachedOnStart = isManualRefresh ? [] : readTodayLocalCachedNews(topic, 10)
 
       if (isManualRefresh) {
         setIsRefreshing(true)
@@ -106,7 +106,7 @@ export function RussiaNewsSection() {
 
       try {
         const clipped = await fetchTodayNewsWithFallback(topic, {
-          limit: 8,
+          limit: 10,
           cacheMode: isManualRefresh ? 'no-store' : 'default',
           bustCache: isManualRefresh,
         })
@@ -239,7 +239,7 @@ export function RussiaNewsSection() {
             <div className="px-1 pb-1 text-[11px] text-muted-foreground">카테고리 전환 중...</div>
           )}
           {items.map((item) => (
-            <RussiaNewsCard key={item.id} item={item} compact />
+            <RussiaNewsCard key={item.id} item={item} />
           ))}
         </div>
       )}
