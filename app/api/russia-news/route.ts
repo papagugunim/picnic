@@ -7,6 +7,7 @@ import { normalizeTopic, type RussiaNewsApiPayload, type RussiaNewsTopic } from 
 import { readUpstashRussiaNews, writeUpstashRussiaNews } from '@/lib/russia-news-upstash-cache'
 import { isInArchiveWindow, readRussiaNewsFromArchiveStore, saveRussiaNewsArchiveItems } from '@/lib/russia-news-archive-store'
 import { checkUpstashRateLimit, getRateLimitIdentifier } from '@/lib/upstash'
+import { fetchFromExternalArchive } from '@/lib/russia-news-external-archive'
 
 const TOPIC_BUCKETS: RussiaNewsTopic[] = ['정치', '사회', '경제', '문화', '날씨']
 
@@ -209,6 +210,25 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // rnews-archive.vercel.app 외부 아카이브 폴백
+    if (!cursor) {
+      const externalItems = await fetchFromExternalArchive({ limit, topic })
+      if (externalItems.length > 0) {
+        await saveRussiaNewsArchiveItems(externalItems)
+        writeCachedRussiaNews('today', topic, externalItems)
+        await writeUpstashRussiaNews('today', topic, limit, cursor, externalItems)
+        return NextResponse.json(
+          { items: externalItems, stale: false, fallback: 'external-archive' },
+          {
+            headers: {
+              'Cache-Control': 'public, s-maxage=180, stale-while-revalidate=300',
+              'X-Russia-News-Fallback': 'external-archive',
+            },
+          }
+        )
+      }
+    }
+
     const cachedItems = await fallbackFromCache()
     if (cachedItems.length > 0) {
       return NextResponse.json(
@@ -265,6 +285,29 @@ export async function GET(request: NextRequest) {
           },
         }
       )
+    }
+
+    // rnews-archive.vercel.app 외부 아카이브 폴백 (에러 상황)
+    if (!cursor) {
+      try {
+        const externalItems = await fetchFromExternalArchive({ limit, topic })
+        if (externalItems.length > 0) {
+          await saveRussiaNewsArchiveItems(externalItems)
+          writeCachedRussiaNews('today', topic, externalItems)
+          await writeUpstashRussiaNews('today', topic, limit, cursor, externalItems)
+          return NextResponse.json(
+            { items: externalItems, stale: false, fallback: 'external-archive-on-error' },
+            {
+              headers: {
+                'Cache-Control': 'public, s-maxage=180, stale-while-revalidate=300',
+                'X-Russia-News-Fallback': 'external-archive-on-error',
+              },
+            }
+          )
+        }
+      } catch {
+        // 외부 아카이브도 실패하면 다음 폴백으로 진행
+      }
     }
 
     const cachedItems = await fallbackFromCache()
