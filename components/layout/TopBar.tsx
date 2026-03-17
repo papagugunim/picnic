@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Bell, Settings, Search, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/contexts/UserContext'
 import { useNotificationCount } from '@/lib/hooks/useNotificationCount'
@@ -59,15 +60,17 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
     }
   }, [isAdminOrDeveloper, isFullscreenPage, router])
 
-  // 스크롤 방향 감지 - 직접 구현
+  // 스크롤 방향 감지 — rAF throttle로 성능 최적화
   const [scrollHidden, setScrollHidden] = useState(false)
   const lastScrollY = useRef(0)
+  const rafId = useRef<number | null>(null)
 
-  useEffect(() => {
-    const handleScroll = () => {
+  const handleScroll = useCallback(() => {
+    if (rafId.current !== null) return
+    rafId.current = requestAnimationFrame(() => {
+      rafId.current = null
       const currentScrollY = window.scrollY
 
-      // 페이지 상단 근처: 항상 표시
       if (currentScrollY < 50) {
         setScrollHidden(false)
         lastScrollY.current = currentScrollY
@@ -75,17 +78,20 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
       }
 
       const diff = currentScrollY - lastScrollY.current
-
-      // 10px 이상 스크롤했을 때만 방향 전환
       if (Math.abs(diff) > 10) {
-        setScrollHidden(diff > 0) // 아래로 스크롤: 숨김
+        setScrollHidden(diff > 0)
         lastScrollY.current = currentScrollY
       }
-    }
-
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    })
   }, [])
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      if (rafId.current !== null) cancelAnimationFrame(rafId.current)
+    }
+  }, [handleScroll])
 
   // 채팅방, 게시글 상세 페이지에서는 TopBar 숨기기
   if (isFullscreenPage) {
@@ -116,7 +122,7 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
   }
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-40 liquid-glass-topbar transition-transform duration-300 ease-in-out ${scrollHidden ? '-translate-y-full' : 'translate-y-0'}`}>
+    <header className={cn('fixed top-0 left-0 right-0 z-40 liquid-glass-topbar transition-transform duration-300 ease-in-out', scrollHidden ? '-translate-y-full' : 'translate-y-0')}>
       <div className="flex items-center justify-between h-14 px-4 max-w-screen-xl mx-auto">
         {/* 왼쪽: 지역 선택 */}
         {showLocationDropdown ? (

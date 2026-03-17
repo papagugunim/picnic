@@ -5,6 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('EditPostForm')
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import * as z from 'zod'
@@ -304,10 +305,12 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
                   >
                     <span className="text-xs">×</span>
                   </button>
-                  <img
+                  <Image
                     src={url}
                     alt={`기존 이미지 ${index + 1}`}
-                    className="w-full h-full object-cover rounded-lg"
+                    fill
+                    className="object-cover rounded-lg"
+                    sizes="80px"
                   />
                 </div>
               ))}

@@ -15,6 +15,7 @@ import { useMetroStations } from '@/lib/hooks/useMetroStations'
 import { getLoadingMessage } from '@/lib/loading-messages'
 import { useUser } from '@/lib/contexts/UserContext'
 import { collectGeoSamples } from '@/lib/location/geo-sampler'
+import { cn } from '@/lib/utils'
 
 interface Profile {
   id: string
@@ -493,12 +494,10 @@ export default function SettingsPage() {
                     <button
                       key={option.key}
                       onClick={() => setTheme(option.key)}
-                      className={
-                        'flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all ' +
-                        (active
-                          ? 'bg-foreground text-background font-semibold'
-                          : 'bg-secondary hover:bg-muted')
-                      }
+                      className={cn(
+                        'flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all',
+                        active ? 'bg-foreground text-background font-semibold' : 'bg-secondary hover:bg-muted'
+                      )}
                     >
                       <Icon className="w-4 h-4" />
                       <span>{option.label}</span>

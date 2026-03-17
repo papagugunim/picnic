@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 
 import { cn } from '@/lib/utils'
 
@@ -89,10 +90,12 @@ export function InlineImageCarousel({
               onImageClick?.(index, event)
             }}
           >
-            <img
+            <Image
               src={image}
               alt={`이미지 ${index + 1}`}
-              loading="lazy"
+              width={0}
+              height={0}
+              sizes="100vw"
               className={cn('block w-full h-auto object-contain select-none', maxHeightClassName)}
               draggable={false}
             />

@@ -6,6 +6,7 @@ const logger = createNamespacedLogger('Page')
 import { useEffect, useRef } from 'react'
 import { Loader2, MessageCircle, Package } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useChats } from '@/lib/hooks/useChats'
 import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadEmoji } from '@/lib/bread'
@@ -13,38 +14,7 @@ import { SwipeableChatItem } from '@/components/chat/SwipeableChatItem'
 import { toast } from 'sonner'
 import { formatTimeAgo } from '@/lib/utils/date'
 import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
-
-type PostWithImages = { images?: string[] | string | null } | null | undefined
-
-function getPostThumbnailUrl(post: PostWithImages): string | null {
-  const images = post?.images
-
-  if (Array.isArray(images)) {
-    const url = images.find((img) => typeof img === 'string' && img.trim().length > 0)
-    return url || null
-  }
-
-  if (typeof images === 'string') {
-    const trimmed = images.trim()
-    if (!trimmed) return null
-
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-      try {
-        const parsed = JSON.parse(trimmed)
-        if (Array.isArray(parsed)) {
-          const url = parsed.find((img) => typeof img === 'string' && img.trim().length > 0)
-          return url || null
-        }
-      } catch {
-        return null
-      }
-    }
-
-    return trimmed
-  }
-
-  return null
-}
+import { getPostThumbnailUrl } from '@/lib/utils/post'
 
 export default function ChatsPage() {
   const { chatRooms, isLoading, isFetchingMore, hasMore, error, mutate, loadMore } = useChats()
@@ -147,12 +117,13 @@ export default function ChatsPage() {
                       <div className="flex items-center gap-3 p-4">
                         {/* Product Thumbnail */}
                         {thumbnailUrl ? (
-                          <img
+                          <Image
                             src={thumbnailUrl}
                             alt={room.post?.title || '상품 이미지'}
+                            width={64}
+                            height={64}
                             className="w-16 h-16 rounded-lg object-cover flex-shrink-0 border border-border"
-                            loading="lazy"
-                            decoding="async"
+                            sizes="64px"
                           />
                         ) : (
                           <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 border border-border">
