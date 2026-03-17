@@ -269,7 +269,7 @@ export function RussiaNewsInfinitePage() {
   }, [fetchMore])
 
   const sectionTitle = useMemo(
-    () => (topic ? `가장 빠른 ${topic} 뉴스` : '가장 빠른 실시간 뉴스 아카이브'),
+    () => (topic ? `${topic} 뉴스 아카이브` : '뉴스 아카이브'),
     [topic]
   )
 
@@ -301,7 +301,6 @@ export function RussiaNewsInfinitePage() {
         <div className="flex items-start gap-2">
           <div>
             <h1 className="text-base font-bold">{sectionTitle}</h1>
-            <p className="mt-1 text-xs text-muted-foreground">최근 7일 아카이브</p>
           </div>
         </div>
 
