@@ -84,14 +84,22 @@ function writeLocalCachedNews(topic: RussiaNewsTopic, items: RussiaNewsItem[]): 
   )
 }
 
+// 링크 기준 중복 제거 (같은 기사가 다른 ID로 저장된 경우 처리)
 function getNewsMergeKey(item: RussiaNewsItem): string {
-  return `${item.id}|${item.published_at}|${item.link}`
+  return item.link?.trim() || `${item.id}|${item.published_at}`
 }
 
 function mergeUnique(prev: RussiaNewsItem[], next: RussiaNewsItem[]): RussiaNewsItem[] {
   const map = new Map<string, RussiaNewsItem>()
   for (const item of prev) map.set(getNewsMergeKey(item), item)
-  for (const item of next) map.set(getNewsMergeKey(item), item)
+  // next의 항목이 summary가 있으면 prev보다 우선 적용
+  for (const item of next) {
+    const key = getNewsMergeKey(item)
+    const existing = map.get(key)
+    if (!existing || (!existing.summary && item.summary)) {
+      map.set(key, item)
+    }
+  }
   return keepLastWeek(Array.from(map.values()))
 }
 
@@ -125,17 +133,29 @@ export function RussiaNewsInfinitePage() {
     setHasMore(true)
 
     try {
-      const url = new URL('/api/russia-news/archive', window.location.origin)
-      url.searchParams.set('limit', String(PAGE_SIZE))
-      url.searchParams.set('v', NEWS_CACHE_VERSION)
-      if (topic) url.searchParams.set('topic', topic)
+      // 1순위: external archive (한국어 요약 포함)
+      const extUrl = new URL('/api/russia-news/external', window.location.origin)
+      extUrl.searchParams.set('limit', String(PAGE_SIZE))
+      if (topic) extUrl.searchParams.set('topic', topic)
 
-      const response = await fetch(url.toString())
-      const data = await response.json()
-      if (!response.ok || data?.error) throw new Error(data?.error || '뉴스를 불러오지 못했습니다.')
+      const extResponse = await fetch(extUrl.toString())
+      const extData = extResponse.ok ? await extResponse.json() : null
+      const extItems: RussiaNewsItem[] = Array.isArray(extData?.items) ? extData.items : []
 
-      const firstItems = Array.isArray(data?.items) ? (data.items as RussiaNewsItem[]) : []
-      const usableItems = isFallbackPlaceholderItems(firstItems) ? [] : keepLastWeek(firstItems)
+      // 2순위: 아카이브 스토어 (과거 데이터 보완)
+      const archUrl = new URL('/api/russia-news/archive', window.location.origin)
+      archUrl.searchParams.set('limit', String(PAGE_SIZE))
+      archUrl.searchParams.set('v', NEWS_CACHE_VERSION)
+      if (topic) archUrl.searchParams.set('topic', topic)
+
+      const archResponse = await fetch(archUrl.toString())
+      const archData = archResponse.ok ? await archResponse.json() : null
+      const archItems: RussiaNewsItem[] = Array.isArray(archData?.items) ? archData.items : []
+
+      // 병합: external 우선 (summary 있는 항목 유지), 중복 제거
+      const merged = mergeUnique(archItems, extItems)
+      const usableItems = isFallbackPlaceholderItems(merged) ? [] : keepLastWeek(merged)
+
       if (usableItems.length > 0) {
         setItems(usableItems)
         writeLocalCachedNews(topic, usableItems)

@@ -151,7 +151,7 @@ function parseMarkdownContent(content: string): ParsedNewsItem[] {
     // 뉴스 항목 시작: "숫자. 제목" 패턴
     const itemMatch = line.match(/^(\d+)\.\s+(.+)$/)
     if (itemMatch && currentCategory) {
-      let title = itemMatch[2].replace(/\[NEW\]/gi, '').trim()
+      let title = itemMatch[2].replace(/\[[^\]]+\]/g, '').trim()
       let summary = ''
       let link = ''
       i++

@@ -3,6 +3,7 @@
   "outputDirectory": ".next",
   "framework": "nextjs",
   "installCommand": "npm install",
+  "alias": ["mypicnic.vercel.app"],
   "crons": [
     {
       "path": "/api/cron/milk-role-bonus",
