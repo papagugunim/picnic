@@ -85,7 +85,7 @@ interface RequestTodayNewsOptions {
 }
 
 async function requestTodayNews(
-  endpoint: '/api/russia-news' | '/api/russia-news/archive',
+  endpoint: '/api/russia-news' | '/api/russia-news/archive' | '/api/russia-news/external',
   topicInput: RussiaNewsTopic,
   options: RequestTodayNewsOptions
 ): Promise<RussiaNewsItem[]> {
@@ -144,13 +144,16 @@ export async function fetchTodayNewsWithFallback(
   options: RequestTodayNewsOptions = {}
 ): Promise<RussiaNewsItem[]> {
   const topic = normalizeTopic(topicInput)
-  const candidates: Array<{ endpoint: '/api/russia-news' | '/api/russia-news/archive'; topic: RussiaNewsTopic }> = [
+  const candidates: Array<{ endpoint: '/api/russia-news' | '/api/russia-news/archive' | '/api/russia-news/external'; topic: RussiaNewsTopic }> = [
+    // rnews-archive를 1순위로 - 한국어 요약 포함
+    { endpoint: '/api/russia-news/external', topic },
     { endpoint: '/api/russia-news', topic },
     { endpoint: '/api/russia-news/archive', topic },
   ]
 
   if (topic) {
     candidates.push(
+      { endpoint: '/api/russia-news/external', topic: '' },
       { endpoint: '/api/russia-news', topic: '' },
       { endpoint: '/api/russia-news/archive', topic: '' }
     )

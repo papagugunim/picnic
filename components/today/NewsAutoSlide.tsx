@@ -47,7 +47,7 @@ function NewsAutoSlideComponent({ newsList, onNewsClick, canManageNotices }: New
   return (
     <div>
       {/* 뉴스 카드 - 페이드 애니메이션, 높이 고정 */}
-      <div className="relative h-[112px]">
+      <div className="relative h-[88px]">
         {newsList.map((news, index) => (
           <button
             key={news.id}
@@ -59,10 +59,7 @@ function NewsAutoSlideComponent({ newsList, onNewsClick, canManageNotices }: New
                 : 'opacity-0 z-0 pointer-events-none'
               }`}
           >
-            <div className="text-sm font-semibold mb-2 line-clamp-1">
-              {news.title}
-            </div>
-            <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
+            <p className="text-sm text-muted-foreground line-clamp-4 leading-relaxed">
               {news.summary || news.content}
             </p>
           </button>
