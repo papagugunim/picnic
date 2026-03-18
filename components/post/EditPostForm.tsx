@@ -29,7 +29,7 @@ const postSchema = z.object({
   title: z.string().min(2, '제목은 최소 2자 이상이어야 합니다').max(100, '제목은 최대 100자까지 가능합니다'),
   description: z.string().min(10, '설명은 최소 10자 이상이어야 합니다').max(2000, '설명은 최대 2000자까지 가능합니다'),
   price: z.string().refine(
-    (val) => val === '' || !isNaN(Number(val)) && Number(val) >= 0,
+    (val) => val === '' || (!isNaN(Number(val)) && Number(val) >= 0),
     '올바른 가격을 입력해주세요'
   ),
   category: z.string().min(1, '카테고리를 선택해주세요'),
@@ -340,11 +340,12 @@ export default function EditPostForm({ postId }: EditPostFormProps) {
                     enterKeyHint="done"
                     autoComplete="off"
                     placeholder="가격을 입력하세요"
-                    value={field.value ? Number(field.value).toLocaleString() : ''}
+                    value={field.value}
                     onChange={(e) => {
                       const numericValue = e.target.value.replace(/[^0-9]/g, '')
                       field.onChange(numericValue)
                     }}
+                    onBlur={field.onBlur}
                     className="flex-1"
                   />
                   <div className="relative">
