@@ -617,3 +617,16 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none; /* Chrome, Safari and Opera */
 }
+
+/* 공지사항 전광판 티커 */
+@keyframes news-ticker {
+  from { transform: translateX(100vw); }
+  to { transform: translateX(-100%); }
+}
+
+.animate-news-ticker {
+  animation: news-ticker linear infinite;
+  will-change: transform;
+  display: inline-block;
+  white-space: nowrap;
+}
