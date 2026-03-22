@@ -24,8 +24,8 @@ const PAGE_SIZE = 30
 
 function topicButtonClass(_value: RussiaNewsTopic, active: boolean): string {
   return active
-    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
-    : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+    ? 'bg-white text-zinc-900 border border-zinc-500 font-semibold dark:bg-zinc-700 dark:text-white dark:border-zinc-400'
+    : 'bg-white text-zinc-500 border border-zinc-200 hover:border-zinc-300 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500'
 }
 
 function buildLocalCacheKey(topic: RussiaNewsTopic): string {
