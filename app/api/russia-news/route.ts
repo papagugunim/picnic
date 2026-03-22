@@ -16,6 +16,10 @@ function filterByTopic<T extends { topic?: string | null }>(items: T[], topicInp
   return items.filter((item) => normalizeTopic(item.topic || null) === requested)
 }
 
+function filterHasSummary(items: RussiaNewsItem[]): RussiaNewsItem[] {
+  return items.filter((item) => item.summary && item.summary.trim() && item.summary !== item.title)
+}
+
 function filterToArchiveWindow<T extends { published_at?: string }>(items: T[]): T[] {
   return items.filter((item) => isInArchiveWindow(item.published_at ?? ''))
 }
@@ -40,7 +44,7 @@ export async function GET(request: NextRequest) {
     if (!cursor) {
       const externalItems = await fetchFromExternalArchive({ limit, topic })
       if (externalItems.length > 0) {
-        const filtered = filterToArchiveWindow(filterByTopic(externalItems, topic))
+        const filtered = filterHasSummary(filterToArchiveWindow(filterByTopic(externalItems, topic)))
         if (filtered.length > 0) {
           await saveRussiaNewsArchiveItems(filtered)
           writeCachedRussiaNews('today', topic, filtered)
@@ -54,7 +58,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 2순위: Supabase 내부 아카이브 스토어
-    const storedItems = await readRussiaNewsFromArchiveStore({ topic, limit, cursor })
+    const storedItems = filterHasSummary(await readRussiaNewsFromArchiveStore({ topic, limit, cursor }))
     if (storedItems.length > 0) {
       writeCachedRussiaNews('today', topic, storedItems)
       await writeUpstashRussiaNews('today', topic, limit, cursor, storedItems)
@@ -65,11 +69,12 @@ export async function GET(request: NextRequest) {
     }
 
     // 3순위: Upstash / 메모리 캐시
-    const cachedItems =
+    const rawCachedItems =
       readCachedRussiaNews('today', topic, limit, cursor) ||
       (await readUpstashRussiaNews('today', topic, limit, cursor)) ||
       readCachedRussiaNews('archive', topic, limit, cursor) ||
       (await readUpstashRussiaNews('archive', topic, limit, cursor))
+    const cachedItems = rawCachedItems ? filterHasSummary(rawCachedItems) : null
 
     if (cachedItems && cachedItems.length > 0) {
       return NextResponse.json(
@@ -83,7 +88,7 @@ export async function GET(request: NextRequest) {
       const broadCached =
         readCachedRussiaNews('today', '', limit, cursor) ||
         (await readUpstashRussiaNews('today', '', limit, cursor))
-      const filtered = filterByTopic(broadCached || [], topic)
+      const filtered = filterHasSummary(filterByTopic(broadCached || [], topic))
       if (filtered.length > 0) {
         return NextResponse.json(
           { items: filtered, stale: true, fallback: 'broad-cache' },
@@ -104,7 +109,7 @@ export async function GET(request: NextRequest) {
           if (!merged.has(item.id)) merged.set(item.id, item)
         }
       }
-      const mergedItems = Array.from(merged.values()).slice(0, limit)
+      const mergedItems = filterHasSummary(Array.from(merged.values()).slice(0, limit))
       if (mergedItems.length > 0) {
         await saveRussiaNewsArchiveItems(mergedItems)
         return NextResponse.json(
