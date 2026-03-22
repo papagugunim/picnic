@@ -11,10 +11,19 @@ import { getCache, setCache, clearCache, CACHE_KEYS } from '@/lib/cache'
 import { useUser } from '@/lib/contexts/UserContext'
 import { usePageVisibility } from '@/lib/hooks/usePageVisibility'
 import { WeatherSection } from '@/components/today/WeatherSection'
-import { ExchangeSection } from '@/components/today/ExchangeSection'
 import { NewsSection } from '@/components/today/NewsSection'
 import { WEATHER_ICONS, CITY_COORDS, USEFUL_LINKS } from '@/components/today/constants'
-import type { WeatherData, WeatherCondition, ExchangeRates, OHLCData, NewsItem } from '@/components/today/types'
+import type { WeatherData, WeatherCondition, ExchangeRates, OHLCData, ChartType, ChartPeriod, NewsItem } from '@/components/today/types'
+
+const ExchangeCalculatorModal = dynamic(
+  () => import('@/components/today/ExchangeCalculatorModal').then((m) => m.ExchangeCalculatorModal),
+  { ssr: false }
+)
+
+const ExchangeChartModal = dynamic(
+  () => import('@/components/today/ExchangeChartModal').then((m) => m.ExchangeChartModal),
+  { ssr: false }
+)
 
 const RussiaNewsSection = dynamic(
   () => import('@/components/today/RussiaNewsSection').then((module) => module.RussiaNewsSection),
@@ -35,6 +44,12 @@ export default function TodayPage() {
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null)
   const [isRefreshingWeather, setIsRefreshingWeather] = useState(false)
   const [isRefreshingExchangeRates, setIsRefreshingExchangeRates] = useState(false)
+
+  // 환율 모달 상태
+  const [showCalculator, setShowCalculator] = useState(false)
+  const [showChart, setShowChart] = useState(false)
+  const [chartType, setChartType] = useState<ChartType>('rub')
+  const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('week')
 
   const canManageNotices = profile?.user_role === 'admin' || profile?.user_role === 'developer'
   const loading = userLoading
@@ -392,29 +407,38 @@ export default function TodayPage() {
     }
   }, [yearlyChartData, filterDataByPeriod, exchangeRates, normalizeHistoryToCurrentSpot])
 
+  // 환율 차트 열기
+  const handleOpenChart = useCallback((type: ChartType) => {
+    setChartType(type)
+    setShowChart(true)
+    void loadChartData(type, chartPeriod)
+  }, [chartPeriod, loadChartData])
+
+  const handlePeriodChange = useCallback((period: ChartPeriod) => {
+    setChartPeriod(period)
+    void loadChartData(chartType, period)
+  }, [chartType, loadChartData])
+
   return (
     <div className="bg-background">
       <div className="max-w-4xl mx-auto">
-        {/* Header + Weather */}
+        {/* Header + Weather + 환율 */}
         <WeatherSection
           loading={loading}
           userCity={userCity}
           weather={weather}
           isRefreshingWeather={isRefreshingWeather}
           onRefreshWeather={handleRefreshWeather}
+          exchangeRates={exchangeRates}
+          isRefreshingExchangeRates={isRefreshingExchangeRates}
+          onRefreshExchangeRates={handleRefreshExchangeRates}
+          onOpenCalculator={() => setShowCalculator(true)}
+          onOpenRubChart={() => handleOpenChart('rub')}
+          onOpenUsdChart={() => handleOpenChart('usd')}
         />
 
         {/* Content */}
         <div className="px-4 pt-0.5 pb-4 space-y-1">
-          {/* 환율 정보 */}
-          <ExchangeSection
-            exchangeRates={exchangeRates}
-            isRefreshingExchangeRates={isRefreshingExchangeRates}
-            onRefreshExchangeRates={handleRefreshExchangeRates}
-            loadChartData={loadChartData}
-            chartData={chartData}
-            isLoadingChart={isLoadingChart}
-          />
 
           {/* 뉴스 */}
           <NewsSection
@@ -453,6 +477,26 @@ export default function TodayPage() {
           </div>
         </div>
       </div>
+
+      {/* 환율 계산기 모달 */}
+      {showCalculator && exchangeRates && (
+        <ExchangeCalculatorModal
+          exchangeRates={exchangeRates}
+          onClose={() => setShowCalculator(false)}
+        />
+      )}
+
+      {/* 환율 그래프 모달 */}
+      {showChart && exchangeRates && (
+        <ExchangeChartModal
+          chartType={chartType}
+          chartPeriod={chartPeriod}
+          chartData={chartData}
+          isLoadingChart={isLoadingChart}
+          onClose={() => setShowChart(false)}
+          onPeriodChange={handlePeriodChange}
+        />
+      )}
     </div>
   )
 }
