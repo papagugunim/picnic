@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { readCachedRussiaNews, writeCachedRussiaNews } from '@/lib/russia-news-cache'
 import { getEmergencyFallbackNews } from '@/lib/russia-news-fallback'
-import { normalizeTopic, type RussiaNewsTopic } from '@/lib/russia-news'
+import { normalizeTopic, type RussiaNewsItem, type RussiaNewsTopic } from '@/lib/russia-news'
 import { readUpstashRussiaNews, writeUpstashRussiaNews } from '@/lib/russia-news-upstash-cache'
 import { isInArchiveWindow, readRussiaNewsFromArchiveStore, saveRussiaNewsArchiveItems } from '@/lib/russia-news-archive-store'
 import { checkUpstashRateLimit, getRateLimitIdentifier } from '@/lib/upstash'
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
       const bucketResults = await Promise.allSettled(
         TOPIC_BUCKETS.map((bucket) => fetchFromExternalArchive({ limit: 4, topic: bucket }))
       )
-      const merged = new Map<string, (typeof bucketResults)[number] extends PromiseFulfilledResult<infer T> ? T[number] : never>()
+      const merged = new Map<string, RussiaNewsItem>()
       for (const result of bucketResults) {
         if (result.status !== 'fulfilled') continue
         for (const item of result.value) {
