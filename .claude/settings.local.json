@@ -18,7 +18,9 @@
       "Bash(npm run db:pull:*)",
       "Bash(SUPABASE_ACCESS_TOKEN=sbp_daa35652b319ef47003c7112b51d870cb75ea6f1 supabase migration repair:*)",
       "Bash(npm run build:check:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__scheduled-tasks__list_scheduled_tasks"
     ]
   }
 }

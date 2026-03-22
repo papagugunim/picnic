@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, ExternalLink, X } from 'lucide-react'
 
-import { getRussiaNewsTopicBadgeClass } from '@/components/today/RussiaNewsCard'
+import { getRussiaNewsTopicBadgeClass, getTopicEmoji } from '@/components/today/RussiaNewsCard'
 import type { RussiaNewsItem } from '@/lib/russia-news'
 
 function formatDateFull(value: string): string {
@@ -126,7 +126,7 @@ export function RussiaNewsModal({ items, initialIndex, onClose }: Props) {
           {/* 메타 */}
           <div className="mb-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <span className={`shrink-0 rounded-full px-2 py-0.5 font-medium ${getRussiaNewsTopicBadgeClass(item.topic)}`}>
-              {item.topic || '기타'}
+              {getTopicEmoji(item.topic)} {item.topic || '기타'}
             </span>
             {item.source_name && (
               <span className="font-medium text-foreground/70">{item.source_name}</span>

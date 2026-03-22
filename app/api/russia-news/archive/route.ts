@@ -7,7 +7,7 @@ import { readUpstashRussiaNews, writeUpstashRussiaNews } from '@/lib/russia-news
 import { isInArchiveWindow, readRussiaNewsFromArchiveStore, saveRussiaNewsArchiveItems } from '@/lib/russia-news-archive-store'
 import { checkUpstashRateLimit, getRateLimitIdentifier } from '@/lib/upstash'
 
-const TOPIC_BUCKETS: RussiaNewsTopic[] = ['정치', '사회', '경제', '문화', '날씨']
+const TOPIC_BUCKETS: RussiaNewsTopic[] = ['정치/군사', '경제/금융', '사회/문화', '국제/외교', '과학/기술', '날씨/기후']
 
 function parsePublishedAtMs(value: string): number {
   const ms = Date.parse(value)

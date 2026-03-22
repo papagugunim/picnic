@@ -101,11 +101,16 @@ export async function fetchFromExternalArchive(options?: {
     .slice(0, limit)
 }
 
-type KnownTopic = '' | '정치' | '사회' | '경제' | '문화' | '날씨'
+type KnownTopic = '' | '정치/군사' | '경제/금융' | '사회/문화' | '국제/외교' | '과학/기술' | '날씨/기후'
 
 function normalizeTopic(value: string | null | undefined): KnownTopic {
-  if (value === '정치' || value === '사회' || value === '경제' || value === '문화' || value === '날씨') {
-    return value
-  }
-  return '사회'
+  if (
+    value === '정치/군사' ||
+    value === '경제/금융' ||
+    value === '사회/문화' ||
+    value === '국제/외교' ||
+    value === '과학/기술' ||
+    value === '날씨/기후'
+  ) return value
+  return '사회/문화'
 }

@@ -15,11 +15,12 @@ import {
 
 const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
   { label: '전체', value: '' },
-  { label: '정치', value: '정치' },
-  { label: '사회', value: '사회' },
-  { label: '경제', value: '경제' },
-  { label: '문화', value: '문화' },
-  { label: '날씨', value: '날씨' },
+  { label: '⚔️ 정치/군사', value: '정치/군사' },
+  { label: '💰 경제/금융', value: '경제/금융' },
+  { label: '👥 사회/문화', value: '사회/문화' },
+  { label: '🌍 국제/외교', value: '국제/외교' },
+  { label: '🔬 과학/기술', value: '과학/기술' },
+  { label: '⛅ 날씨/기후', value: '날씨/기후' },
 ]
 const AUTO_RECOVERY_DELAY_MS = 6000
 

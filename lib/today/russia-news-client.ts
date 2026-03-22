@@ -8,7 +8,7 @@ const MAX_RETRY_PER_REQUEST = 2
 const DEFAULT_LIMIT = 8
 const WARMUP_MARKER_KEY = `russia-news:today:warmup:v${RUSSIA_TODAY_NEWS_CACHE_VERSION}`
 
-const TOPICS: RussiaNewsTopic[] = ['정치', '사회', '경제', '문화', '날씨']
+const TOPICS: RussiaNewsTopic[] = ['정치/군사', '경제/금융', '사회/문화', '국제/외교', '과학/기술', '날씨/기후']
 
 function buildTodayCacheKey(topic: RussiaNewsTopic): string {
   return `russia-news:today:${topic || 'all'}:v${RUSSIA_TODAY_NEWS_CACHE_VERSION}`

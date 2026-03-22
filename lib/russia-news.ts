@@ -1,4 +1,4 @@
-export type RussiaNewsTopic = '' | '정치' | '사회' | '경제' | '문화' | '날씨'
+export type RussiaNewsTopic = '' | '정치/군사' | '경제/금융' | '사회/문화' | '국제/외교' | '과학/기술' | '날씨/기후'
 
 export interface RussiaNewsItem {
   id: string
@@ -21,6 +21,13 @@ export interface RussiaNewsApiPayload {
 
 export function normalizeTopic(value: string | null): RussiaNewsTopic {
   if (!value) return ''
-  if (value === '정치' || value === '사회' || value === '경제' || value === '문화' || value === '날씨') return value
+  if (
+    value === '정치/군사' ||
+    value === '경제/금융' ||
+    value === '사회/문화' ||
+    value === '국제/외교' ||
+    value === '과학/기술' ||
+    value === '날씨/기후'
+  ) return value
   return ''
 }

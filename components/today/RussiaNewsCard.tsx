@@ -24,12 +24,23 @@ function formatDateTime(value: string): string {
 }
 
 export function getRussiaNewsTopicBadgeClass(topic: string): string {
-  if (topic === '정치') return 'bg-rose-100 text-rose-900'
-  if (topic === '사회') return 'bg-blue-100 text-blue-900'
-  if (topic === '경제') return 'bg-emerald-100 text-emerald-900'
-  if (topic === '문화') return 'bg-amber-100 text-amber-900'
-  if (topic === '날씨') return 'bg-cyan-100 text-cyan-900'
+  if (topic === '정치/군사') return 'bg-rose-100 text-rose-900'
+  if (topic === '경제/금융') return 'bg-emerald-100 text-emerald-900'
+  if (topic === '사회/문화') return 'bg-blue-100 text-blue-900'
+  if (topic === '국제/외교') return 'bg-violet-100 text-violet-900'
+  if (topic === '과학/기술') return 'bg-amber-100 text-amber-900'
+  if (topic === '날씨/기후') return 'bg-cyan-100 text-cyan-900'
   return 'bg-zinc-200 text-zinc-900'
+}
+
+export function getTopicEmoji(topic: string): string {
+  if (topic === '정치/군사') return '⚔️'
+  if (topic === '경제/금융') return '💰'
+  if (topic === '사회/문화') return '👥'
+  if (topic === '국제/외교') return '🌍'
+  if (topic === '과학/기술') return '🔬'
+  if (topic === '날씨/기후') return '⛅'
+  return '📰'
 }
 
 export function RussiaNewsCard({ item, compact = false, onClick }: RussiaNewsCardProps) {
@@ -43,7 +54,7 @@ export function RussiaNewsCard({ item, compact = false, onClick }: RussiaNewsCar
       {/* 메타 정보: 토픽 · 소스 · 원문링크 · 날짜 */}
       <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
         <span className={`shrink-0 rounded-full px-2 py-0.5 font-medium ${getRussiaNewsTopicBadgeClass(item.topic)}`}>
-          {item.topic || '기타'}
+          {getTopicEmoji(item.topic)} {item.topic || '기타'}
         </span>
         {item.source_name && (
           <span className="font-medium text-foreground/70">{item.source_name}</span>

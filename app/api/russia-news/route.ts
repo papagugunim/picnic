@@ -8,7 +8,7 @@ import { isInArchiveWindow, readRussiaNewsFromArchiveStore, saveRussiaNewsArchiv
 import { checkUpstashRateLimit, getRateLimitIdentifier } from '@/lib/upstash'
 import { fetchFromExternalArchive } from '@/lib/russia-news-external-archive'
 
-const TOPIC_BUCKETS: RussiaNewsTopic[] = ['정치', '사회', '경제', '문화', '날씨']
+const TOPIC_BUCKETS: RussiaNewsTopic[] = ['정치/군사', '경제/금융', '사회/문화', '국제/외교', '과학/기술', '날씨/기후']
 
 function filterByTopic<T extends { topic?: string | null }>(items: T[], topicInput: string | null): T[] {
   const requested = normalizeTopic(topicInput)
