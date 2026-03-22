@@ -190,7 +190,7 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
 
   return (
     <>
-      <div className="rounded-lg p-2.5">
+      <div className="rounded-lg px-2.5 py-1">
         <NewsAutoSlide
           newsList={newsList}
           onNewsClick={handleNewsClick}

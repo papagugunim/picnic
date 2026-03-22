@@ -14,10 +14,7 @@ interface NewsAutoSlideProps {
 function NewsAutoSlideComponent({ newsList, onNewsClick, canManageNotices, onManageClick }: NewsAutoSlideProps) {
   if (newsList.length === 0) {
     return (
-      <div className="flex items-center gap-2 py-1.5 px-0.5">
-        <span className="shrink-0 text-[10px] font-semibold text-orange-500 bg-orange-50 dark:bg-orange-950/40 px-1.5 py-0.5 rounded-full">
-          공지
-        </span>
+      <div className="flex items-center gap-2 py-0.5 px-0.5">
         <span className="text-xs text-muted-foreground flex-1">
           {canManageNotices ? '새 공지 사항을 추가해주세요' : '등록된 공지 사항이 없습니다'}
         </span>
@@ -41,11 +38,7 @@ function NewsAutoSlideComponent({ newsList, onNewsClick, canManageNotices, onMan
   const duration = Math.max(12, tickerText.length * 0.2)
 
   return (
-    <div className="flex items-center gap-2 py-1.5 px-0.5">
-      <span className="shrink-0 text-[10px] font-semibold text-orange-500 bg-orange-50 dark:bg-orange-950/40 px-1.5 py-0.5 rounded-full">
-        공지
-      </span>
-
+    <div className="flex items-center gap-2 py-0.5 px-0.5">
       {/* 전광판 영역 */}
       <button
         onClick={() => onNewsClick(newsList[0])}
