@@ -24,7 +24,7 @@ function formatDateTime(value: string): string {
 }
 
 export function getRussiaNewsTopicBadgeClass(_topic: string): string {
-  return 'bg-zinc-200 text-zinc-700 dark:bg-zinc-600 dark:text-zinc-100'
+  return 'bg-white text-zinc-600 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-600'
 }
 
 export function getTopicEmoji(topic: string): string {
