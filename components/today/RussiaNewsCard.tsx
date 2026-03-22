@@ -23,14 +23,8 @@ function formatDateTime(value: string): string {
   return `${month}/${day} ${meridiem}${hour12}:${String(minute).padStart(2, '0')}`
 }
 
-export function getRussiaNewsTopicBadgeClass(topic: string): string {
-  if (topic === '정치/군사') return 'bg-rose-200 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300'
-  if (topic === '경제/금융') return 'bg-emerald-200 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-  if (topic === '사회/문화') return 'bg-slate-200 text-slate-700 dark:bg-slate-700/50 dark:text-slate-300'
-  if (topic === '국제/외교') return 'bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-  if (topic === '과학/기술') return 'bg-indigo-200 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300'
-  if (topic === '날씨/기후') return 'bg-sky-200 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300'
-  return 'bg-zinc-200 text-zinc-700 dark:bg-zinc-700/50 dark:text-zinc-300'
+export function getRussiaNewsTopicBadgeClass(_topic: string): string {
+  return 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
 }
 
 export function getTopicEmoji(topic: string): string {

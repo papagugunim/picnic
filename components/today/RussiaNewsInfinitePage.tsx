@@ -22,11 +22,10 @@ const LOCAL_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 const ARCHIVE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const PAGE_SIZE = 30
 
-function topicButtonClass(value: RussiaNewsTopic, active: boolean): string {
-  const toneClass = value
-    ? getRussiaNewsTopicBadgeClass(value)
-    : 'bg-zinc-200 text-zinc-900'
-  return `${toneClass} border border-black/5 ${active ? 'shadow-[inset_0_0_0_1px_rgba(0,0,0,0.25)]' : 'hover:brightness-95'}`
+function topicButtonClass(_value: RussiaNewsTopic, active: boolean): string {
+  return active
+    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
+    : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
 }
 
 function buildLocalCacheKey(topic: RussiaNewsTopic): string {
