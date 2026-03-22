@@ -34,8 +34,12 @@ function NewsAutoSlideComponent({ newsList, onNewsClick, canManageNotices, onMan
 
   // 전광판 텍스트: 모든 공지를 이어붙이고 끝에 여백 추가
   const tickerText = newsList.map(n => n.summary || n.content).join('　　◆　　')
-  // 글자 수에 비례한 속도 (글자당 약 0.2초, 최소 12초)
-  const duration = Math.max(12, tickerText.length * 0.2)
+  // 한글 약 9px, 기타 약 6px 기준으로 픽셀 너비 추정
+  const estimatedPx = tickerText.split('').reduce((acc, ch) => {
+    return acc + (/[\u3131-\uD79D]/.test(ch) ? 9 : 6)
+  }, 0)
+  // 글자 수에 비례한 속도 (추정 픽셀 기준, 초당 약 80px)
+  const duration = Math.max(10, Math.round(estimatedPx / 80))
 
   return (
     <div className="flex items-center gap-2 py-0.5 px-0.5">
@@ -47,7 +51,10 @@ function NewsAutoSlideComponent({ newsList, onNewsClick, canManageNotices, onMan
       >
         <span
           className="animate-news-ticker text-xs text-foreground/80"
-          style={{ animationDuration: `${duration}s` }}
+          style={{
+            animationDuration: `${duration}s`,
+            ['--ticker-end' as string]: `-${estimatedPx + 40}px`,
+          } as React.CSSProperties}
         >
           {tickerText}
         </span>

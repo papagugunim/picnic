@@ -621,7 +621,7 @@
 /* 공지사항 전광판 티커 */
 @keyframes news-ticker {
   from { transform: translateX(100vw); }
-  to { transform: translateX(-100%); }
+  to { transform: translateX(var(--ticker-end, -3000px)); }
 }
 
 .animate-news-ticker {
