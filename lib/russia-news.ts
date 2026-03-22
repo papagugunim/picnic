@@ -19,12 +19,6 @@ export interface RussiaNewsApiPayload {
   items: RussiaNewsItem[]
 }
 
-export const DEFAULT_RUSSIA_NEWS_BASE_URL = 'https://picnic-today-ru-news.vercel.app'
-
-export function getRussiaNewsBaseUrl(): string {
-  return (process.env.RUSSIA_NEWS_BASE_URL || DEFAULT_RUSSIA_NEWS_BASE_URL).replace(/\/$/, '')
-}
-
 export function normalizeTopic(value: string | null): RussiaNewsTopic {
   if (!value) return ''
   if (value === '정치' || value === '사회' || value === '경제' || value === '문화' || value === '날씨') return value

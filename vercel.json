@@ -8,10 +8,6 @@
     {
       "path": "/api/cron/milk-role-bonus",
       "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/russia-news-sync",
-      "schedule": "5 6 * * *"
     }
   ]
 }

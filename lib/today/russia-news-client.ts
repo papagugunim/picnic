@@ -147,14 +147,12 @@ export async function fetchTodayNewsWithFallback(
   const candidates: Array<{ endpoint: '/api/russia-news' | '/api/russia-news/archive' | '/api/russia-news/external'; topic: RussiaNewsTopic }> = [
     // rnews-archive를 1순위로 - 한국어 요약 포함
     { endpoint: '/api/russia-news/external', topic },
-    { endpoint: '/api/russia-news', topic },
     { endpoint: '/api/russia-news/archive', topic },
   ]
 
   if (topic) {
     candidates.push(
       { endpoint: '/api/russia-news/external', topic: '' },
-      { endpoint: '/api/russia-news', topic: '' },
       { endpoint: '/api/russia-news/archive', topic: '' }
     )
   }

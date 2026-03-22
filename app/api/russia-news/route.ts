@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { readCachedRussiaNews, writeCachedRussiaNews } from '@/lib/russia-news-cache'
 import { getEmergencyFallbackNews } from '@/lib/russia-news-fallback'
-import { fetchRussiaNewsFromUpstream } from '@/lib/russia-news-proxy'
-import { normalizeTopic, type RussiaNewsApiPayload, type RussiaNewsTopic } from '@/lib/russia-news'
+import { normalizeTopic, type RussiaNewsTopic } from '@/lib/russia-news'
 import { readUpstashRussiaNews, writeUpstashRussiaNews } from '@/lib/russia-news-upstash-cache'
 import { isInArchiveWindow, readRussiaNewsFromArchiveStore, saveRussiaNewsArchiveItems } from '@/lib/russia-news-archive-store'
 import { checkUpstashRateLimit, getRateLimitIdentifier } from '@/lib/upstash'
@@ -11,351 +10,128 @@ import { fetchFromExternalArchive } from '@/lib/russia-news-external-archive'
 
 const TOPIC_BUCKETS: RussiaNewsTopic[] = ['정치', '사회', '경제', '문화', '날씨']
 
-function mergeUniqueItems(payloads: RussiaNewsApiPayload[], limit: number): RussiaNewsApiPayload {
-  const map = new Map<string, RussiaNewsApiPayload['items'][number]>()
-  for (const payload of payloads) {
-    for (const item of payload.items) {
-      if (!map.has(item.id)) {
-        map.set(item.id, item)
-      }
-    }
-  }
-  return {
-    items: Array.from(map.values()).slice(0, Math.max(1, Math.min(limit, 20))),
-  }
+function filterByTopic<T extends { topic?: string | null }>(items: T[], topicInput: string | null): T[] {
+  const requested = normalizeTopic(topicInput)
+  if (!requested) return items
+  return items.filter((item) => normalizeTopic(item.topic || null) === requested)
 }
 
-function filterPayloadByTopic(payload: RussiaNewsApiPayload, topicInput: string | null): RussiaNewsApiPayload {
-  const requestedTopic = normalizeTopic(topicInput)
-  if (!requestedTopic) return payload
-  return {
-    items: payload.items.filter((item) => normalizeTopic(item.topic || null) === requestedTopic),
-  }
-}
-
-function filterPayloadToArchiveWindow(payload: RussiaNewsApiPayload): RussiaNewsApiPayload {
-  return {
-    items: payload.items.filter((item) => isInArchiveWindow(item.published_at)),
-  }
+function filterToArchiveWindow<T extends { published_at?: string }>(items: T[]): T[] {
+  return items.filter((item) => isInArchiveWindow(item.published_at ?? ''))
 }
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const cursor = searchParams.get('cursor')
   const topic = searchParams.get('topic')
-  const limit = Number(searchParams.get('limit') || '20')
+  const limit = Math.max(1, Math.min(Number(searchParams.get('limit') || '20'), 50))
   const requester = getRateLimitIdentifier(request.headers, `russia-news:${topic || 'all'}`)
 
   const limitResult = await checkUpstashRateLimit('russia-news-api', requester, 180, 60)
   if (!limitResult.success) {
     return NextResponse.json(
       { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
-      {
-        status: 429,
-        headers: {
-          'Retry-After': '30',
-        },
-      }
+      { status: 429, headers: { 'Retry-After': '30' } }
     )
   }
 
-  const fallbackFromStore = async () => {
-    return readRussiaNewsFromArchiveStore({
-      topic,
-      limit,
-      cursor,
-    })
-  }
-
-  const fallbackFromCache = async () => {
-    const cachedToday = readCachedRussiaNews('today', topic, limit, cursor)
-    if (cachedToday.length > 0) {
-      return cachedToday
-    }
-
-    const upstashToday = await readUpstashRussiaNews('today', topic, limit, cursor)
-    if (upstashToday.length > 0) {
-      return upstashToday
-    }
-
-    const cachedArchive = readCachedRussiaNews('archive', topic, limit, cursor)
-    if (cachedArchive.length > 0) {
-      return cachedArchive
-    }
-
-    return readUpstashRussiaNews('archive', topic, limit, cursor)
-  }
-
-  const fallbackFromAnyCache = async () => {
-    const cachedToday = readCachedRussiaNews('today', '', limit, cursor)
-    if (cachedToday.length > 0) {
-      return cachedToday
-    }
-
-    const upstashToday = await readUpstashRussiaNews('today', '', limit, cursor)
-    if (upstashToday.length > 0) {
-      return upstashToday
-    }
-
-    const cachedArchive = readCachedRussiaNews('archive', '', limit, cursor)
-    if (cachedArchive.length > 0) {
-      return cachedArchive
-    }
-
-    return readUpstashRussiaNews('archive', '', limit, cursor)
-  }
-
   try {
-    let payload = filterPayloadToArchiveWindow(filterPayloadByTopic(
-      await fetchRussiaNewsFromUpstream({
-        endpoint: '/api/today-news',
-        cursor,
-        topic,
-        limit,
-      }),
-      topic
-    ))
-
-    if (!cursor && payload.items.length === 0) {
-      payload = filterPayloadToArchiveWindow(filterPayloadByTopic(
-        await fetchRussiaNewsFromUpstream({
-          endpoint: '/api/today-news',
-          cursor,
-          topic,
-          limit: Math.max(limit, 12),
-        }),
-        topic
-      ))
-    }
-
-    // today endpoint가 비어 있으면 archive를 즉시 fallback으로 사용
-    if (payload.items.length === 0) {
-      const archivePayload = filterPayloadToArchiveWindow(filterPayloadByTopic(
-        await fetchRussiaNewsFromUpstream({
-          endpoint: '/api/archive',
-          cursor,
-          topic,
-          limit,
-        }),
-        topic
-      ))
-      if (archivePayload.items.length > 0) {
-        payload = archivePayload
+    // 1순위: rnews-archive.vercel.app 외부 아카이브
+    if (!cursor) {
+      const externalItems = await fetchFromExternalArchive({ limit, topic })
+      if (externalItems.length > 0) {
+        const filtered = filterToArchiveWindow(filterByTopic(externalItems, topic))
+        if (filtered.length > 0) {
+          await saveRussiaNewsArchiveItems(filtered)
+          writeCachedRussiaNews('today', topic, filtered)
+          await writeUpstashRussiaNews('today', topic, limit, cursor, filtered)
+          return NextResponse.json(
+            { items: filtered },
+            { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' } }
+          )
+        }
       }
     }
 
-    // 전체 토픽에서 빈 응답이 나오는 업스트림을 대비해 카테고리별 결과를 병합한다.
-    if (payload.items.length === 0 && !topic && !cursor) {
-      const bucketResults = await Promise.allSettled(
-        TOPIC_BUCKETS.map((bucket) =>
-          fetchRussiaNewsFromUpstream({
-            endpoint: '/api/today-news',
-            topic: bucket,
-            limit: Math.max(limit, 4),
-          })
-        )
-      )
-
-      const merged = filterPayloadToArchiveWindow(mergeUniqueItems(
-        bucketResults
-          .filter((result): result is PromiseFulfilledResult<RussiaNewsApiPayload> => result.status === 'fulfilled')
-          .map((result) => result.value),
-        limit
-      ))
-
-      if (merged.items.length > 0) {
-        payload = merged
-      }
-    }
-
-    // 특정 카테고리에 데이터가 없으면 전체 뉴스로 fallback
-    if (payload.items.length === 0 && topic) {
-      const broadPayload = filterPayloadToArchiveWindow(filterPayloadByTopic(
-        await fetchRussiaNewsFromUpstream({
-          endpoint: '/api/today-news',
-          cursor,
-          topic: null,
-          limit,
-        }),
-        topic
-      ))
-      if (broadPayload.items.length > 0) {
-        payload = broadPayload
-      }
-    }
-
-    if (payload.items.length > 0) {
-      await saveRussiaNewsArchiveItems(payload.items)
-      writeCachedRussiaNews('today', topic, payload.items)
-      await writeUpstashRussiaNews('today', topic, limit, cursor, payload.items)
-      return NextResponse.json(payload, {
-        headers: {
-          'Cache-Control': 'public, s-maxage=180, stale-while-revalidate=120',
-        },
-      })
-    }
-
-    const storedItems = await fallbackFromStore()
+    // 2순위: Supabase 내부 아카이브 스토어
+    const storedItems = await readRussiaNewsFromArchiveStore({ topic, limit, cursor })
     if (storedItems.length > 0) {
       writeCachedRussiaNews('today', topic, storedItems)
       await writeUpstashRussiaNews('today', topic, limit, cursor, storedItems)
       return NextResponse.json(
         { items: storedItems, stale: true, fallback: 'archive-store' },
-        {
-          headers: {
-            'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
-            'X-Russia-News-Fallback': 'archive-store',
-          },
-        }
+        { headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' } }
       )
     }
 
-    // rnews-archive.vercel.app 외부 아카이브 폴백
-    if (!cursor) {
-      const externalItems = await fetchFromExternalArchive({ limit, topic })
-      if (externalItems.length > 0) {
-        await saveRussiaNewsArchiveItems(externalItems)
-        writeCachedRussiaNews('today', topic, externalItems)
-        await writeUpstashRussiaNews('today', topic, limit, cursor, externalItems)
-        return NextResponse.json(
-          { items: externalItems, stale: false, fallback: 'external-archive' },
-          {
-            headers: {
-              'Cache-Control': 'public, s-maxage=180, stale-while-revalidate=300',
-              'X-Russia-News-Fallback': 'external-archive',
-            },
-          }
-        )
-      }
-    }
+    // 3순위: Upstash / 메모리 캐시
+    const cachedItems =
+      readCachedRussiaNews('today', topic, limit, cursor) ||
+      (await readUpstashRussiaNews('today', topic, limit, cursor)) ||
+      readCachedRussiaNews('archive', topic, limit, cursor) ||
+      (await readUpstashRussiaNews('archive', topic, limit, cursor))
 
-    const cachedItems = await fallbackFromCache()
-    if (cachedItems.length > 0) {
+    if (cachedItems && cachedItems.length > 0) {
       return NextResponse.json(
-        { items: cachedItems, stale: true },
-        {
-          headers: {
-            'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
-            'X-Russia-News-Fallback': 'cache',
-          },
-        }
+        { items: cachedItems, stale: true, fallback: 'cache' },
+        { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } }
       )
     }
 
+    // 토픽 지정 시 전체 캐시에서 필터링 재시도
     if (topic) {
-      const anyCachedItems = await fallbackFromAnyCache()
-      const broadCachedItems = filterPayloadByTopic(
-        { items: anyCachedItems },
-        topic
-      ).items
-      if (broadCachedItems.length > 0) {
+      const broadCached =
+        readCachedRussiaNews('today', '', limit, cursor) ||
+        (await readUpstashRussiaNews('today', '', limit, cursor))
+      const filtered = filterByTopic(broadCached || [], topic)
+      if (filtered.length > 0) {
         return NextResponse.json(
-          { items: broadCachedItems, stale: true, fallback: 'all-topic-cache' },
-          {
-            headers: {
-              'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
-              'X-Russia-News-Fallback': 'all-topic-cache',
-            },
-          }
+          { items: filtered, stale: true, fallback: 'broad-cache' },
+          { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } }
         )
       }
     }
 
+    // 4순위: 카테고리별 외부 아카이브 재시도 (전체 조회 실패 시)
+    if (!cursor && !topic) {
+      const bucketResults = await Promise.allSettled(
+        TOPIC_BUCKETS.map((bucket) => fetchFromExternalArchive({ limit: 4, topic: bucket }))
+      )
+      const merged = new Map<string, (typeof bucketResults)[number] extends PromiseFulfilledResult<infer T> ? T[number] : never>()
+      for (const result of bucketResults) {
+        if (result.status !== 'fulfilled') continue
+        for (const item of result.value) {
+          if (!merged.has(item.id)) merged.set(item.id, item)
+        }
+      }
+      const mergedItems = Array.from(merged.values()).slice(0, limit)
+      if (mergedItems.length > 0) {
+        await saveRussiaNewsArchiveItems(mergedItems)
+        return NextResponse.json(
+          { items: mergedItems, fallback: 'bucket-external' },
+          { headers: { 'Cache-Control': 'public, s-maxage=180, stale-while-revalidate=300' } }
+        )
+      }
+    }
+
+    // 최종 비상 폴백
     const emergencyItems = getEmergencyFallbackNews(topic, limit)
     return NextResponse.json(
       { items: emergencyItems, stale: true, fallback: 'emergency-static' },
-      {
-        headers: {
-          'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
-          'X-Russia-News-Fallback': 'emergency-static',
-        },
-      }
+      { headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' } }
     )
   } catch (error) {
-    const storedItems = await fallbackFromStore()
+    const storedItems = await readRussiaNewsFromArchiveStore({ topic, limit, cursor })
     if (storedItems.length > 0) {
-      writeCachedRussiaNews('today', topic, storedItems)
-      await writeUpstashRussiaNews('today', topic, limit, cursor, storedItems)
       return NextResponse.json(
         { items: storedItems, stale: true, fallback: 'archive-store-on-error' },
-        {
-          headers: {
-            'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
-            'X-Russia-News-Fallback': 'archive-store-on-error',
-          },
-        }
+        { headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' } }
       )
     }
-
-    // rnews-archive.vercel.app 외부 아카이브 폴백 (에러 상황)
-    if (!cursor) {
-      try {
-        const externalItems = await fetchFromExternalArchive({ limit, topic })
-        if (externalItems.length > 0) {
-          await saveRussiaNewsArchiveItems(externalItems)
-          writeCachedRussiaNews('today', topic, externalItems)
-          await writeUpstashRussiaNews('today', topic, limit, cursor, externalItems)
-          return NextResponse.json(
-            { items: externalItems, stale: false, fallback: 'external-archive-on-error' },
-            {
-              headers: {
-                'Cache-Control': 'public, s-maxage=180, stale-while-revalidate=300',
-                'X-Russia-News-Fallback': 'external-archive-on-error',
-              },
-            }
-          )
-        }
-      } catch {
-        // 외부 아카이브도 실패하면 다음 폴백으로 진행
-      }
-    }
-
-    const cachedItems = await fallbackFromCache()
-    if (cachedItems.length > 0) {
-      return NextResponse.json(
-        { items: cachedItems, stale: true },
-        {
-          headers: {
-            'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
-            'X-Russia-News-Fallback': 'cache-on-error',
-          },
-        }
-      )
-    }
-
-    if (topic) {
-      const anyCachedItems = await fallbackFromAnyCache()
-      const broadCachedItems = filterPayloadByTopic(
-        { items: anyCachedItems },
-        topic
-      ).items
-      if (broadCachedItems.length > 0) {
-        return NextResponse.json(
-          { items: broadCachedItems, stale: true, fallback: 'all-topic-cache' },
-          {
-            headers: {
-              'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
-              'X-Russia-News-Fallback': 'all-topic-cache-on-error',
-            },
-          }
-        )
-      }
-    }
-
     const emergencyItems = getEmergencyFallbackNews(topic, limit)
     return NextResponse.json(
-      {
-        items: emergencyItems,
-        stale: true,
-        fallback: 'emergency-static',
-        error: error instanceof Error ? error.message : 'unknown_error',
-      },
-      {
-        headers: {
-          'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
-          'X-Russia-News-Fallback': 'emergency-static-on-error',
-        },
-      }
+      { items: emergencyItems, stale: true, fallback: 'emergency-static', error: error instanceof Error ? error.message : 'unknown_error' },
+      { headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' } }
     )
   }
 }
