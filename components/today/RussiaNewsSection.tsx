@@ -163,7 +163,7 @@ export function RussiaNewsSection() {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <Radio className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          <h2 className="text-sm font-bold truncate">가장 빠른 실시간 뉴스</h2>
+          <h2 className="text-sm font-bold truncate">가장 빠른 러시아 실시간 뉴스</h2>
         </div>
 
         <button
