@@ -96,6 +96,7 @@ interface ParsedNewsItem {
   title: string
   summary: string
   link: string
+  source: string
   category: string
   topic: RussiaNewsTopic
 }
@@ -154,6 +155,7 @@ function parseMarkdownContent(content: string): ParsedNewsItem[] {
       let title = itemMatch[2].replace(/\[[^\]]+\]/g, '').trim()
       let summary = ''
       let link = ''
+      let source = ''
       i++
 
       // 다음 줄들을 읽어서 요약 및 링크 추출
@@ -178,11 +180,15 @@ function parseMarkdownContent(content: string): ParsedNewsItem[] {
           }
         }
 
-        // 출처 라인에서 링크 추출
+        // 출처 라인에서 링크 및 소스명 추출: "출처: RIA — https://..."
         if (nextLine.startsWith('출처') || nextLine.startsWith('소스')) {
           const urlMatch = nextLine.match(/https?:\/\/[^\s]+/)
           if (urlMatch) {
             link = urlMatch[0]
+          }
+          const sourceMatch = nextLine.match(/^(?:출처|소스):\s*(.+?)\s*[—–-]\s*https?:\/\//)
+          if (sourceMatch) {
+            source = sourceMatch[1].trim()
           }
           i++
           break
@@ -202,6 +208,7 @@ function parseMarkdownContent(content: string): ParsedNewsItem[] {
           title,
           summary: summary || title,
           link: link || '',
+          source,
           category: currentCategory,
           topic: currentTopic,
         })
@@ -314,7 +321,7 @@ export async function fetchFromExternalArchive(options?: {
         link: item.link || `${EXTERNAL_ARCHIVE_BASE_URL}`,
         published_at: publishedAt,
         topic: item.topic,
-        source_name: 'rnews-archive',
+        source_name: item.source || 'rnews-archive',
         source_kind: 'archive',
         is_moscow: true,
         views_count: null,
