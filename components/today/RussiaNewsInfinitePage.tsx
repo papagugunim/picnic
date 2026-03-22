@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 
 import { getRussiaNewsTopicBadgeClass, RussiaNewsCard } from '@/components/today/RussiaNewsCard'
+import { RussiaNewsModal } from '@/components/today/RussiaNewsModal'
 import { normalizeTopic, type RussiaNewsItem, type RussiaNewsTopic } from '@/lib/russia-news'
 
 const TOPICS: Array<{ label: string; value: RussiaNewsTopic }> = [
@@ -106,6 +107,7 @@ function mergeUnique(prev: RussiaNewsItem[], next: RussiaNewsItem[]): RussiaNews
 export function RussiaNewsInfinitePage() {
   const [topic, setTopic] = useState<RussiaNewsTopic>('')
   const [items, setItems] = useState<RussiaNewsItem[]>([])
+  const [modalIndex, setModalIndex] = useState<number | null>(null)
   const [cursor, setCursor] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isFetchingMore, setIsFetchingMore] = useState(false)
@@ -360,8 +362,8 @@ export function RussiaNewsInfinitePage() {
           </div>
         ) : (
           <div>
-            {items.map((item) => (
-              <RussiaNewsCard key={item.id} item={item} />
+            {items.map((item, i) => (
+              <RussiaNewsCard key={item.id} item={item} onClick={() => setModalIndex(i)} />
             ))}
           </div>
         )}
@@ -376,6 +378,14 @@ export function RussiaNewsInfinitePage() {
           <div className="text-center text-xs text-muted-foreground">가장 오래된 뉴스까지 모두 확인했습니다.</div>
         )}
       </section>
+
+      {modalIndex !== null && (
+        <RussiaNewsModal
+          items={items}
+          initialIndex={modalIndex}
+          onClose={() => setModalIndex(null)}
+        />
+      )}
     </div>
   )
 }

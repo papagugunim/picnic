@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowRight, Radio, RefreshCw } from 'lucide-react'
 
 import { getRussiaNewsTopicBadgeClass, RussiaNewsCard } from '@/components/today/RussiaNewsCard'
+import { RussiaNewsModal } from '@/components/today/RussiaNewsModal'
 import { normalizeTopic, type RussiaNewsItem, type RussiaNewsTopic } from '@/lib/russia-news'
 import {
   fetchTodayNewsWithFallback,
@@ -32,6 +33,7 @@ function topicButtonClass(value: RussiaNewsTopic, active: boolean): string {
 export function RussiaNewsSection() {
   const [topic, setTopic] = useState<RussiaNewsTopic>('')
   const [items, setItems] = useState<RussiaNewsItem[]>([])
+  const [modalIndex, setModalIndex] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -238,8 +240,8 @@ export function RussiaNewsSection() {
           {isLoading && (
             <div className="pb-1 text-[11px] text-muted-foreground">카테고리 전환 중...</div>
           )}
-          {items.map((item) => (
-            <RussiaNewsCard key={item.id} item={item} />
+          {items.map((item, i) => (
+            <RussiaNewsCard key={item.id} item={item} onClick={() => setModalIndex(i)} />
           ))}
         </div>
       )}
@@ -253,6 +255,14 @@ export function RussiaNewsSection() {
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
+
+      {modalIndex !== null && (
+        <RussiaNewsModal
+          items={items}
+          initialIndex={modalIndex}
+          onClose={() => setModalIndex(null)}
+        />
+      )}
     </section>
   )
 }
