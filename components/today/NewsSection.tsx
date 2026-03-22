@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Newspaper, Plus, X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { createNamespacedLogger } from '@/lib/logger'
 import { NewsItem } from './types'
@@ -191,38 +191,11 @@ export function NewsSection({ newsList, canManageNotices, onRefreshNews }: NewsS
   return (
     <>
       <div className="rounded-lg p-2.5">
-        <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-2">
-            <Newspaper className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-            <h2 className="font-bold text-sm">공지 사항</h2>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {!canManageNotices && newsList.length > 0 && (
-              <button
-                type="button"
-                onClick={handleOpenNewsOverview}
-                className="text-xs text-primary font-medium px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
-              >
-                전체보기
-              </button>
-            )}
-            {canManageNotices && (
-              <button
-                type="button"
-                onClick={handleOpenManageModal}
-                className="text-xs text-primary font-medium px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
-                aria-label="공지 사항 관리"
-              >
-                관리
-              </button>
-            )}
-          </div>
-        </div>
-
         <NewsAutoSlide
           newsList={newsList}
           onNewsClick={handleNewsClick}
           canManageNotices={canManageNotices}
+          onManageClick={handleOpenManageModal}
         />
       </div>
 
