@@ -340,7 +340,7 @@ export function RussiaNewsInfinitePage() {
                   topicTouchStateRef.current = null
                 }}
                 aria-pressed={active}
-                className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] leading-none font-semibold transition ${topicButtonClass(entry.value, active)}`}
+                className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] leading-none transition ${topicButtonClass(entry.value, active)}`}
               >
                 {entry.label}
               </button>
