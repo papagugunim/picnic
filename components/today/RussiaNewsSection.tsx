@@ -26,8 +26,8 @@ const AUTO_RECOVERY_DELAY_MS = 6000
 
 function topicButtonClass(_value: RussiaNewsTopic, active: boolean): string {
   return active
-    ? 'bg-white text-zinc-900 border border-zinc-500 font-semibold dark:bg-zinc-700 dark:text-white dark:border-zinc-400'
-    : 'bg-white text-zinc-500 border border-zinc-200 hover:border-zinc-300 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500'
+    ? 'bg-foreground text-background'
+    : 'bg-secondary text-secondary-foreground hover:bg-muted'
 }
 
 export function RussiaNewsSection() {
