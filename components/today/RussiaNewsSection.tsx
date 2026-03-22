@@ -234,9 +234,9 @@ export function RussiaNewsSection() {
           표시할 뉴스가 없습니다.
         </div>
       ) : (
-        <div className="space-y-2">
+        <div>
           {isLoading && (
-            <div className="px-1 pb-1 text-[11px] text-muted-foreground">카테고리 전환 중...</div>
+            <div className="pb-1 text-[11px] text-muted-foreground">카테고리 전환 중...</div>
           )}
           {items.map((item) => (
             <RussiaNewsCard key={item.id} item={item} />

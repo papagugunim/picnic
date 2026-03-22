@@ -359,7 +359,7 @@ export function RussiaNewsInfinitePage() {
             뉴스가 없습니다.
           </div>
         ) : (
-          <div className="space-y-2.5">
+          <div>
             {items.map((item) => (
               <RussiaNewsCard key={item.id} item={item} />
             ))}
