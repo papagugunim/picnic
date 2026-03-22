@@ -20,7 +20,7 @@ function formatDateTime(value: string): string {
   const minute = date.getMinutes()
   const meridiem = hour >= 12 ? '오후' : '오전'
   const hour12 = hour % 12 || 12
-  return `${month}/${day} ${meridiem}${hour12}:${String(minute).padStart(2, '0')}`
+  return `${month}/${day} ${meridiem}${hour12}시`
 }
 
 export function getRussiaNewsTopicBadgeClass(_topic: string): string {
