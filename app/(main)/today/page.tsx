@@ -6,14 +6,12 @@ const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { Link2 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { getCache, setCache, clearCache, CACHE_KEYS } from '@/lib/cache'
 import { useUser } from '@/lib/contexts/UserContext'
 import { usePageVisibility } from '@/lib/hooks/usePageVisibility'
 import { WeatherSection } from '@/components/today/WeatherSection'
-import { NewsSection } from '@/components/today/NewsSection'
 import { WEATHER_ICONS, CITY_COORDS, USEFUL_LINKS } from '@/components/today/constants'
-import type { WeatherData, WeatherCondition, ExchangeRates, OHLCData, ChartType, ChartPeriod, NewsItem } from '@/components/today/types'
+import type { WeatherData, WeatherCondition, ExchangeRates, OHLCData, ChartType, ChartPeriod } from '@/components/today/types'
 
 const ExchangeCalculatorModal = dynamic(
   () => import('@/components/today/ExchangeCalculatorModal').then((m) => m.ExchangeCalculatorModal),
@@ -51,11 +49,8 @@ export default function TodayPage() {
   const [chartType, setChartType] = useState<ChartType>('rub')
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('week')
 
-  const canManageNotices = profile?.user_role === 'admin' || profile?.user_role === 'developer'
   const loading = userLoading
 
-  // 뉴스 상태
-  const [newsList, setNewsList] = useState<NewsItem[]>([])
 
   // 환율 차트 상태
   const [chartData, setChartData] = useState<OHLCData[]>([])
@@ -116,37 +111,6 @@ export default function TodayPage() {
     }
   }, [])
 
-  // 뉴스 데이터 가져오기 함수
-  const fetchNews = useCallback(async (forceRefresh: boolean = false) => {
-    try {
-      if (forceRefresh) {
-        clearCache(CACHE_KEYS.TODAY_NOTICES)
-      } else {
-        const cached = getCache<NewsItem[]>(CACHE_KEYS.TODAY_NOTICES, 10 * 60 * 1000)
-        if (cached && cached.length > 0) {
-          setNewsList(cached)
-          return
-        }
-      }
-
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('news')
-        .select('*')
-        .eq('is_published', true)
-        .order('created_at', { ascending: false })
-        .limit(10)
-
-      if (error) throw error
-      const next = data || []
-      setNewsList(next)
-      if (next.length > 0) {
-        setCache(CACHE_KEYS.TODAY_NOTICES, next, 10 * 60 * 1000)
-      }
-    } catch (error) {
-      logger.error('뉴스 가져오기 실패:', error)
-    }
-  }, [])
 
   // 날씨 데이터 가져오기 함수
   const fetchWeatherData = useCallback(async (city: string, forceRefresh: boolean = false) => {
@@ -240,8 +204,7 @@ export default function TodayPage() {
     }
 
     void fetchExchangeRates()
-    void fetchNews()
-  }, [profile?.city, fetchWeatherData, fetchExchangeRates, fetchNews])
+  }, [profile?.city, fetchWeatherData, fetchExchangeRates])
 
   useEffect(() => {
     if (!userCity || !isPageVisible) return
@@ -439,13 +402,6 @@ export default function TodayPage() {
 
         {/* Content */}
         <div className="px-4 pt-0.5 pb-4 space-y-1">
-
-          {/* 뉴스 */}
-          <NewsSection
-            newsList={newsList}
-            canManageNotices={canManageNotices}
-            onRefreshNews={fetchNews}
-          />
 
           {/* 모스크바 실시간 뉴스 임베드 */}
           <RussiaNewsSection />

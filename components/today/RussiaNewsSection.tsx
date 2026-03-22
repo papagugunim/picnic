@@ -79,7 +79,7 @@ export function RussiaNewsSection() {
     void Promise.allSettled(
       topicsToWarm.map(async (value) => {
         const prefetched = await fetchTodayNewsWithFallback(value, {
-          limit: 10,
+          limit: 30,
           cacheMode: 'force-cache',
         })
         if (prefetched.length > 0) {
@@ -108,7 +108,7 @@ export function RussiaNewsSection() {
 
       try {
         const clipped = await fetchTodayNewsWithFallback(topic, {
-          limit: 10,
+          limit: 30,
           cacheMode: isManualRefresh ? 'no-store' : 'default',
           bustCache: isManualRefresh,
         })
