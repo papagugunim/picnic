@@ -3,70 +3,69 @@
 
 @layer theme {
   :root {
-    /* Evergreen Dreams palette
-       #595E48 dark olive  → primary (74 13% 33%)
-       #919682 sage green  → secondary fg / ring (75 9% 55%)
-       #C7CDBF light sage  → accent bg (86 12% 78%)
-       #EECFCA soft blush  → secondary bg (8 52% 86%)
-       #C7A491 warm mocha  → border / warm accent (21 33% 67%)
+    /* Apple palette
+       #000000 Black       → primary / key actions
+       #555555 Davy's gray → muted foreground
+       #A2AAAD Coated gray → accent / border (HSL 196 6% 66%)
+       #FFFFFF White       → background
     */
     --background: 0 0% 100%;
-    --foreground: 74 20% 18%;
+    --foreground: 0 0% 5%;
     --card: 0 0% 100%;
-    --card-foreground: 74 20% 18%;
+    --card-foreground: 0 0% 5%;
     --popover: 0 0% 100%;
-    --popover-foreground: 74 20% 18%;
-    --primary: 74 13% 33%;
+    --popover-foreground: 0 0% 5%;
+    --primary: 0 0% 5%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 8 52% 93%;
-    --secondary-foreground: 74 13% 28%;
-    --muted: 86 12% 92%;
-    --muted-foreground: 75 9% 42%;
-    --accent: 86 12% 78%;
-    --accent-foreground: 74 13% 25%;
+    --secondary: 196 6% 94%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 196 6% 94%;
+    --muted-foreground: 0 0% 33%;
+    --accent: 196 6% 90%;
+    --accent-foreground: 0 0% 10%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 21 20% 84%;
-    --input: 21 20% 84%;
-    --ring: 74 13% 33%;
+    --border: 196 6% 88%;
+    --input: 196 6% 88%;
+    --ring: 0 0% 5%;
     --radius: 8px;
     /* Brand */
-    --brand: 74 13% 33%;
+    --brand: 0 0% 5%;
     --brand-foreground: 0 0% 100%;
-    --brand-muted: 86 12% 88%;
+    --brand-muted: 196 6% 93%;
     /* Success */
-    --success: 74 13% 33%;
+    --success: 0 0% 5%;
     --success-foreground: 0 0% 100%;
   }
 
-  /* Dark mode — olive-derived darks */
+  /* Dark mode */
   .dark {
-    --background: 74 18% 8%;
-    --foreground: 86 12% 88%;
-    --card: 74 15% 11%;
-    --card-foreground: 86 12% 88%;
-    --popover: 74 15% 12%;
-    --popover-foreground: 86 12% 88%;
-    --primary: 75 9% 55%;
-    --primary-foreground: 74 18% 8%;
-    --secondary: 74 13% 16%;
-    --secondary-foreground: 86 12% 80%;
-    --muted: 74 13% 18%;
-    --muted-foreground: 75 9% 55%;
-    --accent: 74 13% 22%;
-    --accent-foreground: 86 12% 78%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 196 6% 66%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 196 6% 66%;
+    --accent: 0 0% 18%;
+    --accent-foreground: 0 0% 96%;
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 74 13% 22%;
-    --input: 74 13% 18%;
-    --ring: 75 9% 55%;
+    --border: 0 0% 21%;
+    --input: 0 0% 16%;
+    --ring: 196 6% 66%;
     /* Brand */
-    --brand: 75 9% 55%;
-    --brand-foreground: 74 18% 8%;
-    --brand-muted: 74 13% 20%;
+    --brand: 196 6% 76%;
+    --brand-foreground: 0 0% 0%;
+    --brand-muted: 0 0% 15%;
     /* Success */
-    --success: 75 9% 55%;
-    --success-foreground: 74 18% 8%;
+    --success: 196 6% 66%;
+    --success-foreground: 0 0% 0%;
   }
 }
 
