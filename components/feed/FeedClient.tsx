@@ -209,13 +209,13 @@ function FeedPostItem({
       )}
 
       {/* Image */}
-      <div className="flex-shrink-0 w-24 h-24 bg-muted rounded-lg overflow-hidden relative">
+      <div className="flex-shrink-0 w-28 h-[84px] bg-muted rounded-lg overflow-hidden relative">
         {post.images && post.images.length > 0 ? (
           <Image
             src={post.images[0]}
             alt={post.title}
             fill
-            sizes="(max-width: 768px) 96px, 96px"
+            sizes="(max-width: 768px) 112px, 112px"
             className="object-cover"
             loading="lazy"
             quality={75}
@@ -232,11 +232,11 @@ function FeedPostItem({
       {/* Content */}
       <div className="flex-1 flex flex-col justify-between min-w-0 pr-8">
         <div>
-          <h3 className={`text-base font-normal line-clamp-2 mb-0.5 ${isHiddenPost ? 'text-muted-foreground' : ''}`}>
+          <h3 className={`text-[15px] font-medium leading-snug line-clamp-2 mb-0.5 ${isHiddenPost ? 'text-muted-foreground' : ''}`}>
             {post.title}
-            {isHiddenPost && <span className="ml-1 text-xs font-medium">(숨김처리)</span>}
+            {isHiddenPost && <span className="ml-1 text-xs font-normal">(숨김처리)</span>}
           </h3>
-          <div className="text-xs text-muted-foreground mb-0.5">
+          <div className="text-xs text-muted-foreground mb-1">
             <span>{getCityNameInKorean(post.city)}</span>
             <span> · </span>
             <span>{formatTimeAgo(post.created_at)}</span>
@@ -259,12 +259,16 @@ function FeedPostItem({
               </>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <p className="text-base font-bold">
-              {post.price === 0 || post.price === null
-                ? '무료나눔 ✨'
-                : `${post.price.toLocaleString()}₽`}
-            </p>
+          <div className="flex items-center gap-1.5">
+            {post.price === 0 || post.price === null ? (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-success text-success-foreground">
+                무료나눔
+              </span>
+            ) : (
+              <p className="text-[15px] font-bold tabular-nums">
+                {post.price.toLocaleString()}₽
+              </p>
+            )}
             {normalizedPostStatus === 'reserved' && (
               <span className={`text-xs px-2 py-0.5 rounded-full ${getPostStatusInfo(normalizedPostStatus).bgColor} ${getPostStatusInfo(normalizedPostStatus).textColor} font-medium`}>
                 {getPostStatusInfo(normalizedPostStatus).label}
@@ -812,7 +816,7 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
                   px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors
                   ${
                     category.id === selectedTab
-                      ? 'bg-foreground text-background'
+                      ? 'bg-primary text-primary-foreground'
                       : 'bg-secondary text-secondary-foreground hover:bg-muted'
                   }
                 `}
@@ -831,47 +835,51 @@ export default function FeedClient({ initialPosts, initialCursor, initialCity }:
               <p className="text-muted-foreground">{getRandomLoadingMessage()}</p>
             </div>
           ) : (
-            <div className="text-center py-16">
-              <p className="text-muted-foreground mb-4">아직 게시글이 없습니다</p>
+            <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+              <span className="text-5xl mb-4">🛍️</span>
+              <p className="text-base font-medium text-foreground mb-1">아직 게시글이 없어요</p>
+              <p className="text-sm text-muted-foreground mb-6">첫 번째 판매자가 되어보세요!</p>
               <Link href="/post/new">
-                <Button>첫 게시글 작성하기</Button>
+                <Button className="rounded-full px-6">첫 게시글 작성하기</Button>
               </Link>
             </div>
           )
         ) : (
           <div>
-            {boostedPosts.map((post) => (
-              <FeedPostItem
-                key={post.id}
-                post={post}
-                isDeveloper={isDeveloper}
-                currentUserId={user?.id || null}
-                boostingPostId={boostingPostId}
-                boostedPostId={boostedPostId}
-                onLikeToggle={toggleLike}
-                onLikeBurst={handleLikeBurst}
-                onInterestToggle={toggleInterest}
-                onBoost={handleBoost}
-                onToggleHidden={handleToggleHidden}
-                onView={handlePostView}
-              />
+            {boostedPosts.map((post, index) => (
+              <div key={post.id} className="feed-card-enter" style={{ animationDelay: `${Math.min(index, 5) * 40}ms` }}>
+                <FeedPostItem
+                  post={post}
+                  isDeveloper={isDeveloper}
+                  currentUserId={user?.id || null}
+                  boostingPostId={boostingPostId}
+                  boostedPostId={boostedPostId}
+                  onLikeToggle={toggleLike}
+                  onLikeBurst={handleLikeBurst}
+                  onInterestToggle={toggleInterest}
+                  onBoost={handleBoost}
+                  onToggleHidden={handleToggleHidden}
+                  onView={handlePostView}
+                />
+              </div>
             ))}
 
-            {regularPosts.map((post) => (
-              <FeedPostItem
-                key={post.id}
-                post={post}
-                isDeveloper={isDeveloper}
-                currentUserId={user?.id || null}
-                boostingPostId={boostingPostId}
-                boostedPostId={boostedPostId}
-                onLikeToggle={toggleLike}
-                onLikeBurst={handleLikeBurst}
-                onInterestToggle={toggleInterest}
-                onBoost={handleBoost}
-                onToggleHidden={handleToggleHidden}
-                onView={handlePostView}
-              />
+            {regularPosts.map((post, index) => (
+              <div key={post.id} className="feed-card-enter" style={{ animationDelay: `${Math.min(boostedPosts.length + index, 7) * 40}ms` }}>
+                <FeedPostItem
+                  post={post}
+                  isDeveloper={isDeveloper}
+                  currentUserId={user?.id || null}
+                  boostingPostId={boostingPostId}
+                  boostedPostId={boostedPostId}
+                  onLikeToggle={toggleLike}
+                  onLikeBurst={handleLikeBurst}
+                  onInterestToggle={toggleInterest}
+                  onBoost={handleBoost}
+                  onToggleHidden={handleToggleHidden}
+                  onView={handlePostView}
+                />
+              </div>
             ))}
 
             {/* Sentinel for infinite scroll */}

@@ -97,7 +97,7 @@ function BottomNav() {
               className={cn(
                 'flex flex-col items-center justify-center flex-1 h-full transition-colors relative',
                 isActive
-                  ? 'text-foreground'
+                  ? 'text-primary'
                   : 'text-muted-foreground hover:text-foreground'
               )}
               aria-label={item.name}
