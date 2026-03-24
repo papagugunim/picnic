@@ -173,7 +173,7 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
             asChild
             variant="ghost"
             size="icon"
-            className="w-9 h-9"
+            className="w-10 h-10"
           >
             <Link href="/search">
               <Search className="w-5 h-5" />
@@ -185,7 +185,7 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
             asChild
             variant="ghost"
             size="icon"
-            className="w-9 h-9 relative"
+            className="w-10 h-10 relative"
           >
             <Link href="/notifications">
               <Bell className="w-5 h-5" />
@@ -203,7 +203,7 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
               asChild
               variant="ghost"
               size="icon"
-              className="w-9 h-9 relative"
+              className="w-10 h-10 relative"
             >
               <Link href="/admin">
                 <Shield className="w-5 h-5" />
@@ -221,7 +221,7 @@ export default function TopBar({ showLocationDropdown = false }: TopBarProps) {
             asChild
             variant="ghost"
             size="icon"
-            className="w-9 h-9"
+            className="w-10 h-10"
           >
             <Link href="/settings">
               <Settings className="w-5 h-5" />

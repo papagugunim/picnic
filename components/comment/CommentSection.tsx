@@ -433,18 +433,24 @@ export function CommentSection({
       {/* Inline comment input - X.com 스타일: 댓글 목록 위에 배치 */}
       <div className="px-4 pb-4 border-b border-border">
         {currentUserId ? (
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-end">
             <Textarea
               placeholder="댓글을 입력하세요..."
               value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
+              onChange={(e) => {
+                setNewComment(e.target.value)
+                e.target.style.height = 'auto'
+                e.target.style.height = `${e.target.scrollHeight}px`
+              }}
               rows={1}
-              className="resize-none min-h-0 h-10 py-2"
-              style={{ fontSize: '16px' }}
+              className="resize-none min-h-0 py-2 overflow-hidden"
+              style={{ fontSize: '16px', height: '40px' }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
                   handleSubmitComment()
+                  const target = e.target as HTMLTextAreaElement
+                  target.style.height = '40px'
                 }
               }}
             />

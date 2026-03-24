@@ -19,6 +19,20 @@ import { getPostThumbnailUrl } from '@/lib/utils/post'
 export default function ChatsPage() {
   const { chatRooms, isLoading, isFetchingMore, hasMore, error, mutate, loadMore } = useChats()
   const loadMoreRef = useRef<HTMLDivElement>(null)
+  const swipeHintShownRef = useRef(false)
+
+  useEffect(() => {
+    if (swipeHintShownRef.current) return
+    if (chatRooms.length === 0) return
+    const key = 'picnic_swipe_hint_shown'
+    if (typeof window !== 'undefined' && !localStorage.getItem(key)) {
+      swipeHintShownRef.current = true
+      localStorage.setItem(key, '1')
+      setTimeout(() => {
+        toast('채팅방을 왼쪽으로 밀면 삭제할 수 있어요 👈', { duration: 3000 })
+      }, 800)
+    }
+  }, [chatRooms.length])
 
   useEffect(() => {
     if (!hasMore) return
