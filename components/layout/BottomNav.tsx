@@ -104,7 +104,7 @@ function BottomNav() {
             >
               <div className="relative">
                 <Icon
-                  className={cn('w-[22.5px] h-[22.5px]', isActive && 'stroke-[2.5]')}
+                  className={cn('w-6 h-6', isActive && 'stroke-[2.5]')}
                   strokeWidth={isActive ? 2.5 : 2}
                 />
                 {showBadge && (

@@ -232,11 +232,27 @@ function FeedPostItem({
       {/* Content */}
       <div className="flex-1 flex flex-col justify-between min-w-0 pr-8">
         <div>
-          <h3 className={`text-[15px] font-medium leading-snug line-clamp-2 mb-0.5 ${isHiddenPost ? 'text-muted-foreground' : ''}`}>
+          <h3 className={`text-[15px] font-semibold leading-snug line-clamp-2 mb-1 ${isHiddenPost ? 'text-muted-foreground' : ''}`}>
             {post.title}
             {isHiddenPost && <span className="ml-1 text-xs font-normal">(숨김처리)</span>}
           </h3>
-          <div className="text-xs text-muted-foreground mb-1">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            {post.price === 0 || post.price === null ? (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-success text-success-foreground">
+                무료나눔
+              </span>
+            ) : (
+              <p className="text-base font-bold tabular-nums">
+                {post.price.toLocaleString()}₽
+              </p>
+            )}
+            {normalizedPostStatus === 'reserved' && (
+              <span className={`text-xs px-2 py-0.5 rounded-full ${getPostStatusInfo(normalizedPostStatus).bgColor} ${getPostStatusInfo(normalizedPostStatus).textColor} font-medium`}>
+                {getPostStatusInfo(normalizedPostStatus).label}
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground">
             <span>{getCityNameInKorean(post.city)}</span>
             <span> · </span>
             <span>{formatTimeAgo(post.created_at)}</span>
@@ -257,22 +273,6 @@ function FeedPostItem({
                   <span role="img" aria-hidden="true">🥛</span>
                 </button>
               </>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5">
-            {post.price === 0 || post.price === null ? (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-success text-success-foreground">
-                무료나눔
-              </span>
-            ) : (
-              <p className="text-[15px] font-bold tabular-nums">
-                {post.price.toLocaleString()}₽
-              </p>
-            )}
-            {normalizedPostStatus === 'reserved' && (
-              <span className={`text-xs px-2 py-0.5 rounded-full ${getPostStatusInfo(normalizedPostStatus).bgColor} ${getPostStatusInfo(normalizedPostStatus).textColor} font-medium`}>
-                {getPostStatusInfo(normalizedPostStatus).label}
-              </span>
             )}
           </div>
         </div>
