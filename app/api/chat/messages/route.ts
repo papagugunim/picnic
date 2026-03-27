@@ -5,6 +5,7 @@ const logger = createNamespacedLogger('ChatMessagesAPI')
 import { createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import type { SendMessageRequest, SendMessageResponse } from '@/types/chat'
+import { sendPushToUser } from '@/app/api/push/send/route'
 
 /**
  * 메시지 전송 엔드포인트
@@ -127,7 +128,17 @@ export async function POST(request: Request) {
       })
       .eq('id', room_id)
 
-    // 7. 응답
+    // 7. 수신자에게 Web Push 알림 전송 (비동기, 실패해도 무시)
+    const recipientId = room.user1_id === user.id ? room.user2_id : room.user1_id
+    const senderName = senderProfile?.full_name || '누군가'
+    const pushBody = normalizedContent || '📷 사진을 보냈어요.'
+    void sendPushToUser(recipientId, {
+      title: `${senderName}님의 메시지`,
+      body: pushBody.length > 80 ? pushBody.slice(0, 80) + '...' : pushBody,
+      url: `/chats/${room_id}`,
+    }).catch(() => {})
+
+    // 8. 응답
     const response: SendMessageResponse = {
       message: {
         ...message,

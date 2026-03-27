@@ -331,15 +331,16 @@ export function useNotifications(): UseNotificationsReturn {
 
     fetchNotifications()
 
-    // 실시간 구독
+    // 실시간 구독 (user_id 서버 사이드 필터)
     const channel = supabase
-      .channel('notifications')
+      .channel(`notifications-${user.id}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
         },
         async (payload) => {
           if (payload.new.user_id !== user.id) return

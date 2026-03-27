@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ChatRoomWithProfile } from '@/types/chat'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { getCache, setCache } from '@/lib/cache'
 import { createNamespacedLogger } from '@/lib/logger'
 
@@ -34,6 +35,7 @@ export function useChats() {
 
   const supabase = useMemo(() => createClient(), [])
   const offsetRef = useRef(0)
+  const currentUserIdRef = useRef<string | null>(null)
 
   const buildRoomsWithDetails = useCallback(
     async (roomsData: ChatRoomRow[], userId: string): Promise<ChatRoomWithProfile[]> => {
@@ -125,8 +127,10 @@ export function useChats() {
           setChatRooms([])
           setHasMore(false)
           offsetRef.current = 0
+          currentUserIdRef.current = null
           return
         }
+        currentUserIdRef.current = user.id
 
         const chatCacheKey = `cache_chat_rooms_${user.id}`
         if (!append && useCache) {
@@ -199,6 +203,114 @@ export function useChats() {
   useEffect(() => {
     logger.log('Loading chat rooms with pagination')
     fetchChatRooms({ append: false, useCache: true })
+  }, [fetchChatRooms])
+
+  // Realtime 구독: chat_rooms UPDATE → 채팅 목록 실시간 갱신
+  useEffect(() => {
+    let channel: RealtimeChannel | null = null
+
+    async function subscribe() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      channel = supabase
+        .channel(`chat-rooms-list-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'chat_rooms',
+            filter: `user1_id=eq.${user.id}`,
+          },
+          (payload) => {
+            logger.log('[Realtime] chat_rooms UPDATE (user1):', payload.new)
+            setChatRooms((prev) =>
+              prev
+                .map((room) =>
+                  room.id === payload.new.id
+                    ? { ...room, ...payload.new }
+                    : room
+                )
+                .sort((a, b) =>
+                  new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+                )
+            )
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'chat_rooms',
+            filter: `user2_id=eq.${user.id}`,
+          },
+          (payload) => {
+            logger.log('[Realtime] chat_rooms UPDATE (user2):', payload.new)
+            setChatRooms((prev) =>
+              prev
+                .map((room) =>
+                  room.id === payload.new.id
+                    ? { ...room, ...payload.new }
+                    : room
+                )
+                .sort((a, b) =>
+                  new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+                )
+            )
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'chat_messages',
+          },
+          (payload) => {
+            const userId = currentUserIdRef.current
+            if (!userId) return
+            if (payload.new.sender_id === userId) return
+
+            setChatRooms((prev) => {
+              const room = prev.find((r) => r.id === payload.new.room_id)
+              if (!room) return prev
+              const updated = {
+                ...room,
+                last_message: payload.new.content || '',
+                last_message_at: payload.new.created_at,
+                updated_at: payload.new.created_at,
+                unread_count: room.unread_count + 1,
+              }
+              return [updated, ...prev.filter((r) => r.id !== room.id)]
+            })
+          }
+        )
+        .subscribe((status) => {
+          logger.log('[Realtime] chat-rooms-list status:', status)
+        })
+    }
+
+    void subscribe()
+
+    return () => {
+      if (channel) supabase.removeChannel(channel)
+    }
+  }, [supabase])
+
+  // Page Visibility: 탭 복귀 시 채팅 목록 새로고침
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        logger.log('[Visibility] Page became visible, refreshing chats')
+        offsetRef.current = 0
+        void fetchChatRooms({ append: false, useCache: false })
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [fetchChatRooms])
 
   return {
