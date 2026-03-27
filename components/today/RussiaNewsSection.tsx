@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowRight, Radio, RefreshCw } from 'lucide-react'
+import { ArrowRight, Radio } from 'lucide-react'
 
 import { getRussiaNewsTopicBadgeClass, RussiaNewsCard } from '@/components/today/RussiaNewsCard'
 import { RussiaNewsModal } from '@/components/today/RussiaNewsModal'
@@ -166,15 +166,6 @@ export function RussiaNewsSection() {
           <h2 className="text-sm truncate">가장 빠른 러시아 실시간 뉴스</h2>
         </div>
 
-        <button
-          onClick={() => fetchNews(true)}
-          disabled={isRefreshing}
-          aria-label="새로고침"
-          title="새로고침"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-        </button>
       </div>
 
       <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-0.5 touch-pan-x">

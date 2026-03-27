@@ -1,6 +1,6 @@
 'use client'
 
-import { Calendar as CalendarIcon, MapPin, RefreshCw, Calculator } from 'lucide-react'
+import { Calendar as CalendarIcon, MapPin, Calculator } from 'lucide-react'
 import { WeatherData, ExchangeRates } from './types'
 import { CITY_TIMEZONES, CITY_NAMES_KR, WEATHER_NAMES } from './constants'
 
@@ -8,11 +8,7 @@ interface WeatherSectionProps {
   loading: boolean
   userCity: string | null
   weather: WeatherData | null
-  isRefreshingWeather: boolean
-  onRefreshWeather: () => void
   exchangeRates?: ExchangeRates | null
-  isRefreshingExchangeRates?: boolean
-  onRefreshExchangeRates?: () => void
   onOpenCalculator?: () => void
   onOpenRubChart?: () => void
   onOpenUsdChart?: () => void
@@ -22,11 +18,7 @@ export function WeatherSection({
   loading,
   userCity,
   weather,
-  isRefreshingWeather,
-  onRefreshWeather,
   exchangeRates,
-  isRefreshingExchangeRates,
-  onRefreshExchangeRates,
   onOpenCalculator,
   onOpenRubChart,
   onOpenUsdChart,
@@ -96,18 +88,6 @@ export function WeatherSection({
                     (체감 {weather.feelsLike > 0 ? '+' : ''}{weather.feelsLike}°C)
                   </span>
                 </div>
-                <button
-                  onClick={onRefreshWeather}
-                  disabled={isRefreshingWeather}
-                  className="p-1.5 hover:bg-muted rounded-lg transition-colors disabled:opacity-50"
-                  aria-label="날씨 새로고침"
-                >
-                  <RefreshCw
-                    className={`w-3.5 h-3.5 text-muted-foreground ${
-                      isRefreshingWeather ? 'animate-spin' : ''
-                    }`}
-                  />
-                </button>
               </div>
             )}
           </div>
@@ -131,20 +111,6 @@ export function WeatherSection({
                 <span className="font-semibold">{(1 / exchangeRates.rubToUsd).toFixed(2)}₽</span>
               </button>
               <div className="ml-auto flex items-center gap-0.5">
-                {onRefreshExchangeRates && (
-                  <button
-                    onClick={onRefreshExchangeRates}
-                    disabled={isRefreshingExchangeRates}
-                    className="p-1.5 hover:bg-muted rounded-lg transition-colors disabled:opacity-50"
-                    aria-label="환율 새로고침"
-                  >
-                    <RefreshCw
-                      className={`w-3 h-3 text-muted-foreground ${
-                        isRefreshingExchangeRates ? 'animate-spin' : ''
-                      }`}
-                    />
-                  </button>
-                )}
                 {onOpenCalculator && (
                   <button
                     onClick={onOpenCalculator}

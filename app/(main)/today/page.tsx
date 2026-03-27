@@ -40,9 +40,6 @@ export default function TodayPage() {
   const [userCity, setUserCity] = useState<string | null>(null)
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null)
-  const [isRefreshingWeather, setIsRefreshingWeather] = useState(false)
-  const [isRefreshingExchangeRates, setIsRefreshingExchangeRates] = useState(false)
-
   // 환율 모달 상태
   const [showCalculator, setShowCalculator] = useState(false)
   const [showChart, setShowChart] = useState(false)
@@ -243,30 +240,6 @@ export default function TodayPage() {
     void fetchExchangeRates()
   }, [isPageVisible, userCity, fetchWeatherData, fetchExchangeRates])
 
-  // 수동 날씨 새로고침
-  const handleRefreshWeather = async () => {
-    if (!userCity || isRefreshingWeather) return
-
-    setIsRefreshingWeather(true)
-    try {
-      await fetchWeatherData(userCity, true)
-    } finally {
-      setIsRefreshingWeather(false)
-    }
-  }
-
-  // 수동 환율 새로고침
-  const handleRefreshExchangeRates = async () => {
-    if (isRefreshingExchangeRates) return
-
-    setIsRefreshingExchangeRates(true)
-    try {
-      await fetchExchangeRates(true)
-    } finally {
-      setIsRefreshingExchangeRates(false)
-    }
-  }
-
   // 기간별 데이터 필터링 및 샘플링
   const filterDataByPeriod = useCallback((data: OHLCData[], period: 'week' | 'month' | 'quarter' | 'year') => {
     const config = {
@@ -390,11 +363,7 @@ export default function TodayPage() {
           loading={loading}
           userCity={userCity}
           weather={weather}
-          isRefreshingWeather={isRefreshingWeather}
-          onRefreshWeather={handleRefreshWeather}
           exchangeRates={exchangeRates}
-          isRefreshingExchangeRates={isRefreshingExchangeRates}
-          onRefreshExchangeRates={handleRefreshExchangeRates}
           onOpenCalculator={() => setShowCalculator(true)}
           onOpenRubChart={() => handleOpenChart('rub')}
           onOpenUsdChart={() => handleOpenChart('usd')}
