@@ -5,7 +5,7 @@ import { createNamespacedLogger } from '@/lib/logger'
 const logger = createNamespacedLogger('Page')
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, Check, ChevronLeft, Loader2, Moon, Search, Sun, X } from 'lucide-react'
+import { Bell, BellOff, Camera, Check, ChevronLeft, Loader2, Moon, Search, Sun, X } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,6 +16,7 @@ import { getLoadingMessage } from '@/lib/loading-messages'
 import { useUser } from '@/lib/contexts/UserContext'
 import { collectGeoSamples } from '@/lib/location/geo-sampler'
 import { cn } from '@/lib/utils'
+import { usePushNotifications } from '@/lib/hooks/usePushNotifications'
 
 interface Profile {
   id: string
@@ -42,6 +43,7 @@ export default function SettingsPage() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const { refreshProfile } = useUser()
+  const { status: pushStatus, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [selectedCity, setSelectedCity] = useState<string>('')
@@ -507,6 +509,48 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
+
+          {/* Push 알림 */}
+          {pushStatus !== 'unsupported' && (
+            <div>
+              <div className="text-sm font-medium text-muted-foreground mb-2">알림</div>
+              <button
+                onClick={() => pushStatus === 'subscribed' ? pushUnsubscribe() : pushSubscribe()}
+                disabled={pushStatus === 'loading' || pushStatus === 'denied'}
+                className={cn(
+                  'flex items-center justify-between w-full px-4 py-3 rounded-2xl text-sm transition-all',
+                  pushStatus === 'subscribed'
+                    ? 'bg-primary/10 text-primary'
+                    : pushStatus === 'denied'
+                    ? 'bg-secondary text-muted-foreground cursor-not-allowed'
+                    : 'bg-secondary hover:bg-muted'
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  {pushStatus === 'subscribed' ? (
+                    <Bell className="w-4 h-4" />
+                  ) : (
+                    <BellOff className="w-4 h-4" />
+                  )}
+                  <span>
+                    {pushStatus === 'subscribed'
+                      ? '채팅 알림 켜짐'
+                      : pushStatus === 'denied'
+                      ? '알림 차단됨 (브라우저 설정에서 허용)'
+                      : pushStatus === 'loading'
+                      ? '확인 중...'
+                      : '채팅 알림 받기'}
+                  </span>
+                </div>
+                {pushStatus === 'loading' && (
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                )}
+                {pushStatus === 'subscribed' && (
+                  <span className="text-xs text-muted-foreground">해제</span>
+                )}
+              </button>
+            </div>
+          )}
 
           {/* 도시 */}
           <div>
