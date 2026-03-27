@@ -33,6 +33,9 @@ export interface ChatRoomWithProfile extends ChatRoom {
     avatar_url: string | null
     bread_level?: number
     user_role?: string | null
+    city?: string | null
+    created_at?: string | null
+    post_count?: number | null
   }
   unread_count: number
   post?: {

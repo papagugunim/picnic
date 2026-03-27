@@ -19,6 +19,7 @@ import { getRandomLoadingMessage } from '@/lib/loading-messages'
 import { getBreadEmoji } from '@/lib/bread'
 import { AppointmentProposalForm } from '@/components/chat/AppointmentProposalForm'
 import { AppointmentCard } from '@/components/chat/AppointmentCard'
+import { UserProfileSheet } from '@/components/chat/UserProfileSheet'
 import { ReviewModal } from '@/components/review/ReviewModal'
 import { getPostStatusInfo, type PostStatus } from '@/lib/post-status'
 import { toast } from 'sonner'
@@ -224,6 +225,7 @@ export default function ChatRoomPage() {
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>('unsupported')
   const [isRequestingNotificationPermission, setIsRequestingNotificationPermission] = useState(false)
+  const [showProfileSheet, setShowProfileSheet] = useState(false)
 
   const {
     messages,
@@ -269,7 +271,7 @@ export default function ChatRoomPage() {
 
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, bread_level, user_role')
+        .select('id, full_name, avatar_url, bread_level, user_role, city, created_at, post_count')
         .eq('id', otherUserId)
         .single()
 
@@ -292,7 +294,10 @@ export default function ChatRoomPage() {
           full_name: null,
           avatar_url: null,
           bread_level: 0,
-          user_role: null
+          user_role: null,
+          city: null,
+          created_at: null,
+          post_count: null,
         },
         unread_count: 0,
         post: postData,
@@ -1114,7 +1119,9 @@ export default function ChatRoomPage() {
                     </div>
                   </div>
                 </div>
-                <div
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); setShowProfileSheet(true) }}
                   className={`flex items-center gap-2 overflow-hidden pl-11 pt-1 transition-[max-height,opacity,transform] duration-200 ease-out ${
                     isChatInfoHidden ? 'max-h-0 -translate-y-1 opacity-0' : 'max-h-8 translate-y-0 opacity-100'
                   }`}
@@ -1134,11 +1141,12 @@ export default function ChatRoomPage() {
                   <span className="text-sm leading-none">
                     {getBreadEmoji(room.other_user.bread_level || 1, room.other_user.user_role || undefined)}
                   </span>
-                </div>
+                </button>
               </Link>
             ) : (
-              <Link
-                href={`/profile/${room.other_user.id}`}
+              <button
+                type="button"
+                onClick={() => setShowProfileSheet(true)}
                 className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-1 hover:bg-muted/70"
               >
                 {room.other_user.avatar_url ? (
@@ -1161,7 +1169,7 @@ export default function ChatRoomPage() {
                   </div>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">채팅</p>
                 </div>
-              </Link>
+              </button>
             )}
           </div>
 
@@ -1733,6 +1741,21 @@ export default function ChatRoomPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* 상대방 프로필 시트 */}
+      {showProfileSheet && (
+        <UserProfileSheet
+          userId={room.other_user.id}
+          userName={room.other_user.full_name}
+          avatarUrl={room.other_user.avatar_url}
+          breadLevel={room.other_user.bread_level || 1}
+          userRole={room.other_user.user_role}
+          city={room.other_user.city}
+          createdAt={room.other_user.created_at}
+          postCount={room.other_user.post_count}
+          onClose={() => setShowProfileSheet(false)}
+        />
+      )}
 
       {/* Review Modal */}
       {currentUserId && room.post && (
