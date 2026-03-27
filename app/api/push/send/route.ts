@@ -70,7 +70,10 @@ export async function POST(request: Request) {
     const authHeader = request.headers.get('authorization')
     const expectedSecret = process.env.CRON_SECRET
 
-    if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
+    if (!expectedSecret) {
+      return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+    }
+    if (authHeader !== `Bearer ${expectedSecret}`) {
       return NextResponse.json({ error: '인증 실패' }, { status: 401 })
     }
 
