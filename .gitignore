@@ -40,3 +40,27 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+
+# local runtime
+.venv/
+.uvicorn.pid
+*.log
+
+# generated data and backups
+analysis_output/
+backups/
+preview_icons/
+data/*.db
+data/*.db-shm
+data/*.db-wal
+backup-*.tar.gz
+
+# local notes and transcripts
+*.rtf
+progress.md
+picnic_investor_*.txt
+transcript_ru*.txt
+
+# local sibling projects parked in this repo
+chocopie-casual-game/
+cislink_monthly_analytics/
